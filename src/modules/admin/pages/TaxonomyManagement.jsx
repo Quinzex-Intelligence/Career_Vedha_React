@@ -469,8 +469,8 @@ const TaxonomyManagement = () => {
                                                             <code>{item.slug}</code>
                                                         </td>
                                                         <td>
-                                                            {item.parent_id ? (
-                                                                <LuxuryTooltip content="Filter by this parent">
+                                                            <LuxuryTooltip content={item.parent_id ? `Parent Category ID: ${item.parent_id}` : "Root Category"}>
+                                                                {item.parent_id ? (
                                                                     <span 
                                                                         className="am-status-badge review" 
                                                                         style={{ cursor: 'pointer' }}
@@ -478,10 +478,10 @@ const TaxonomyManagement = () => {
                                                                     >
                                                                         PID: {item.parent_id}
                                                                     </span>
-                                                                </LuxuryTooltip>
-                                                            ) : (
-                                                                <span className="am-status-badge draft">ROOT</span>
-                                                            )}
+                                                                ) : (
+                                                                    <span className="am-status-badge draft">ROOT</span>
+                                                                )}
+                                                            </LuxuryTooltip>
                                                         </td>
                                                         <td className="am-actions-cell">
                                                             <LuxuryTooltip content="Edit Category">

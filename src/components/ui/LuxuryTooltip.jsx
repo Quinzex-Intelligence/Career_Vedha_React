@@ -23,9 +23,12 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             
+            // Safety check: if width/height are 0, it might be hidden or moving
+            if (rect.width === 0 || rect.height === 0) return;
+
             let top = 0;
             let left = 0;
-            const gap = 10; // Space between element and tooltip
+            const gap = 12; // Slightly more gap for clarity
 
             switch (position) {
                 case 'top':
@@ -54,25 +57,22 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
     };
 
     const handleMouseEnter = () => {
+        // Double update to ensure we catch any layout shifts
         updatePosition();
+        setTimeout(updatePosition, 10);
         setIsVisible(true);
     };
 
     const initial = {
         opacity: 0,
-        scale: 0.9,
-        x: '-50%', // Default for top/bottom
-        y: position === 'top' ? 10 : position === 'bottom' ? -10 : '-50%'
+        scale: 0.95,
+        x: '-50%',
+        y: position === 'top' ? 5 : position === 'bottom' ? -5 : '-50%'
     };
 
     // Adjust transforms based on position
-    if (position === 'left') {
-        initial.x = 10;
-        initial.y = '-50%';
-    } else if (position === 'right') {
-        initial.x = -10;
-        initial.y = '-50%';
-    }
+    if (position === 'left') { initial.x = 5; initial.y = '-50%'; }
+    else if (position === 'right') { initial.x = -5; initial.y = '-50%'; }
 
     const animate = {
         opacity: 1,
@@ -83,7 +83,7 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
 
     const exit = {
         opacity: 0,
-        scale: 0.9,
+        scale: 0.95,
         transition: { duration: 0.1 }
     };
 
@@ -91,7 +91,7 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
         <>
             <div
                 ref={triggerRef}
-                className="relative inline-flex items-center justify-center"
+                style={{ display: 'inline-block', width: 'fit-content', verticalAlign: 'middle' }}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={() => setIsVisible(false)}
                 onFocus={handleMouseEnter}
@@ -108,42 +108,41 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
                             exit={exit}
                             transition={{ duration: 0.2, ease: "easeOut" }}
                             style={{
-                                position: 'absolute',
+                                position: 'fixed',
                                 top: coords.top,
                                 left: coords.left,
-                                zIndex: 9999, // High z-index to overlay everything
+                                zIndex: 99999, // Extra high
                                 pointerEvents: 'none',
                                 whiteSpace: 'nowrap'
                             }}
                             className="luxury-tooltip-portal"
                         >
                             <div style={{
-                                background: 'rgba(15, 23, 42, 0.95)',
-                                backdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                background: '#0f172a',
+                                border: '1px solid #fbbf24',
                                 color: '#f8fafc',
-                                padding: '6px 12px',
+                                padding: '8px 14px',
                                 borderRadius: '8px',
                                 fontSize: '0.75rem',
-                                fontWeight: '600',
-                                letterSpacing: '0.02em',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                                fontWeight: '700',
+                                letterSpacing: '0.01em',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
                                 textTransform: 'uppercase'
                             }}>
                                 {content}
                                 {/* Tiny Arrow - simplified for portal positioning */}
                                 <div style={{
                                     position: 'absolute',
-                                    width: '6px',
-                                    height: '6px',
-                                    background: 'rgba(15, 23, 42, 0.95)',
-                                    borderRight: '1px solid rgba(245, 158, 11, 0.3)',
-                                    borderBottom: '1px solid rgba(245, 158, 11, 0.3)',
+                                    width: '8px',
+                                    height: '8px',
+                                    background: '#0f172a',
+                                    borderRight: '1px solid #fbbf24',
+                                    borderBottom: '1px solid #fbbf24',
                                     transform: 'rotate(45deg)',
                                     left: '50%',
-                                    marginLeft: '-3px',
-                                    bottom: position === 'top' ? '-3px' : 'auto',
-                                    top: position === 'bottom' ? '-3px' : 'auto',
+                                    marginLeft: '-4px',
+                                    bottom: position === 'top' ? '-4px' : 'auto',
+                                    top: position === 'bottom' ? '-4px' : 'auto',
                                     display: position === 'left' || position === 'right' ? 'none' : 'block' // Hide arrow for side tooltips for now to simplify
                                 }} />
                             </div>
