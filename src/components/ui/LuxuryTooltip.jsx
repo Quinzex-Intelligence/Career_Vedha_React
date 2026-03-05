@@ -7,36 +7,46 @@ const LuxuryTooltip = ({ children, content, position = 'top' }) => {
     const [coords, setCoords] = useState({ top: 0, left: 0 });
     const triggerRef = useRef(null);
 
+    useEffect(() => {
+        if (isVisible) {
+            updatePosition();
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+            return () => {
+                window.removeEventListener('scroll', updatePosition, true);
+                window.removeEventListener('resize', updatePosition);
+            };
+        }
+    }, [isVisible, position]);
+
     const updatePosition = () => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
-            const scrollX = window.scrollX;
-            const scrollY = window.scrollY;
-
+            
             let top = 0;
             let left = 0;
             const gap = 10; // Space between element and tooltip
 
             switch (position) {
                 case 'top':
-                    top = rect.top + scrollY - gap;
-                    left = rect.left + scrollX + rect.width / 2;
+                    top = rect.top - gap;
+                    left = rect.left + rect.width / 2;
                     break;
                 case 'bottom':
-                    top = rect.bottom + scrollY + gap;
-                    left = rect.left + scrollX + rect.width / 2;
+                    top = rect.bottom + gap;
+                    left = rect.left + rect.width / 2;
                     break;
                 case 'left':
-                    top = rect.top + scrollY + rect.height / 2;
-                    left = rect.left + scrollX - gap;
+                    top = rect.top + rect.height / 2;
+                    left = rect.left - gap;
                     break;
                 case 'right':
-                    top = rect.top + scrollY + rect.height / 2;
-                    left = rect.right + scrollX + gap;
+                    top = rect.top + rect.height / 2;
+                    left = rect.right + gap;
                     break;
                 default:
-                    top = rect.top + scrollY - gap;
-                    left = rect.left + scrollX + rect.width / 2;
+                    top = rect.top - gap;
+                    left = rect.left + rect.width / 2;
             }
 
             setCoords({ top, left });
