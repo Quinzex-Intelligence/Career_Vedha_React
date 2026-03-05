@@ -59,6 +59,9 @@ const TaxonomyManagement = () => {
         is_active: true
     });
 
+    const [isAddingNewSection, setIsAddingNewSection] = useState(false);
+    const [newSectionName, setNewSectionName] = useState('');
+
     const { data: dynamicSections, isLoading: sectionsLoading } = useSections();
     const sections = dynamicSections || [];
 
@@ -166,6 +169,9 @@ const TaxonomyManagement = () => {
     
     // Missing Handlers Re-implementation
     const handleOpenModal = (category = null) => {
+        setIsAddingNewSection(false);
+        setNewSectionName('');
+
         if (category) {
             setIsEditing(true);
             setCurrentCategory({
@@ -193,6 +199,8 @@ const TaxonomyManagement = () => {
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
+        setIsAddingNewSection(false);
+        setNewSectionName('');
         setCurrentCategory({
             name: '',
             slug: '',
@@ -227,7 +235,17 @@ const TaxonomyManagement = () => {
 
     const handleSaveCategory = (e) => {
         e.preventDefault();
-        const payload = { ...currentCategory };
+        
+        let sectionValue = currentCategory.section;
+        if (isAddingNewSection && newSectionName.trim()) {
+            sectionValue = newSectionName.trim().toLowerCase().replace(/\s+/g, '_');
+        }
+
+        const payload = { 
+            ...currentCategory,
+            section: sectionValue
+        };
+        
         if (payload.parent_id === '') delete payload.parent_id;
 
         if (isEditing) {
@@ -575,14 +593,38 @@ const TaxonomyManagement = () => {
                                     <label className="am-label">Section</label>
                                     <select 
                                         className="am-input"
-                                        value={currentCategory.section}
+                                        value={isAddingNewSection ? 'NEW' : currentCategory.section}
                                         disabled={isEditing}
-                                        onChange={(e) => setCurrentCategory({...currentCategory, section: e.target.value})}
+                                        onChange={(e) => {
+                                            if (e.target.value === 'NEW') {
+                                                setIsAddingNewSection(true);
+                                            } else {
+                                                setIsAddingNewSection(false);
+                                                setCurrentCategory({...currentCategory, section: e.target.value});
+                                            }
+                                        }}
                                         required
                                     >
                                         {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        <option value="NEW">+ Other / New Section...</option>
                                     </select>
                                 </div>
+                                {isAddingNewSection && (
+                                    <div className="am-form-group">
+                                        <label className="am-label">New Section Name</label>
+                                        <input 
+                                            type="text"
+                                            className="am-input"
+                                            value={newSectionName}
+                                            onChange={(e) => setNewSectionName(e.target.value)}
+                                            placeholder="e.g. Career Tips"
+                                            required
+                                        />
+                                        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                                            Section identifier will be: <code>{newSectionName.trim().toLowerCase().replace(/\s+/g, '_')}</code>
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="am-form-group">
                                     <label className="am-label">Category Name</label>
                                     <input 

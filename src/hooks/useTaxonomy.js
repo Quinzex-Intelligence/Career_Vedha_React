@@ -98,10 +98,12 @@ export function useSections() {
         queryFn: () => {
             if (!categories?.results) return [];
             
-            const uniqueSections = [...new Set(categories.results.map(cat => cat.section))];
-            return uniqueSections.map(sec => ({
-                id: sec,
-                name: sec.charAt(0).toUpperCase() + sec.slice(1).replace(/_/g, ' ')
+            // Get unique sections from categories
+            const categorySections = [...new Set(categories.results.map(cat => cat.section))];
+            
+            return categorySections.map(id => ({
+                id: id,
+                name: id.charAt(0).toUpperCase() + id.slice(1).replace(/_/g, ' ')
             }));
         },
         enabled: !!categories,
