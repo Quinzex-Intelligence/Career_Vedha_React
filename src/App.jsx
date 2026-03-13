@@ -134,7 +134,8 @@ const SecurityLayer = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        const isProduction = import.meta.env.PROD;
+        // Temporarily disabled devtools protection per user request
+        const isProduction = false; // Forced to false
         let trapInterval, detectInterval, logInterval, bgInterval;
 
         const lockUI = () => {
