@@ -6,18 +6,18 @@ const DomainGuard = ({ children }) => {
   useEffect(() => {
     // Authorized domains - if copied to another domain, it will fail
     const authorizedDomains = [
-      'careervedha.in',
-      'www.careervedha.in',
       'localhost',
-      '127.0.0.1'
+      '127.0.0.1',
+      'www.quinzexintelligence.com',
+      'quinzexintelligence.com'
     ];
 
     const currentDomain = window.location.hostname;
+    console.log('Domain Check:', currentDomain);
     
     // Check if current domain is authorized
-    const isAllowed = authorizedDomains.some(domain => 
-      currentDomain === domain || currentDomain.endsWith('.' + domain)
-    );
+    const isAllowed = authorizedDomains.includes(currentDomain) || 
+                     authorizedDomains.some(domain => currentDomain.endsWith('.' + domain));
 
     if (!isAllowed) {
       console.error('Unauthorized license usage detected. System halted.');
