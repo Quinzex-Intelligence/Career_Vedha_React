@@ -7,6 +7,8 @@ import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
 import JobCard from '../components/JobCard';
 import JobFilters from '../components/JobFilters';
+import TopStoriesHero from '../../../components/home/TopStoriesHero';
+import { useTrendingArticles } from '../../../hooks/useHomeContent';
 import './JobsList.css';
 
 const JobsList = () => {
@@ -25,6 +27,8 @@ const JobsList = () => {
     const [activeLanguage, setActiveLanguage] = useState(() => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
+
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
 
     const userContext = getUserContext();
     const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'PUBLISHER'].includes(userContext?.role);
@@ -88,7 +92,30 @@ const JobsList = () => {
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
 
-
+            <TopStoriesHero 
+                topStories={jobs.slice(0, 5).map(j => ({
+                    ...j,
+                    image_url: j.featured_image || j.organization_logo || "https://placehold.co/800x450/FFC107/333333?text=Job",
+                    section: 'jobs',
+                    slug: j.slug
+                }))}
+                loading={loading || trendingLoading}
+                activeLanguage={activeLanguage}
+                title="Featured Jobs"
+                viewAllLink="/jobs"
+                sidebarBlocks={[
+                    {
+                        title: "More Openings",
+                        items: jobs.slice(5, 8).map(j => ({ ...j, section: 'jobs' })),
+                        viewAllLink: "/jobs"
+                    },
+                    {
+                        title: "Most Popular",
+                        items: trendingArticles || [],
+                        viewAllLink: "/articles"
+                    }
+                ]}
+            />
 
             <main className="jobs-main-content">
                 <div className="container mobile-container">

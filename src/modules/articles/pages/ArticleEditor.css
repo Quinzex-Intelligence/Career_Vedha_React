@@ -304,11 +304,18 @@
     line-height: 1.6;
 }
 
+.ae-input.ae-input-error,
+.ae-textarea.ae-textarea-error,
 .ae-input.ae-error,
 .ae-textarea.ae-error {
     border-color: var(--ae-danger);
     background: #fef2f2;
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.08);
+}
+
+.ae-select-error .luxury-select-control {
+    border-color: var(--ae-danger) !important;
+    background: #fef2f2 !important;
 }
 
 .ae-row-2 {
@@ -549,48 +556,6 @@
     transform: scale(1.1);
 }
 
-.ae-pdf-preview {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: var(--ae-surface);
-    border: 1px solid var(--ae-border);
-    border-radius: var(--ae-radius-sm);
-}
-
-.ae-pdf-icon {
-    font-size: 2rem;
-    color: #dc2626;
-}
-
-.ae-pdf-name {
-    flex: 1;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--ae-text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.ae-media-remove-inline {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: #fef2f2;
-    color: var(--ae-danger);
-    border: 1px solid #fecaca;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--ae-transition);
-}
-
-.ae-media-remove-inline:hover {
-    background: #fee2e2;
-}
 
 /* ═══════════════════════════════════════
    Quill Editor

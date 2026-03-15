@@ -42,7 +42,9 @@ export function useInfiniteArticles(filters = {}) {
             });
         },
         getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,              // Always consider data stale so it refetches on mount
+        refetchOnMount: true,      // Always refetch when the component mounts
+        refetchOnWindowFocus: false, // Skip on window focus to avoid excessive calls
     });
 }
 

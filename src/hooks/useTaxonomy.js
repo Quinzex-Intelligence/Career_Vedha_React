@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { newsService } from '../services';
+import { newsService, taxonomyService } from '../services';
 
 // Query key factory for taxonomy/categories
 export const taxonomyKeys = {
@@ -9,6 +9,7 @@ export const taxonomyKeys = {
     adminCategories: () => [...taxonomyKeys.all, 'admin', 'categories'],
     list: (params) => [...taxonomyKeys.adminCategories(), 'list', params],
     tree: (section) => [...taxonomyKeys.adminCategories(), 'tree', section],
+    levels: (section) => [...taxonomyKeys.adminCategories(), 'levels', section],
     children: (section, parentId) => [...taxonomyKeys.tree(section), 'children', parentId],
     sections: () => [...taxonomyKeys.all, 'sections'],
 };
@@ -16,23 +17,38 @@ export const taxonomyKeys = {
 /**
  * Hook to fetch taxonomy list (paginated)
  */
-export function useTaxonomyList(params) {
+export function useTaxonomyList(params, options = {}) {
     return useQuery({
         queryKey: taxonomyKeys.list(params),
         queryFn: () => newsService.getAdminCategories(params),
         staleTime: 60 * 1000,
         placeholderData: (previousData) => previousData,
+        ...options
     });
 }
 
 /**
  * Hook to fetch taxonomy tree
  */
-export function useTaxonomyTree(section) {
+export function useTaxonomyTree(section, options = {}) {
     return useQuery({
         queryKey: taxonomyKeys.tree(section),
         queryFn: () => newsService.getTaxonomyTree(section),
         staleTime: 60 * 1000,
+        ...options
+    });
+}
+
+/**
+ * Hook to fetch taxonomy list by levels
+ */
+export function useTaxonomyLevels(section, options = {}) {
+    return useQuery({
+        queryKey: taxonomyKeys.levels(section),
+        queryFn: () => newsService.getTaxonomyLevels(section),
+        staleTime: 60 * 1000,
+        enabled: !!section,
+        ...options
     });
 }
 
@@ -102,10 +118,10 @@ export function useCategoriesBySection(section) {
 /**
  * Hook to fetch all sections
  */
-export function useSections() {
+export function useSections(isAdmin = false) {
     return useQuery({
-        queryKey: taxonomyKeys.sections(),
-        queryFn: () => newsService.getSections(),
+        queryKey: [...taxonomyKeys.sections(), isAdmin],
+        queryFn: () => taxonomyService.getSections(isAdmin),
         staleTime: 30 * 60 * 1000,
     });
 }
@@ -167,6 +183,50 @@ export function useToggleCategoryStatus() {
             }
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.all });
+        },
+    });
+}
+/**
+ * Hook to create a new section
+ */
+export function useCreateSection() {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: (sectionData) => newsService.createSection(sectionData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.sections() });
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.all });
+        },
+    });
+}
+
+/**
+ * Hook to update a section
+ */
+export function useUpdateSection() {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: ({ id, data }) => newsService.updateSection(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.sections() });
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.all });
+        },
+    });
+}
+
+/**
+ * Hook to delete a section
+ */
+export function useDeleteSection() {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: (id) => newsService.deleteSection(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: taxonomyKeys.sections() });
             queryClient.invalidateQueries({ queryKey: taxonomyKeys.all });
         },
     });

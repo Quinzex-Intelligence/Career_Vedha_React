@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { academicsService } from '../../../services/academicsService';
 import TopBar from '../../../components/layout/TopBar';
 import Header from '../../../components/layout/Header';
 import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
+import ContentHubWidget from '../../../components/ui/ContentHubWidget';
 import './Academics.css';
 
 const SubjectDetail = () => {
@@ -13,11 +13,30 @@ const SubjectDetail = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeLang, setActiveLang] = useState('te');
 
-    const { data: blocks, isLoading } = useQuery({
-        queryKey: ['subject-blocks', slug, activeLang],
-        queryFn: () => academicsService.getSubjectBlocks(slug, activeLang),
-        enabled: !!slug,
-    });
+    const [blocks, setBlocks] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!slug) return;
+        let isMounted = true;
+        
+        const fetchBlocks = async () => {
+            setIsLoading(true);
+            try {
+                const data = await academicsService.getSubjectBlocks(slug, activeLang);
+                if (isMounted) {
+                    setBlocks(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch subject blocks", error);
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+        
+        fetchBlocks();
+        return () => { isMounted = false; };
+    }, [slug, activeLang]);
 
     return (
         <div className="subject-detail-page">
@@ -105,6 +124,17 @@ const SubjectDetail = () => {
                                 </div>
                             </section>
                         ))}
+
+                        {/* Content Split: Related context at the bottom of Subject page */}
+                        {blocks && blocks.length > 0 && (
+                            <div className="subject-discovery-hubs py-5">
+                                <ContentHubWidget 
+                                    searchQuery={slug.replace(/-/g, ' ')} 
+                                    title={`Career News & Jobs for ${slug.replace(/-/g, ' ').toUpperCase()}`}
+                                    minimal={true}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

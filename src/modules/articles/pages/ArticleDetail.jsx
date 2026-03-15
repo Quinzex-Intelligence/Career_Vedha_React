@@ -6,6 +6,7 @@ import Header from '../../../components/layout/Header';
 import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
 import Sidebar from '../../../components/home/Sidebar';
+import ContentHubWidget from '../../../components/ui/ContentHubWidget';
 
 const ArticleDetail = () => {
     const { section, slug } = useParams();
@@ -17,6 +18,42 @@ const ArticleDetail = () => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
 
+    // Extract search context for the Content Hub
+    const getSearchContext = () => {
+        if (!article) return null;
+        
+        const safeTags = Array.isArray(article.tags) ? article.tags : (article.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        const textToScan = `${article.title} ${article.summary} ${article.section} ${safeTags.join(' ')}`.toLowerCase();
+        
+        // Priority keywords for aggregation
+        const contexts = [
+            { key: '10th Class', matches: ['10th', 'ssc', 'tenth'] },
+            { key: 'Intermediate', matches: ['inter', 'intermediate', '12th', 'plus two'] },
+            { key: 'B.Tech', matches: ['btech', 'b.tech', 'engineering'] },
+            { key: 'Degree', matches: ['degree', 'bsc', 'bcom', 'ba'] },
+            { key: 'Current Affairs', matches: ['current affairs', 'daily updates'] },
+            { key: 'Jobs', matches: ['jobs', 'notification', 'recruitment'] }
+        ];
+
+        // Primary: Check for specific high-value tags first
+        const tags = Array.isArray(article.tags) ? article.tags : (article.tags || '').split(',');
+        const firstTag = tags[0]?.trim();
+        if (firstTag && firstTag.length > 2) return firstTag.charAt(0).toUpperCase() + firstTag.slice(1);
+
+        for (const ctx of contexts) {
+            if (ctx.matches.some(m => textToScan.includes(m))) {
+                return ctx.key;
+            }
+        }
+        
+        // Fallback to section name if it's specific enough
+        if (article.section && article.section !== 'General') return article.section;
+        
+        return 'Latest Stories';
+    };
+
+    const searchContext = getSearchContext();
+
     useEffect(() => {
         const fetchArticle = async () => {
             setLoading(true);
@@ -27,6 +64,9 @@ const ArticleDetail = () => {
 
                 // Track view after successful fetch
                 newsService.trackView(section, slug);
+                
+                // Reset scroll position on navigation
+                window.scrollTo({ top: 0, behavior: 'instant' });
             } catch (error) {
                 // console.error('Error fetching article:', error);
             } finally {
@@ -213,6 +253,17 @@ const ArticleDetail = () => {
                                 />
                             </div>
 
+                            {/* Related Discovery Hub immediately after content */}
+                            {searchContext && (
+                                <div className="article-inline-discovery">
+                                    <ContentHubWidget 
+                                        searchQuery={searchContext} 
+                                        title={activeLanguage === 'telugu' ? `${searchContext} కి సంబంధించినవి` : `Related to ${searchContext}`}
+                                        minimal={true}
+                                    />
+                                </div>
+                            )}
+
                             <div className="article-footer-tags">
                                 {article.tags && (Array.isArray(article.tags) ? article.tags : article.tags.split(',')).map((tag, idx) => {
                                     const tagText = typeof tag === 'string' ? tag.trim() : (tag.name || String(tag));
@@ -226,6 +277,18 @@ const ArticleDetail = () => {
                             currentId={article.id} 
                             section={section}
                             slug={slug}
+                        />
+                    </div>
+                </div>
+
+
+                {/* Full Width Recommended Discovery Section */}
+                <div className="article-discovery-section bg-light">
+                    <div className="container-fluid px-4">
+                        <ContentHubWidget 
+                            searchQuery="Trending" 
+                            title="Other Articles You Might Like"
+                            minimal={true}
                         />
                     </div>
                 </div>

@@ -157,14 +157,16 @@ const CMSSidebar = ({
                         )}
                         
                         {checkAccess(MODULES.TAXONOMY_MANAGEMENT) && (
-                            <button
-                                className={`menu-item ${activeSection === 'taxonomy' ? 'active' : ''}`}
-                                onClick={() => navigate('/cms/taxonomy')}
-                                style={{ paddingLeft: '40px' }}
-                            >
-                                <i className="fas fa-tags"></i>
-                                <span>Taxonomy</span>
-                            </button>
+                            <>
+                                <button
+                                    className={`menu-item ${activeSection === 'taxonomy' ? 'active' : ''}`}
+                                    onClick={() => navigate('/cms/taxonomy')}
+                                    style={{ paddingLeft: '40px' }}
+                                >
+                                    <i className="fas fa-tags"></i>
+                                    <span>Taxonomy</span>
+                                </button>
+                            </>
                         )}
 
                         {checkAccess(MODULES.MEDIA_MANAGEMENT) && (

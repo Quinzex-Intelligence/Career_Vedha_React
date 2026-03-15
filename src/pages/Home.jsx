@@ -11,8 +11,9 @@ import FeaturedStory from '../components/home/FeaturedStory';
 import Sidebar from '../components/home/Sidebar';
 import LatestArticles from '../components/home/LatestArticles';
 import SectionCategoryBlocks from '../components/home/SectionCategoryBlocks';
-import HeroIntro from '../components/home/HeroIntro';
+import TopStoriesHero from '../components/home/TopStoriesHero';
 import MustRead from '../components/home/MustRead';
+import DailySnippet from '../components/home/DailySnippet';
 import Skeleton from '../components/ui/Skeleton';
 
 // Lazy load below-the-fold components
@@ -62,6 +63,7 @@ const Home = () => {
                 onLanguageChange={handleLanguageChange}
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
+            <DailySnippet activeLanguage={activeLanguage} />
             
             <MustRead 
                 activeLanguage={activeLanguage} 
@@ -69,7 +71,13 @@ const Home = () => {
                 loading={loading}
             />
             <div className="responsive-hero-section">
-                <HeroIntro />
+                <TopStoriesHero 
+                    topStories={homeData.top_stories} 
+                    latestUpdates={homeData.latest?.results} 
+                    loading={loading}
+                    activeLanguage={activeLanguage}
+                    isHomePage={true}
+                />
             </div>
             <QuickAccess activeLanguage={activeLanguage} />
 
@@ -111,9 +119,9 @@ const Home = () => {
             <SectionCategoryBlocks section="academics" title={t.latestFromAcademics} activeLanguage={activeLanguage} />
             <SectionCategoryBlocks section="jobs" title={t.careerOpportunities} activeLanguage={activeLanguage} />
 
-            {/* <Suspense fallback={<SectionSkeleton />}>
+            <Suspense fallback={<SectionSkeleton />}>
                 <ExploreMore activeLanguage={activeLanguage} />
-            </Suspense> */}
+            </Suspense>
             
             <Suspense fallback={<SectionSkeleton />}>
                 <PreviousPapers activeLanguage={activeLanguage} />

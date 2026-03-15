@@ -1,21 +1,29 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
 import api, { getUserContext, subscribeToAuthChanges } from '../../../services/api';
+import djangoApi from '../../../services/djangoApi';
 // import { newsService } from '../../../services'; // Replaced by hooks
 import { 
     useTaxonomyList, 
     useTaxonomyTree, 
+    useTaxonomyLevels,
     useCreateCategory, 
     useUpdateCategory, 
     useDeleteCategory, 
     useToggleCategoryStatus,
     useFetchCategoryChildren,
-    useSections 
+    useCategoryChildren,
+    useCategoriesBySection,
+    useSections,
+    useCreateSection,
+    useUpdateSection,
+    useDeleteSection
 } from '../../../hooks/useTaxonomy';
 import { fetchNotifications, markAsSeen, markAllAsSeen, approveRequest, rejectRequest } from '../../../services/notificationService';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import { getRoleInitials } from '../../../utils/roleUtils';
+import Skeleton, { SkeletonTable } from '../../../components/ui/Skeleton';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
 import API_CONFIG from '../../../config/api.config';
 import CMSLayout from '../../../components/layout/CMSLayout';
@@ -32,6 +40,7 @@ const TaxonomyManagement = () => {
     const { role: userRole } = getUserContext();
 
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'tree'
+    const [activeTab, setActiveTab] = useState('taxonomy'); // 'taxonomy' or 'sections'
     const [isCmsOpen, setIsCmsOpen] = useState(true);
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
@@ -49,22 +58,41 @@ const TaxonomyManagement = () => {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [modalMode, setModalMode] = useState('CATEGORY'); // 'SECTION', 'CATEGORY', 'SUB_CATEGORY', 'SEGMENT', 'TOPIC'
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    // Section specific state
+    const [sectionSearchQuery, setSectionSearchQuery] = useState('');
+    const [currentSection, setCurrentSection] = useState({
+        id: null,
+        name: '',
+        slug: '',
+        rank: 0,
+        is_active: true
+    });
+
     const [currentCategory, setCurrentCategory] = useState({
+        id: null,
         name: '',
         slug: '',
         section: '',
         parent_id: '',
         rank: 0,
         content: '',
-        image_id: null,
-        pdf_id: null,
+        is_active: true,
         isLevel4: false
     });
 
     const [isAddingNewSection, setIsAddingNewSection] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
 
-    const { data: dynamicSections, isLoading: sectionsLoading } = useSections();
+    // Cascading selection state for parent
+    const [selLevel2, setSelLevel2] = useState(''); // Category (Root)
+    const [selLevel3, setSelLevel3] = useState(''); // Sub-Category
+    const [selLevel4, setSelLevel4] = useState(''); // Segment
+    // Level 5 (Topic) is the one usually being created or its parent is Level 4
+
+    const { data: dynamicSections, isLoading: sectionsLoading } = useSections(true);
     const sections = dynamicSections || [];
 
 
@@ -85,34 +113,80 @@ const TaxonomyManagement = () => {
     const {
         data: taxonomyListResponse,
         isLoading: listLoading,
+        isFetching: listFetching,
         error: listError
     } = useTaxonomyList(
-        viewMode === 'list' ? {
+        {
             section: activeSection,
             cursor: currentCursor || undefined,
             parent_id: parentFilter || undefined
-        } : { enabled: false }
+        },
+        { enabled: false } // Disabled as we're switching to tree-based list
     );
 
-    // Tree View Data
+    const {
+        data: levelsDataResponse,
+        isLoading: levelsLoading,
+        isFetching: levelsFetching
+    } = useTaxonomyLevels(activeSection, { 
+        enabled: !!activeSection && viewMode === 'list' 
+    });
+
     const {
         data: treeDataResponse,
-        isLoading: treeLoading
-    } = useTaxonomyTree(activeSection); // Allows caching for tree view
+        isLoading: treeLoading,
+        isFetching: treeFetching
+    } = useTaxonomyTree(activeSection, { 
+        enabled: !!activeSection && viewMode === 'tree'
+    });
 
     // Children Fetcher
     const fetchChildrenFn = useFetchCategoryChildren();
 
     // Mutations
+    // Resolve modal section context (ID or Slug) reliably
+    const modalSectionSlug = useMemo(() => {
+        if (!Array.isArray(sections) || sections.length === 0) return activeSection;
+        const currentIdOrSlug = currentCategory.section || activeSection;
+        const sectionObj = sections.find(s => 
+            String(s.id) === String(currentIdOrSlug) || 
+            String(s.slug) === String(currentIdOrSlug)
+        );
+        return sectionObj?.slug || (typeof currentIdOrSlug === 'string' ? currentIdOrSlug : activeSection);
+    }, [sections, currentCategory.section, activeSection]);
+
+    // Cascading child hooks (using resolved slug)
+    const { data: catLevel2Data, isLoading: catL2Loading } = useCategoriesBySection(modalSectionSlug);
+    const { data: catLevel3Data } = useCategoryChildren(modalSectionSlug, selLevel2 || null);
+    const { data: catLevel4Data } = useCategoryChildren(modalSectionSlug, selLevel3 || null);
+    const { data: catLevel5Data } = useCategoryChildren(modalSectionSlug, selLevel4 || null);
+
     const createMutation = useCreateCategory();
     const updateMutation = useUpdateCategory();
     const deleteMutation = useDeleteCategory();
 
+    const createSectionMutation = useCreateSection();
+    const updateSectionMutation = useUpdateSection();
+    const deleteSectionMutation = useDeleteSection();
+
     // Sync Data to State
     const [localTaxonomies, setLocalTaxonomies] = useState([]);
     
+    // Memoized flat list for list view
+    const flatLevelsData = useMemo(() => {
+        if (!levelsDataResponse || typeof levelsDataResponse !== 'object' || Array.isArray(levelsDataResponse)) {
+            return levelsDataResponse || [];
+        }
+        return [
+            ...(levelsDataResponse.categories || []),
+            ...(levelsDataResponse.sub_categories || []),
+            ...(levelsDataResponse.segments || []),
+            ...(levelsDataResponse.topics || [])
+        ];
+    }, [levelsDataResponse]);
+
     // Derived state for loading
-    const isLoading = (viewMode === 'list' ? listLoading : treeLoading) || sectionsLoading;
+    const isLoading = (viewMode === 'list' ? (levelsLoading || levelsFetching) : (treeLoading || treeFetching)) || sectionsLoading;
 
 
     // Update cursor when filtering changes
@@ -123,39 +197,23 @@ const TaxonomyManagement = () => {
 
     // Handle initial active section from dynamic data
     useEffect(() => {
-        if (sections.length > 0) {
+        if (sections.length > 0 && activeTab === 'taxonomy') {
             const currentSection = sections.find(s => (s.slug || s.id) === activeSection);
             if (!currentSection) {
                 setActiveSection(sections[0].slug || sections[0].id);
             }
         }
-    }, [sections, activeSection]);
+    }, [sections, activeSection, activeTab]);
 
 
-    // Effect to Update Local State from Query
+    // Effect to Update Local State from Queries
     useEffect(() => {
-        if (viewMode === 'list' && taxonomyListResponse?.results) {
-            setTaxonomies(prev => {
-                // If we are at the beginning (no cursor in query or just reset)
-                // But wait, `taxonomyListResponse` reflects the *latest* fetched page.
-                // If I am appending, I need to keep previous.
-                // If I am resetting, I need to clear.
-                // How to distinguish?
-                // `currentCursor` tells us if we requested a next page.
-                 if (!currentCursor) {
-                    return taxonomyListResponse.results;
-                 }
-                 // Avoid duplicates if React Query refetches existing data
-                 const newItems = taxonomyListResponse.results;
-                 const existingIds = new Set(prev.map(i => i.id));
-                 const uniqueNewItems = newItems.filter(i => !existingIds.has(i.id));
-                 return [...prev, ...uniqueNewItems];
-            });
-            
-            setNextCursor(taxonomyListResponse.next_cursor);
-            setHasNext(taxonomyListResponse.has_next);
+        if (viewMode === 'list') {
+            setTaxonomies(flatLevelsData);
+        } else if (viewMode === 'tree' && treeDataResponse) {
+            setTaxonomies(treeDataResponse);
         }
-    }, [taxonomyListResponse, currentCursor, viewMode]);
+    }, [flatLevelsData, treeDataResponse, viewMode]);
 
     // Update Tree Data
     useEffect(() => {
@@ -170,50 +228,114 @@ const TaxonomyManagement = () => {
         }
     };
     
-    // Missing Handlers Re-implementation
-    const handleOpenModal = (category = null) => {
-        setIsAddingNewSection(false);
-        setNewSectionName('');
-
-        if (category) {
-            setIsEditing(true);
-            setCurrentCategory({
-                id: category.id,
-                name: category.name,
-                slug: category.slug,
-                section: category.section,
-                parent_id: category.parent_id || '',
-                rank: category.rank || 0,
-                content: category.content || '',
-                image_id: category.image_id || null,
-                pdf_id: category.pdf_id || null,
-                isLevel4: !!(category.content || category.image_id || category.pdf_id)
-            });
+    // Unified Modal Handler
+    const handleOpenModal = (mode = 'CATEGORY', data = null, predefinedParent = null, depth = 0) => {
+        if (mode === 'DELETE_CAT') {
+            handleDeleteCategory(predefinedParent.id);
+            return;
+        }
+        setModalMode(mode);
+        setIsEditing(false);
+        
+        if (mode === 'SECTION') {
+            if (data) {
+                setIsEditing(true);
+                setCurrentSection({
+                    id: data.id,
+                    name: data.name,
+                    slug: data.slug,
+                    rank: data.rank || 0,
+                    is_active: data.is_active ?? true
+                });
+            } else {
+                setCurrentSection({
+                    id: null,
+                    name: '',
+                    slug: '',
+                    rank: sections.length > 0 ? Math.max(...sections.map(s => s.rank || 0)) + 1 : 0,
+                    is_active: true
+                });
+            }
         } else {
-            setCurrentCategory({
-                name: '',
-                slug: '',
-                section: activeSection,
-                parent_id: '',
-                rank: 0
-            });
+            // Reset hierarchy selection
+            setSelLevel2('');
+            setSelLevel3('');
+            setSelLevel4('');
+
+            if (data) {
+                setIsEditing(true);
+                setCurrentCategory({
+                    id: data.id,
+                    name: data.name,
+                    slug: data.slug,
+                    section: data.section_id || data.section,
+                    parent_id: data.parent_id || '',
+                    rank: data.rank || 0,
+                    content: data.content || '',
+                    is_active: data.is_active !== undefined ? data.is_active : true,
+                    isLevel4: !!data.content
+                });
+                
+                if (!data.parent_id) {
+                    setModalMode('CATEGORY');
+                } else if (data.content) {
+                    setModalMode('TOPIC');
+                } else {
+                    setModalMode('SUB_CATEGORY');
+                }
+            } else {
+                const activeSectionObj = Array.isArray(sections) 
+                    ? sections.find(s => String(s.slug) === String(activeSection) || String(s.id) === String(activeSection))
+                    : null;
+                
+                let initialSection = activeSectionObj ? parseInt(activeSectionObj.id, 10) : '';
+
+                if (predefinedParent) {
+                    initialSection = predefinedParent.section_id || predefinedParent.section;
+                    if (depth === 0) {
+                        setModalMode('SUB_CATEGORY');
+                        setSelLevel2(predefinedParent.id);
+                    } else if (depth === 1) {
+                        setModalMode('SEGMENT');
+                        setSelLevel3(predefinedParent.id);
+                        setSelLevel2(predefinedParent.parent_id);
+                    } else if (depth === 2) {
+                        setModalMode('TOPIC');
+                        setSelLevel4(predefinedParent.id);
+                        setSelLevel3(predefinedParent.parent_id);
+                    }
+                }
+
+                setCurrentCategory({
+                    name: '',
+                    slug: '',
+                    section: initialSection,
+                    parent_id: '',
+                    rank: 0,
+                    content: '',
+                    is_active: true,
+                    isLevel4: mode === 'TOPIC' || !!predefinedParent
+                });
+            }
         }
         setIsModalOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setCurrentCategory({
-            name: '',
-            slug: '',
-            section: activeSection,
-            parent_id: '',
-            rank: 0,
-            content: '',
-            image_id: null,
-            pdf_id: null,
-            isLevel4: false
-        });
+        if (modalMode === 'SECTION') {
+            setCurrentSection({ id: null, name: '', slug: '', rank: 0, is_active: true });
+        } else {
+            setCurrentCategory({
+                name: '',
+                slug: '',
+                section: activeSection,
+                parent_id: '',
+                rank: 0,
+                content: '',
+                isLevel4: false
+            });
+        }
     };
 
 
@@ -230,52 +352,94 @@ const TaxonomyManagement = () => {
         });
     };
 
+    const handleDeleteSection = (id) => {
+        if (!window.confirm('Are you sure you want to delete this section? It will only work if it has no categories.')) return;
+        
+        deleteSectionMutation.mutate(id, {
+             onSuccess: () => showSnackbar('Section deleted successfully', 'success'),
+             onError: (err) => showSnackbar(err.response?.data?.error || 'Failed to delete section', 'error')
+        });
+    };
+
     const handleSaveCategory = async (e) => {
         e.preventDefault();
-        
         setActionLoading(true);
         try {
-            let sectionValue = currentCategory.section; // This should be the ID
-            
-            // If section is a slug (from activeSection), convert to ID
-            const sectionObj = sections.find(s => s.slug === sectionValue || s.id === sectionValue);
-            if (sectionObj) {
-                sectionValue = sectionObj.id;
+            if (modalMode === 'SECTION') {
+                const secPayload = {
+                    name: currentSection.name,
+                    slug: currentSection.slug,
+                    rank: parseInt(currentSection.rank || 0, 10),
+                    is_active: currentSection.is_active
+                };
+                if (isEditing) {
+                    await updateSectionMutation.mutateAsync({ id: currentSection.id, data: secPayload });
+                    showSnackbar('Section updated successfully', 'success');
+                } else {
+                    await createSectionMutation.mutateAsync(secPayload);
+                    showSnackbar('Section created successfully', 'success');
+                }
+                handleCloseModal();
+                return;
+            }
+            // Section creation moved to SectionManagement.jsx
+
+            // 2. Resolve section_id (must be integer)
+            let sectionId = parseInt(currentCategory.section, 10);
+            if (isNaN(sectionId)) {
+                const sectionObj = Array.isArray(sections)
+                    ? sections.find(s => 
+                        String(s.slug) === String(currentCategory.section) || 
+                        String(s.id) === String(currentCategory.section)
+                    )
+                    : null;
+                if (sectionObj) {
+                    sectionId = parseInt(sectionObj.id, 10);
+                }
             }
 
-            if (isAddingNewSection && newSectionName.trim()) {
-                const secPayload = {
-                    name: newSectionName.trim(),
-                    slug: newSectionName.trim().toLowerCase().replace(/\s+/g, '-'),
-                    rank: 1
-                };
-                const newSec = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CREATE, secPayload);
-                sectionValue = newSec.data?.id || sectionValue;
+            if (!sectionId || isNaN(sectionId)) {
+                showSnackbar('Please select a valid section', 'error');
+                setActionLoading(false);
+                return;
             }
+
+            // 3. Resolve Parent ID from cascading selection
+            let resolvedParentId = null;
+            if (modalMode === 'SUB_CATEGORY') {
+                resolvedParentId = selLevel2;
+            } else if (modalMode === 'SEGMENT') {
+                resolvedParentId = selLevel3 || selLevel2;
+            } else if (modalMode === 'TOPIC') {
+                resolvedParentId = selLevel4 || selLevel3 || selLevel2;
+            }
+
+            const finalParentId = resolvedParentId ? parseInt(resolvedParentId, 10) : 
+                                 (isEditing ? (currentCategory.parent_id ? parseInt(currentCategory.parent_id, 10) : null) : null);
 
             const payload = { 
-                section_id: sectionValue,
+                section_id: sectionId,
                 name: currentCategory.name,
                 slug: currentCategory.slug,
-                parent_id: currentCategory.parent_id || null,
-                rank: currentCategory.rank || 0
+                parent_id: finalParentId,
+                rank: parseInt(currentCategory.rank || 0, 10),
+                is_active: currentCategory.is_active
             };
 
-            // Level 4 (Topic) additional fields
-            if (currentCategory.isLevel4) {
+            // HTML content for topics
+            if (currentCategory.isLevel4 || modalMode === 'TOPIC') {
                 payload.content = currentCategory.content || '';
-                payload.image_id = currentCategory.image_id || null;
-                payload.pdf_id = currentCategory.pdf_id || null;
             }
 
             if (isEditing) {
-                await djangoApi.patch(`taxonomy/categories/${currentCategory.id}/`, payload);
+                await updateMutation.mutateAsync({ id: currentCategory.id, data: payload });
                 showSnackbar('Category updated successfully', 'success');
+                handleCloseModal();
             } else {
-                await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORIES_CREATE, payload);
+                await createMutation.mutateAsync(payload);
                 showSnackbar('Category created successfully', 'success');
+                handleCloseModal();
             }
-            handleCloseModal();
         } catch (err) {
             showSnackbar(err.response?.data?.error || 'Failed to save category', 'error');
         } finally {
@@ -287,8 +451,9 @@ const TaxonomyManagement = () => {
     const toggleExpand = async (category) => {
         const isExpanded = expandedRows[category.id];
         
-        if (!isExpanded && !childData[category.id]) {
-            setLoading(true); // Local loading state for visual feedback on row
+        // Only fetch if children are not already in the tree node OR childData
+        if (!isExpanded && !category.children && !childData[category.id]) {
+            setLoading(true);
             try {
                 const children = await fetchChildrenFn(activeSection, category.id);
                 setChildData(prev => ({ ...prev, [category.id]: children }));
@@ -333,402 +498,604 @@ const TaxonomyManagement = () => {
             <div className="am-header">
                 <div className="am-title-section">
                     <h1 className="am-title">
-                        <i className="fas fa-tags"></i>
-                        Taxonomy Management (REFRESHED)
+                        <i className={`fas ${activeTab === 'sections' ? 'fa-layer-group' : 'fa-tags'}`}></i>
+                        {activeTab === 'sections' ? 'Section Management' : 'Taxonomy Management'}
                     </h1>
-                    <p className="am-subtitle">Manage categories and tags across the platform</p>
-                </div>
-                <div className="am-actions">
-                    <div className="am-view-toggle" style={{ display: 'inline-flex', marginRight: '1rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <button 
-                            className="am-toggle-btn"
-                            style={{ 
-                                padding: '0.4rem 1rem', 
-                                border: 'none', 
-                                background: viewMode === 'list' ? 'white' : 'transparent', 
-                                borderRadius: '6px', 
-                                cursor: 'pointer', 
-                                boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-                                color: viewMode === 'list' ? '#fbbf24' : '#64748b',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                transition: 'all 0.2s'
-                            }}
-                            onClick={() => setViewMode('list')}
-                        >
-                            <i className="fas fa-list"></i> List
-                        </button>
-                        <button 
-                            className="am-toggle-btn"
-                            style={{ 
-                                padding: '0.4rem 1rem', 
-                                border: 'none', 
-                                background: viewMode === 'tree' ? 'white' : 'transparent', 
-                                borderRadius: '6px', 
-                                cursor: 'pointer', 
-                                boxShadow: viewMode === 'tree' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-                                color: viewMode === 'tree' ? '#fbbf24' : '#64748b',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                transition: 'all 0.2s'
-                            }}
-                            onClick={() => setViewMode('tree')}
-                        >
-                            <i className="fas fa-sitemap"></i> Tree
-                        </button>
-                    </div>
-                    <button className="am-btn-primary" onClick={() => handleOpenModal()}>
-                        <i className="fas fa-plus"></i> Add Category
-                    </button>
-                </div>
-            </div>
-
-            <div className="am-filter-bar">
-                <div className="am-tabs">
-                    {sections.map(section => {
-                        const sectionKey = section.slug || section.id;
-                        return (
-                            <button 
-                                key={section.id}
-                                className={`am-tab ${activeSection === sectionKey ? 'active' : ''}`} 
-                                onClick={() => {
-                                    setActiveSection(sectionKey);
-                                    setParentFilter('');
-                                }}
-                            >
-                                {activeSection === sectionKey && <i className="fas fa-check-circle"></i>}
-                                {section.name}
-                            </button>
-                        );
-                    })}
+                    <p className="am-subtitle">
+                        {activeTab === 'sections' ? 'Manage root-level content divisions' : 'Manage categories and tags across the platform'}
+                    </p>
                 </div>
                 
-                <div className="am-filter-controls" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-
-                    {parentFilter && (
-                        <button className="am-btn-secondary" onClick={() => setParentFilter('')}>
-                            <i className="fas fa-times"></i> Clear Filters
+                <div className="am-actions-container" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    {/* Tab Switcher */}
+                    <div className="am-tabs-switcher">
+                        <button 
+                            className={`tab-btn ${activeTab === 'taxonomy' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('taxonomy')}
+                        >
+                            <i className="fas fa-sitemap"></i> Taxonomy
                         </button>
-                    )}
-
-                    <div className="am-search-form" style={{ width: '250px' }}>
-                        <div className="am-search-wrapper">
-                            <i className="fas fa-search am-search-icon"></i>
-                            <input 
-                                type="text" 
-                                placeholder="Search..." 
-                                className="am-search-input"
-                                onChange={(e) => {
-                                    const val = e.target.value.toLowerCase();
-                                    if (!val) {
-                                        // Just let the filtered taxonomies return to normal
-                                        return;
-                                    }
-                                    setTaxonomies(prev => prev.filter(t => 
-                                        t.name.toLowerCase().includes(val) || 
-                                        t.slug.toLowerCase().includes(val)
-                                    ));
-                                }}
-                            />
-                        </div>
+                        <button 
+                            className={`tab-btn ${activeTab === 'sections' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('sections')}
+                        >
+                            <i className="fas fa-layer-group"></i> Sections
+                        </button>
                     </div>
-                </div>
-            </div>
 
-            {parentFilter && (
-                <div style={{ marginBottom: '1rem', padding: '0.5rem 1rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
-                        Filtering by Parent ID: <strong>#{parentFilter}</strong>
-                    </span>
-                    <button onClick={() => setParentFilter('')} style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}>
-                        [Remove Filter]
-                    </button>
-                </div>
-            )}
-
-            <div className={`am-content ${viewMode === 'tree' ? 'tree-mode' : ''}`}>
-                {loading && (taxonomies.length === 0 && treeData.length === 0) ? (
-                    <div className="am-loading">
-                        <i className="fas fa-spinner fa-spin fa-2x"></i>
-                        <p>Fetching taxonomies...</p>
-                    </div>
-                ) : viewMode === 'tree' ? (
-                    <div className="am-tree-wrapper" style={{ padding: '1rem', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        <TaxonomyTreeView 
-                            data={treeData} 
-                            onEdit={handleOpenModal}
-                        />
-                    </div>
-                ) : (
-                    <div className="am-table-container">
-                        <table className="am-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Slug</th>
-                                    <th>Parent</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {taxonomies.length > 0 ? (
-                                    taxonomies.map((tax) => {
-                                        const renderRow = (item, level = 0) => {
-                                            const isExpanded = expandedRows[item.id];
-                                            const children = childData[item.id] || [];
-                                            
-                                            return (
-                                                <React.Fragment key={item.id}>
-                                                    <tr className={`${level > 0 ? 'am-row-child' : ''} ${isExpanded ? 'am-row-expanded' : ''}`}>
-                                                        <td style={{ fontWeight: 'bold', color: 'var(--slate-500)', paddingLeft: level === 0 ? '1rem' : undefined }}>
-                                                            {level === 0 ? (
-                                                                <button 
-                                                                    className={`am-expand-btn ${isExpanded ? 'active' : ''}`}
-                                                                    onClick={() => toggleExpand(item)}
-                                                                >
-                                                                    <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
-                                                                </button>
-                                                            ) : null}
-                                                            #{item.id}
-                                                        </td>
-                                                        <td>
-                                                            <div style={{ fontWeight: level === 0 ? '700' : '600', color: level === 0 ? 'var(--slate-900)' : 'var(--slate-700)' }}>
-                                                                {item.name}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                                                            <code>{item.slug}</code>
-                                                        </td>
-                                                        <td>
-                                                            <LuxuryTooltip content={item.parent_id ? `Parent Category ID: ${item.parent_id}` : "Root Category"}>
-                                                                {item.parent_id ? (
-                                                                    <span 
-                                                                        className="am-status-badge review" 
-                                                                        style={{ cursor: 'pointer' }}
-                                                                        onClick={() => setParentFilter(item.parent_id)}
-                                                                    >
-                                                                        PID: {item.parent_id}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="am-status-badge draft">ROOT</span>
-                                                                )}
-                                                            </LuxuryTooltip>
-                                                        </td>
-                                                        <td className="am-actions-cell">
-                                                            <LuxuryTooltip content="Edit Category">
-                                                                <button className="am-action-btn edit" onClick={() => handleOpenModal(item)}>
-                                                                   <i className="fas fa-edit"></i>
-                                                                </button>
-                                                            </LuxuryTooltip>
-                                                            {userRole === 'SUPER_ADMIN' && (
-                                                                <LuxuryTooltip content="Delete Category">
-                                                                    <button 
-                                                                        className="am-action-btn delete" 
-                                                                        onClick={() => handleDeleteCategory(item.id)}
-                                                                    >
-                                                                        <i className="fas fa-trash"></i>
-                                                                    </button>
-                                                                </LuxuryTooltip>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                    {isExpanded && children.map(child => renderRow(child, level + 1))}
-                                                </React.Fragment>
-                                            );
-                                        };
-
-                                        // Only render root rows at the top level to avoid duplicates 
-                                        // if the flat list contains children too.
-                                        if (tax.parent_id && !parentFilter) return null;
-                                        
-                                        return renderRow(tax);
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan="5" className="am-empty-state">
-                                            <i className="fas fa-tags"></i>
-                                            <h3>No taxonomy records found</h3>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                        {hasNext && (
-                            <div className="am-pagination-trigger" style={{ textAlign: 'center', padding: '20px' }}>
+                    <div className="am-actions">
+                        {activeTab === 'taxonomy' ? (
+                            <div className="am-view-toggle">
                                 <button 
-                                    className="am-btn-secondary" 
-                                    onClick={handleLoadMore}
-                                    disabled={isLoading || listLoading}
+                                    className={`am-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('list')}
+                                    title="List View"
                                 >
-                                    {isLoading || listLoading ? 'Loading...' : 'Load More'}
+                                    <i className="fas fa-list"></i>
+                                </button>
+                                <button 
+                                    className={`am-toggle-btn ${viewMode === 'tree' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('tree')}
+                                    title="Hierarchy Tree"
+                                >
+                                    <i className="fas fa-sitemap"></i>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="am-multi-actions">
+                                <button className="am-btn-l0" onClick={() => handleOpenModal('SECTION')}>
+                                    <i className="fas fa-folder-plus"></i> Section (L0)
+                                </button>
+                                <button className="am-btn-l1" onClick={() => handleOpenModal('CATEGORY')}>
+                                    <i className="fas fa-tag"></i> Category (L1)
+                                </button>
+                                <button className="am-btn-l2" onClick={() => handleOpenModal('SUB_CATEGORY')}>
+                                    <i className="fas fa-layer-group"></i> Sub-Category (L2)
+                                </button>
+                                <button className="am-btn-l3" onClick={() => handleOpenModal('SEGMENT')}>
+                                    <i className="fas fa-project-diagram"></i> Segment (L3)
+                                </button>
+                                <button className="am-btn-l4" onClick={() => handleOpenModal('TOPIC')}>
+                                    <i className="fas fa-leaf"></i> Topic (L4)
                                 </button>
                             </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* CREATE/EDIT MODAL */}
-            {isModalOpen && (
-                <div className="am-modal-overlay">
-                    <div className="am-modal">
-                        <div className="am-modal-header">
-                            <h2>{isEditing ? 'Edit Category' : 'Create New Category'}</h2>
-                            <button className="am-modal-close" onClick={handleCloseModal}>&times;</button>
+            {activeTab === 'taxonomy' ? (
+                <>
+                    <div className="am-filter-bar">
+                        <div className="am-tabs slim-scrollbar">
+                            {sections.map(section => {
+                                const sectionKey = section.slug || section.id;
+                                return (
+                                    <button 
+                                        key={section.id}
+                                        className={`am-tab ${activeSection === sectionKey ? 'active' : ''}`} 
+                                        onClick={() => {
+                                            setActiveSection(sectionKey);
+                                            setParentFilter('');
+                                        }}
+                                    >
+                                        {section.name}
+                                    </button>
+                                );
+                            })}
                         </div>
-                        <form onSubmit={handleSaveCategory} className="am-modal-form">
-                            <div className="am-modal-body">
-                                <div className="am-form-group">
-                                    <label className="am-label">Section</label>
-                                    <select 
-                                        className="am-input"
-                                        value={isAddingNewSection ? 'NEW' : currentCategory.section}
-                                        disabled={isEditing}
+                        
+                        <div className="am-filter-controls">
+                            <div className="am-search-form">
+                                <div className="am-search-wrapper">
+                                    <i className="fas fa-search am-search-icon"></i>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search Categories..." 
+                                        className="am-search-input"
                                         onChange={(e) => {
-                                            if (e.target.value === 'NEW') {
-                                                setIsAddingNewSection(true);
-                                            } else {
-                                                setIsAddingNewSection(false);
-                                                setCurrentCategory({...currentCategory, section: e.target.value});
+                                            const val = e.target.value.toLowerCase();
+                                            setSearchQuery(val);
+                                            if (!val) {
+                                                const sourceData = viewMode === 'list' ? flatLevelsData : treeDataResponse;
+                                                if (sourceData) setTaxonomies(sourceData);
+                                                return;
+                                            }
+                                            const sourceData = viewMode === 'list' ? flatLevelsData : treeDataResponse;
+                                            if (sourceData) {
+                                                setTaxonomies(sourceData.filter(t => 
+                                                    t.name.toLowerCase().includes(val) || 
+                                                    t.slug.toLowerCase().includes(val)
+                                                ));
                                             }
                                         }}
-                                        required
-                                    >
-                                        {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        <option value="NEW">+ Other / New Section...</option>
-                                    </select>
-                                </div>
-                                {isAddingNewSection && (
-                                    <div className="am-form-group">
-                                        <label className="am-label">New Section Name</label>
-                                        <input 
-                                            type="text"
-                                            className="am-input"
-                                            value={newSectionName}
-                                            onChange={(e) => setNewSectionName(e.target.value)}
-                                            placeholder="e.g. Career Tips"
-                                            required
-                                        />
-                                        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                                            Section identifier will be: <code>{newSectionName.trim().toLowerCase().replace(/\s+/g, '_')}</code>
-                                        </p>
-                                    </div>
-                                )}
-                                <div className="am-form-group">
-                                    <label className="am-label">Category Name</label>
-                                    <input 
-                                        type="text"
-                                        className="am-input"
-                                        value={currentCategory.name}
-                                        onChange={(e) => setCurrentCategory({...currentCategory, name: e.target.value})}
-                                        required
-                                        placeholder="Category Name"
                                     />
                                 </div>
-                                <div className="am-form-group">
-                                    <label className="am-label">Slug</label>
-                                    <input 
-                                        type="text"
-                                        className="am-input"
-                                        value={currentCategory.slug}
-                                        onChange={(e) => setCurrentCategory({...currentCategory, slug: e.target.value})}
-                                        required
-                                        placeholder="category-slug"
-                                    />
-                                </div>
-                                <div className="am-form-group">
-                                    <label className="am-label">Parent Category</label>
-                                    <select 
-                                        className="am-input"
-                                        value={currentCategory.parent_id || ''}
-                                        onChange={(e) => {
-                                            const parentId = e.target.value;
-                                            // Depth check (simplified: if parent exists, it's at least level 2)
-                                            // For true depth, we'd need to trace. 
-                                            // Let's assume selecting a level 3 parent makes this level 4.
-                                            setCurrentCategory({...currentCategory, parent_id: parentId});
-                                        }}
-                                    >
-                                        <option value="">ROOT (No Parent)</option>
-                                        {/* Ideally we should show the full tree as options or use a cascading select here too */}
-                                        {taxonomies
-                                            .filter(t => t.id !== currentCategory.id) 
-                                            .map(t => (
-                                                <option key={t.id} value={t.id}>{t.name} (ID: {t.id})</option>
-                                            ))
-                                        }
-                                    </select>
-                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                <div className="am-form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
-                                    <input 
-                                        type="checkbox" 
-                                        id="isLevel4" 
-                                        checked={currentCategory.isLevel4}
-                                        onChange={(e) => setCurrentCategory({...currentCategory, isLevel4: e.target.checked})}
-                                    />
-                                    <label htmlFor="isLevel4" className="am-label" style={{ marginBottom: 0 }}>Is Level 4 (Topic)?</label>
-                                </div>
-
-                                {currentCategory.isLevel4 && (
-                                    <div className="am-level4-fields" style={{ marginTop: '15px', padding: '15px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                                        <h4 style={{ marginBottom: '10px', color: '#1e293b' }}>Topic Specific Content</h4>
-                                        <div className="am-form-group">
-                                            <label className="am-label">Content (HTML)</label>
-                                            <textarea 
-                                                className="am-input"
-                                                value={currentCategory.content}
-                                                onChange={(e) => setCurrentCategory({...currentCategory, content: e.target.value})}
-                                                placeholder="Enter HTML content..."
-                                                rows="5"
-                                            />
-                                        </div>
-                                        <div className="am-form-row">
-                                            <div className="am-form-group">
-                                                <label className="am-label">Image ID</label>
-                                                <input 
-                                                    type="number"
-                                                    className="am-input"
-                                                    value={currentCategory.image_id || ''}
-                                                    onChange={(e) => setCurrentCategory({...currentCategory, image_id: e.target.value})}
-                                                    placeholder="Media ID"
-                                                />
-                                            </div>
-                                            <div className="am-form-group">
-                                                <label className="am-label">PDF ID</label>
-                                                <input 
-                                                    type="number"
-                                                    className="am-input"
-                                                    value={currentCategory.pdf_id || ''}
-                                                    onChange={(e) => setCurrentCategory({...currentCategory, pdf_id: e.target.value})}
-                                                    placeholder="Media ID"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="am-form-row">
-                                    <div className="am-form-group">
-                                        <label className="am-label">Rank / Order</label>
+                    <div className={`am-content ${viewMode === 'tree' ? 'tree-mode' : ''}`}>
+                        {(isLoading || loading) && (taxonomies.length === 0 && treeData.length === 0) ? (
+                            <SkeletonTable rows={10} />
+                        ) : viewMode === 'tree' ? (
+                            <div className="am-tree-wrapper">
+                                <TaxonomyTreeView 
+                                    data={treeData} 
+                                    onEdit={handleOpenModal}
+                                />
+                            </div>
+                        ) : (
+                            <div className="am-table-container">
+                                <table className="am-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Slug</th>
+                                            <th>Parent</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {taxonomies.length > 0 ? (
+                                            taxonomies.filter(tax => searchQuery ? true : !tax.parent_id).map((tax) => {
+                                                const renderRow = (item, level = 0) => {
+                                                    const isExpanded = expandedRows[item.id];
+                                                    // Find children in the flat taxonomies array
+                                                    const children = taxonomies.filter(c => c.parent_id === item.id);
+                                                    const hasChildren = children.length > 0;
+                                                    
+                                                    return (
+                                                        <React.Fragment key={`row-${item.id}-${level}`}>
+                                                            <tr className={`${level > 0 ? 'am-row-child' : ''} ${isExpanded ? 'am-row-expanded' : ''}`}>
+                                                                 <td 
+                                                                    style={{ 
+                                                                        fontWeight: 'bold', 
+                                                                        color: 'var(--slate-500)', 
+                                                                        paddingLeft: `${level * 2 + 1}rem`,
+                                                                        '--level': level
+                                                                    }}
+                                                                >
+                                                                    {hasChildren ? (
+                                                                        <button 
+                                                                            className={`am-expand-btn ${isExpanded ? 'active' : ''}`}
+                                                                            onClick={() => toggleExpand(item)}
+                                                                        >
+                                                                            <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span style={{ display: 'inline-block', width: '28px', marginRight: '0.75rem' }}></span>
+                                                                    )}
+                                                                    #{item.id}
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ fontWeight: level === 0 ? '700' : '600', color: level === 0 ? 'var(--slate-900)' : 'var(--slate-700)' }}>
+                                                                        {item.name}
+                                                                    </div>
+                                                                </td>
+                                                                <td style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                                                                    <code>{item.slug}</code>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <span className={`am-status-badge ${item.is_active ? 'active' : 'inactive'}`}>
+                                                                            {item.is_active ? 'Active' : 'Inactive'}
+                                                                        </span>
+                                                                        <LuxuryTooltip content={item.parent_id ? `Parent Category ID: ${item.parent_id}` : "Root Category"}>
+                                                                            {item.parent_id ? (
+                                                                                <span 
+                                                                                    className="am-status-badge review" 
+                                                                                    style={{ cursor: 'pointer', fontSize: '10px' }}
+                                                                                    onClick={() => setParentFilter(item.parent_id)}
+                                                                                >
+                                                                                    PID: {item.parent_id}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="am-status-badge draft" style={{ fontSize: '10px' }}>ROOT</span>
+                                                                            )}
+                                                                        </LuxuryTooltip>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="am-actions-cell">
+                                                                    <div className="am-action-group">
+                                                                        <LuxuryTooltip content={`Add ${level === 0 ? 'Sub-Category' : level === 1 ? 'Segment' : 'Topic'}`}>
+                                                                            <button className="am-action-btn add" onClick={() => {
+                                                                                const targetMode = level === 0 ? 'SUB_CATEGORY' : level === 1 ? 'SEGMENT' : 'TOPIC';
+                                                                                handleOpenModal(targetMode, null, item, level);
+                                                                            }}>
+                                                                                <i className="fas fa-plus-circle"></i>
+                                                                            </button>
+                                                                        </LuxuryTooltip>
+                                                                        <LuxuryTooltip content="Edit Item">
+                                                                            <button className="am-action-btn edit" onClick={() => {
+                                                                                let editMode = 'CATEGORY';
+                                                                                if (item.content) editMode = 'TOPIC';
+                                                                                else if (level === 1) editMode = 'SUB_CATEGORY';
+                                                                                else if (level === 2) editMode = 'SEGMENT';
+                                                                                handleOpenModal(editMode, item, null, level);
+                                                                            }}>
+                                                                                <i className="fas fa-edit"></i>
+                                                                            </button>
+                                                                        </LuxuryTooltip>
+                                                                        {userRole === 'SUPER_ADMIN' && (
+                                                                            <LuxuryTooltip content="Delete Item">
+                                                                                <button 
+                                                                                    className="am-action-btn delete" 
+                                                                                    onClick={() => handleDeleteCategory(item.id)}
+                                                                                >
+                                                                                    <i className="fas fa-trash"></i>
+                                                                                </button>
+                                                                            </LuxuryTooltip>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            {isExpanded && children.map(child => renderRow(child, level + 1))}
+                                                        </React.Fragment>
+                                                    );
+                                                };
+                                                if (parentFilter && tax.id !== parseInt(parentFilter)) return null;
+                                                return renderRow(tax);
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="5" className="am-empty-state">
+                                                    <i className="fas fa-tags"></i>
+                                                    <h3>No taxonomy records found</h3>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="am-content sections-tab">
+                    {sectionsLoading && sections.length === 0 ? (
+                        <SkeletonTable rows={8} />
+                    ) : (
+                        <>
+                            <div className="am-filter-bar">
+                                <div className="am-search-form" style={{ width: '400px' }}>
+                                    <div className="am-search-wrapper">
+                                        <i className="fas fa-search am-search-icon"></i>
                                         <input 
-                                            type="number"
-                                            className="am-input"
-                                            value={currentCategory.rank}
-                                            onChange={(e) => setCurrentCategory({...currentCategory, rank: e.target.value})}
-                                            placeholder="0"
+                                            type="text" 
+                                            placeholder="Search sections..." 
+                                            className="am-search-input"
+                                            value={sectionSearchQuery}
+                                            onChange={(e) => setSectionSearchQuery(e.target.value)}
                                         />
                                     </div>
                                 </div>
                             </div>
-                            <div className="am-modal-footer">
-                                <button type="button" className="am-btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                                <button type="submit" className="am-btn-primary" disabled={actionLoading}>
-                                    {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : (isEditing ? 'Save Changes' : 'Create Category')}
+
+                            <div className="am-table-container">
+                                <table className="am-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Slug</th>
+                                            <th>Rank</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sections.filter(s => s.name.toLowerCase().includes(sectionSearchQuery.toLowerCase())).map(section => (
+                                            <tr key={section.id}>
+                                                <td style={{ fontWeight: 'bold' }}>#{section.id}</td>
+                                                <td style={{ fontWeight: '600' }}>{section.name}</td>
+                                                <td><code>{section.slug}</code></td>
+                                                <td>{section.rank}</td>
+                                                <td>
+                                                    <span className={`am-status-badge ${section.is_active ? 'active' : 'inactive'}`}>
+                                                        {section.is_active ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </td>
+                                                <td className="am-actions-cell">
+                                                    <div className="am-action-group">
+                                                        <button className="am-action-btn edit" onClick={() => handleOpenModal('SECTION', section)}>
+                                                            <i className="fas fa-edit"></i>
+                                                        </button>
+                                                        {userRole === 'SUPER_ADMIN' && (
+                                                            <button className="am-action-btn delete" onClick={() => handleDeleteSection(section.id)}>
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* CREATE/EDIT MODAL - 5 LEVEL HIERARCHY */}
+            {isModalOpen && (
+                <div className="am-modal-overlay">
+                    <div className="am-modal premium-modal">
+                        <div className="am-modal-header">
+                            <div className="modal-title-wrapper">
+                                <i className={`fas ${isEditing ? 'fa-edit' : 'fa-plus-circle'} modal-title-icon`}></i>
+                                <div>
+                                    <h2>
+                                        {isEditing ? 'Edit' : 'Create New'} {
+                                            modalMode === 'CATEGORY' ? 'Category (L1)' : 
+                                            modalMode === 'SUB_CATEGORY' ? 'Sub-Category (L2)' : 
+                                            modalMode === 'SEGMENT' ? 'Segment (L3)' : 
+                                            'Topic (L4)'
+                                        }
+                                    </h2>
+                                    <p className="modal-subtitle">
+                                        {modalMode === 'CATEGORY' ? 'Create a top-level classification' :
+                                         modalMode === 'SUB_CATEGORY' ? 'Create a secondary grouping under a Category' :
+                                         modalMode === 'SEGMENT' ? 'Narrow down subjects within Sub-Categories' :
+                                         'Add specific actionable topics with content'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button className="am-modal-close" onClick={handleCloseModal}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSaveCategory} className="am-modal-form">
+                            <div className="am-modal-body slim-scrollbar">
+                                {modalMode !== 'SECTION' && (
+                                    <div className="form-section">
+                                        <h3 className="section-title">Hierarchy Selection</h3>
+                                        
+                                        <div className="form-grid">
+                                            <div className="am-form-group">
+                                                <label className="am-label">Level 0 - Section</label>
+                                                <div className="select-wrapper">
+                                                    <select 
+                                                        className="am-input"
+                                                        value={currentCategory.section || activeSection}
+                                                        disabled={isEditing}
+                                                        onChange={(e) => {
+                                                            setCurrentCategory({...currentCategory, section: e.target.value});
+                                                            setSelLevel2('');
+                                                        }}
+                                                        required
+                                                    >
+                                                        {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    </select>
+                                                    <i className="fas fa-chevron-down select-icon"></i>
+                                                </div>
+                                            </div>
+
+                                            {(modalMode !== 'SECTION' && modalMode !== 'CATEGORY') && (
+                                                <div className="am-form-group">
+                                                    <label className="am-label">Level 1 - Category</label>
+                                                    <div className="select-wrapper">
+                                                        <select 
+                                                            className="am-input"
+                                                            value={selLevel2}
+                                                            onChange={(e) => {
+                                                                setSelLevel2(e.target.value);
+                                                                setSelLevel3('');
+                                                            }}
+                                                            disabled={isEditing}
+                                                            required
+                                                        >
+                                                            <option value="">Select Category</option>
+                                                            {(catLevel2Data || []).map(cat => (
+                                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        <i className="fas fa-chevron-down select-icon"></i>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {(modalMode === 'SEGMENT' || modalMode === 'TOPIC') && (
+                                            <>
+                                                <div className="form-grid">
+                                                    <div className="am-form-group">
+                                                        <label className="am-label">Level 2 - Sub-Category</label>
+                                                        <div className="select-wrapper">
+                                                            <select 
+                                                                className="am-input"
+                                                                value={selLevel3}
+                                                                onChange={(e) => {
+                                                                    setSelLevel3(e.target.value);
+                                                                    setSelLevel4('');
+                                                                }}
+                                                                disabled={isEditing || !selLevel2}
+                                                                required
+                                                            >
+                                                                <option value="">Select Sub-Category</option>
+                                                                {(catLevel3Data || []).map(cat => (
+                                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <i className="fas fa-chevron-down select-icon"></i>
+                                                        </div>
+                                                    </div>
+
+                                                    {modalMode === 'TOPIC' && (
+                                                        <div className="am-form-group">
+                                                            <label className="am-label">Level 3 - Segment</label>
+                                                            <div className="select-wrapper">
+                                                                <select 
+                                                                    className="am-input"
+                                                                    value={selLevel4}
+                                                                    onChange={(e) => setSelLevel4(e.target.value)}
+                                                                    disabled={isEditing || !selLevel3}
+                                                                    required
+                                                                >
+                                                                    <option value="">Select Segment</option>
+                                                                    {(catLevel4Data || []).map(cat => (
+                                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <i className="fas fa-chevron-down select-icon"></i>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="form-hint" style={{ 
+                                                    marginBottom: '1.5rem', 
+                                                    padding: '1rem', 
+                                                    background: '#fff9db', 
+                                                    borderLeft: '4px solid #fab005',
+                                                    color: '#856404',
+                                                    borderRadius: '4px'
+                                                }}>
+                                                    <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i> 
+                                                    <strong>Current Target: </strong>
+                                                    {modalMode === 'TOPIC' ? "Topic (Level 4 Leaf)" : 
+                                                     modalMode === 'SEGMENT' ? "Segment (Level 3)" : 
+                                                     modalMode === 'SUB_CATEGORY' ? "Sub-Category (Level 2)" : 
+                                                     "Root Category (Level 1)"}
+                                                </div>
+
+                                                {isEditing && (
+                                                    <div className="form-hint" style={{ marginTop: '0.5rem', fontWeight: '600', color: '#10b981' }}>
+                                                        <i className="fas fa-lock"></i> Parent hierarchy is locked during edit.
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="form-section">
+                                    <h3 className="section-title">
+                                        {modalMode === 'SECTION' ? 'Section' : 'Category'} Details
+                                    </h3>
+                                    
+                                    <div className="form-grid">
+                                        <div className="am-form-group">
+                                            <label className="am-label">Name</label>
+                                            <div className="input-with-icon">
+                                                <i className="fas fa-tag input-icon"></i>
+                                                <input 
+                                                    type="text"
+                                                    className="am-input"
+                                                    value={modalMode === 'SECTION' ? currentSection.name : currentCategory.name}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const slug = val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                                                        if (modalMode === 'SECTION') {
+                                                            setCurrentSection({...currentSection, name: val, slug: currentSection.slug === '' ? slug : currentSection.slug});
+                                                        } else {
+                                                            setCurrentCategory({...currentCategory, name: val, slug: currentCategory.slug === '' ? slug : currentCategory.slug});
+                                                        }
+                                                    }}
+                                                    required
+                                                    placeholder="Enter name"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="am-form-group">
+                                            <label className="am-label">Slug</label>
+                                            <div className="input-with-icon">
+                                                <i className="fas fa-link input-icon"></i>
+                                                <input 
+                                                    type="text"
+                                                    className="am-input"
+                                                    value={modalMode === 'SECTION' ? currentSection.slug : currentCategory.slug}
+                                                    onChange={(e) => {
+                                                        if (modalMode === 'SECTION') setCurrentSection({...currentSection, slug: e.target.value});
+                                                        else setCurrentCategory({...currentCategory, slug: e.target.value});
+                                                    }}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="am-form-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                                        <div className="am-form-group">
+                                            <label className="am-label">Rank / Order</label>
+                                            <div className="input-with-icon">
+                                                <i className="fas fa-sort-amount-down input-icon"></i>
+                                                <input 
+                                                    type="number"
+                                                    className="am-input"
+                                                    value={modalMode === 'SECTION' ? currentSection.rank : currentCategory.rank}
+                                                    onChange={(e) => {
+                                                        if (modalMode === 'SECTION') setCurrentSection({...currentSection, rank: e.target.value});
+                                                        else setCurrentCategory({...currentCategory, rank: e.target.value});
+                                                    }}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="am-form-group">
+                                            <label className="am-label">Status</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', height: '42px' }}>
+                                                <label className="am-switch">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={modalMode === 'SECTION' ? currentSection.is_active : currentCategory.is_active}
+                                                        onChange={(e) => {
+                                                            if (modalMode === 'SECTION') setCurrentSection({...currentSection, is_active: e.target.checked});
+                                                            else setCurrentCategory({...currentCategory, is_active: e.target.checked});
+                                                        }}
+                                                    />
+                                                    <span className="am-slider"></span>
+                                                </label>
+                                                <span style={{ fontWeight: '600', color: (modalMode === 'SECTION' ? currentSection.is_active : currentCategory.is_active) ? '#10b981' : '#64748b' }}>
+                                                    {(modalMode === 'SECTION' ? currentSection.is_active : currentCategory.is_active) ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {(modalMode === 'TOPIC' || currentCategory.isLevel4) && (
+                                    <div className="form-section alternate-bg">
+                                        <div className="section-header-row">
+                                            <h3 className="section-title">Topic Content (Level 4/5)</h3>
+                                        </div>
+
+                                        <div className="am-level4-fields animated slideDown">
+                                            <div className="am-form-group">
+                                                <label className="am-label">Content (HTML)</label>
+                                                <textarea 
+                                                    className="am-input am-textarea"
+                                                    value={currentCategory.content}
+                                                    onChange={(e) => setCurrentCategory({...currentCategory, content: e.target.value})}
+                                                    placeholder="HTML content for this topic..."
+                                                    rows="4"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="am-modal-footer premium-footer">
+                                <button type="button" className="am-btn-ghost" onClick={handleCloseModal}>
+                                    <i className="fas fa-times"></i> Cancel
+                                </button>
+                                <button type="submit" className="am-btn-primary elevated" disabled={actionLoading}>
+                                    {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : (
+                                        isEditing ? 'Save Changes' : (
+                                            modalMode === 'SECTION' ? 'Create Section' :
+                                            modalMode === 'CATEGORY' ? 'Create Category' :
+                                            modalMode === 'SUB_CATEGORY' ? 'Create Sub-Category' :
+                                            modalMode === 'SEGMENT' ? 'Create Segment' :
+                                            modalMode === 'TOPIC' ? 'Create Topic' :
+                                            'Save'
+                                        )
+                                    )}
                                 </button>
                             </div>
                         </form>

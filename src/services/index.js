@@ -37,6 +37,45 @@ export const newsService = {
             return { results: [], has_next: false };
         }
     },
+    // Get Published Articles (Public) - cursor pagination + section/lang/search support
+    getPublicArticles: async (params = {}) => {
+        try {
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([_, v]) => v !== null && v !== undefined && v !== '')
+            );
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES, { params: cleanParams });
+            const data = response.data;
+            if (Array.isArray(data)) {
+                return { results: data, next_cursor: null, has_next: false };
+            }
+            return {
+                results: data.results || [],
+                next_cursor: data.next_cursor || null,
+                has_next: data.has_next || !!data.next_cursor,
+            };
+        } catch (error) {
+            console.error('Error fetching public articles:', error);
+            return { results: [], next_cursor: null, has_next: false };
+        }
+    },
+
+    // Get Articles for Admin Management (protected)
+    getAdminArticles: async (params = {}) => {
+        try {
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([_, v]) => v !== null && v !== undefined && v !== '')
+            );
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_CREATE, { params: cleanParams });
+            const data = response.data;
+            if (Array.isArray(data)) {
+                return { results: data, count: data.length };
+            }
+            return data;
+        } catch (error) {
+            console.error('Error fetching admin articles:', error);
+            return { results: [], count: 0 };
+        }
+    },
 
     // Get Single Article Details
     getArticleDetail: async (section, slug, lang = 'en') => {
@@ -68,49 +107,41 @@ export const newsService = {
     },
     // Get Latest Articles with corrected pagination and language
     getLatestArticles: async (lang = 'te', limit = 20, offset = 0) => {
-        try {
-            const params = { lang, limit, offset };
-
-            const response = await djangoApi.get('cms/articles/home/', { params });
-            return response.data.latest || { results: [], has_next: false };
-        } catch (error) {
-            console.error('Error fetching latest articles:', error);
-            return { results: [], has_next: false };
-        }
+        const params = { lang, limit, offset };
+        const response = await djangoApi.get('cms/articles/home/', { params });
+        return response.data.latest || { results: [], has_next: false };
     },
     // Get Django Home Articles
     getHomeContent: async (lang = 'te', limit = 20, offset = 0) => {
-        try {
-            const langCode = lang === 'telugu' ? 'te' : (lang === 'english' ? 'en' : lang);
+        const langCode = lang === 'telugu' ? 'te' : (lang === 'english' ? 'en' : lang);
 
-            // Try the CMS prefixed URL
-            const response = await djangoApi.get('cms/articles/home/', {
+        const [response, topStoriesResponse] = await Promise.all([
+            djangoApi.get('cms/articles/home/', {
                 params: { lang: langCode, limit, offset }
-            });
+            }),
+            djangoApi.get('cms/articles/top-stories/list/', { params: { limit: 10 } }).catch(() => ({ data: { results: [] } }))
+        ]);
 
-            const data = response.data;
+        const data = response.data;
+        const cmsTopStories = topStoriesResponse.data.results || [];
 
-            // Resilience: Handle data as array [...] or object { featured: [...] }
-            const featuredList = Array.isArray(data) ? data : (data.featured || []);
-            const trendingList = Array.isArray(data) ? [] : (data.trending || []);
-            const mustReadList = Array.isArray(data) ? [] : (data.must_read || []);
-            const latestData = data.latest || (Array.isArray(data) ? { results: [] } : { results: [] });
+        // Resilience: Handle data as array [...] or object { featured: [...] }
+        const featuredList = Array.isArray(data) ? data : (data.featured || []);
+        const trendingList = Array.isArray(data) ? [] : (data.trending || []);
+        const mustReadList = Array.isArray(data) ? [] : (data.must_read || []);
+        const latestData = data.latest || (Array.isArray(data) ? { results: [] } : { results: [] });
 
-            return {
-                featured: featuredList,
-                trending: trendingList,
-                must_read: mustReadList,
-                latest: latestData,
-                // Direct mapping for UI widgets
-                hero: (data.hero && data.hero.length > 0) ? data.hero : featuredList.slice(0, 5),
-                top_stories: (data.top_stories && data.top_stories.length > 0) ? data.top_stories : featuredList.slice(5),
-                breaking: (data.breaking && data.breaking.length > 0) ? data.breaking : featuredList.filter(a => (a.feature_type || a.type) === 'BREAKING'),
-                must_read: (data.must_read && data.must_read.length > 0) ? data.must_read : mustReadList
-            };
-        } catch (error) {
-            console.warn(`[newsService] Home Feed (${lang}) fetch failed totally.`, error.message);
-            return { featured: [], trending: [], latest: { results: [] }, hero: [], breaking: [], top_stories: [] };
-        }
+        return {
+            featured: featuredList,
+            trending: trendingList,
+            must_read: mustReadList,
+            latest: latestData,
+            // Direct mapping for UI widgets
+            hero: (data.hero && data.hero.length > 0) ? data.hero : featuredList.slice(0, 5),
+            top_stories: cmsTopStories.length > 0 ? cmsTopStories : ((data.top_stories && data.top_stories.length > 0) ? data.top_stories : featuredList.slice(5)),
+            breaking: (data.breaking && data.breaking.length > 0) ? data.breaking : featuredList.filter(a => (a.feature_type || a.type) === 'BREAKING'),
+            must_read: (data.must_read && data.must_read.length > 0) ? data.must_read : mustReadList
+        };
     },
 
     // CMS Management Methods (Protected)
@@ -118,36 +149,34 @@ export const newsService = {
     // 1. Create Article (DRAFT)
     createArticle: async (articleData) => {
         try {
-            // Check if we have file uploads in any potential field
-            const hasFiles = Object.values(articleData).some(val => val instanceof File);
-
             let payload = articleData;
             let headers = {};
 
-            if (hasFiles) {
-                // Convert to FormData for file upload
-                const formData = new FormData();
-                Object.keys(articleData).forEach(key => {
-                    const value = articleData[key];
-                    if (value !== null && value !== undefined) {
-                        if (key === 'translations' && Array.isArray(value)) {
-                            formData.append(key, JSON.stringify(value));
-                        } else if (key === 'category_ids' && Array.isArray(value)) {
-                            value.forEach(id => formData.append('category_ids', id));
-                        } else if ((key === 'tags' || key === 'keywords') && Array.isArray(value)) {
-                            value.forEach(item => formData.append(key, item));
-                        } else {
-                            formData.append(key, value);
-                        }
-                    }
-                });
-                payload = formData;
-                headers = { 'Content-Type': 'multipart/form-data' };
+            if (articleData instanceof FormData) {
+                payload = articleData;
+                // Don't set Content-Type, let axios/browser handle boundary
             } else {
-                // If JSON, filter out null/undefined to satisfy strict backend validators
-                payload = Object.fromEntries(
-                    Object.entries(articleData).filter(([_, v]) => v !== null && v !== undefined)
-                );
+                // Check if we have file uploads in any potential field
+                const hasFiles = Object.values(articleData).some(val => val instanceof File);
+
+                if (hasFiles) {
+                    const formData = new FormData();
+                    Object.keys(articleData).forEach(key => {
+                        const value = articleData[key];
+                        if (value !== null && value !== undefined) {
+                            if (Array.isArray(value)) {
+                                value.forEach(item => formData.append(key, item));
+                            } else {
+                                formData.append(key, value);
+                            }
+                        }
+                    });
+                    payload = formData;
+                } else {
+                    payload = Object.fromEntries(
+                        Object.entries(articleData).filter(([_, v]) => v !== null && v !== undefined)
+                    );
+                }
             }
 
             const response = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_CREATE, payload, { headers });
@@ -172,34 +201,33 @@ export const newsService = {
     // 2b. Update Full Article
     updateArticle: async (articleId, articleData) => {
         try {
-            // Check if we have file uploads
-            const hasFiles = Object.values(articleData).some(val => val instanceof File);
-
             let payload = articleData;
             let headers = {};
 
-            if (hasFiles) {
-                // Convert to FormData for file upload
-                const formData = new FormData();
-                Object.keys(articleData).forEach(key => {
-                    const value = articleData[key];
-                    if (value !== null && value !== undefined) {
-                        if (key === 'category_ids' && Array.isArray(value)) {
-                            value.forEach(id => formData.append('category_ids', id));
-                        } else if ((key === 'tags' || key === 'keywords') && Array.isArray(value)) {
-                            value.forEach(item => formData.append(key, item));
-                        } else {
-                            formData.append(key, value);
-                        }
-                    }
-                });
-                payload = formData;
-                headers = { 'Content-Type': 'multipart/form-data' };
+            if (articleData instanceof FormData) {
+                payload = articleData;
             } else {
-                // If JSON, filter out null/undefined
-                payload = Object.fromEntries(
-                    Object.entries(articleData).filter(([_, v]) => v !== null && v !== undefined)
-                );
+                // Check if we have file uploads
+                const hasFiles = Object.values(articleData).some(val => val instanceof File);
+
+                if (hasFiles) {
+                    const formData = new FormData();
+                    Object.keys(articleData).forEach(key => {
+                        const value = articleData[key];
+                        if (value !== null && value !== undefined) {
+                            if (Array.isArray(value)) {
+                                value.forEach(item => formData.append(key, item));
+                            } else {
+                                formData.append(key, value);
+                            }
+                        }
+                    });
+                    payload = formData;
+                } else {
+                    payload = Object.fromEntries(
+                        Object.entries(articleData).filter(([_, v]) => v !== null && v !== undefined)
+                    );
+                }
             }
 
             const response = await djangoApi.patch(`${API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_CREATE}${articleId}/`, payload, { headers });
@@ -368,11 +396,8 @@ export const newsService = {
 
     createTopStory: async (data) => {
         try {
-            const payload = data instanceof FormData ? data : Object.fromEntries(
-                Object.entries(data).filter(([_, v]) => v !== null && v !== undefined)
-            );
-            const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
-            const response = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS, payload, { headers });
+            // Send as JSON - media is now handled via media_ids array
+            const response = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS, data);
             return response.data;
         } catch (error) {
             console.error('Error creating top story:', error);
@@ -382,15 +407,25 @@ export const newsService = {
 
     updateTopStory: async (id, data) => {
         try {
-            const payload = data instanceof FormData ? data : Object.fromEntries(
-                Object.entries(data).filter(([_, v]) => v !== null && v !== undefined)
-            );
-            const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
-            const response = await djangoApi.patch(`${API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS}${id}/`, payload, { headers });
+            // Send as JSON - media is now handled via media_ids array
+            const response = await djangoApi.patch(`${API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS}${id}/`, data);
             return response.data;
         } catch (error) {
             console.error('Error updating top story:', error);
             throw error;
+        }
+    },
+
+    // Public Top Stories (no auth required)
+    getTopStoriesPublic: async ({ category = null, limit = 5 } = {}) => {
+        try {
+            const params = { limit };
+            if (category) params.category = category;
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_PUBLIC, { params });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching public top stories:', error);
+            return { results: [] };
         }
     },
 
@@ -427,7 +462,7 @@ export const newsService = {
 
     getAdminCategories: async (params = {}) => {
         try {
-            const response = await djangoApi.get('taxonomy/categories/', { params });
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORIES_CMS, { params });
             return response.data;
         } catch (error) {
             console.error('Error fetching admin categories:', error);
@@ -437,7 +472,7 @@ export const newsService = {
 
     createCategory: async (categoryData) => {
         try {
-            const response = await djangoApi.post('taxonomy/categories/create/', categoryData);
+            const response = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORIES_CREATE, categoryData);
             return response.data;
         } catch (error) {
             console.error('Error creating category:', error);
@@ -447,7 +482,7 @@ export const newsService = {
 
     updateCategory: async (id, categoryData) => {
         try {
-            const response = await djangoApi.patch(`taxonomy/categories/${id}/`, categoryData);
+            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DETAIL(id), categoryData);
             return response.data;
         } catch (error) {
             console.error('Error updating category:', error);
@@ -457,7 +492,7 @@ export const newsService = {
 
     deleteCategory: async (id) => {
         try {
-            const response = await djangoApi.delete(`taxonomy/categories/${id}/delete/`);
+            const response = await djangoApi.delete(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DELETE(id));
             return response.data;
         } catch (error) {
             console.error('Error deleting category:', error);
@@ -467,7 +502,7 @@ export const newsService = {
 
     disableCategory: async (id) => {
         try {
-            const response = await djangoApi.patch(`taxonomy/categories/${id}/disable/`);
+            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DISABLE(id));
             return response.data;
         } catch (error) {
             console.error('Error disabling category:', error);
@@ -477,7 +512,7 @@ export const newsService = {
 
     enableCategory: async (id) => {
         try {
-            const response = await djangoApi.patch(`taxonomy/categories/${id}/enable/`);
+            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_ENABLE(id));
             return response.data;
         } catch (error) {
             console.error('Error enabling category:', error);
@@ -487,7 +522,7 @@ export const newsService = {
 
     getSections: async () => {
         try {
-            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS);
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CMS);
             const data = response.data;
             return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
         } catch (error) {
@@ -496,9 +531,39 @@ export const newsService = {
         }
     },
 
+    createSection: async (sectionData) => {
+        try {
+            const response = await djangoApi.post(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CREATE, sectionData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating taxonomy section:', error);
+            throw error;
+        }
+    },
+
+    updateSection: async (id, sectionData) => {
+        try {
+            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTION_DETAIL(id), sectionData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating taxonomy section:', error);
+            throw error;
+        }
+    },
+
+    deleteSection: async (id) => {
+        try {
+            const response = await djangoApi.delete(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTION_DELETE(id));
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting taxonomy section:', error);
+            throw error;
+        }
+    },
+
     getCategoryChildren: async (section, parentId) => {
         try {
-            const response = await djangoApi.get(`taxonomy/${section}/children/`, {
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CHILDREN(section), {
                 params: { parent_id: parentId }
             });
             return response.data;
@@ -510,10 +575,20 @@ export const newsService = {
 
     getTaxonomyTree: async (section) => {
         try {
-            const response = await djangoApi.get(`taxonomy/${section}/tree/`);
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_TREE(section));
             return response.data;
         } catch (error) {
             console.error(`Error fetching taxonomy tree for ${section}:`, error);
+            return [];
+        }
+    },
+
+    getTaxonomyLevels: async (section) => {
+        try {
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_LEVELS(section));
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching taxonomy levels for ${section}:`, error);
             return [];
         }
     },
@@ -976,10 +1051,14 @@ export { academicsService };
 
 // Taxonomy Service
 export const taxonomyService = {
-    getSections: async () => {
+    getSections: async (isAdmin = false) => {
         try {
-            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS);
-            return response.data;
+            const endpoint = isAdmin 
+                ? API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CMS 
+                : API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_PUBLIC;
+            const response = await djangoApi.get(endpoint);
+            const data = response.data;
+            return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
         } catch (error) {
             console.error('Error fetching taxonomy sections:', error);
             return [];
@@ -1000,7 +1079,9 @@ export const globalSearchService = {
             articles: [],
             jobs: [],
             papers: [],
-            currentAffairs: []
+            currentAffairs: [],
+            academics: [],
+            estore: []
         };
 
         try {
@@ -1028,7 +1109,7 @@ export const globalSearchService = {
                                     id: article.id,
                                     title: article.headline || article.title,
                                     summary: article.summary,
-                                    url: `/${article.section}/${article.slug}`,
+                                    url: `/article/${article.section}/${article.slug}`,
                                     publishedAt: article.published_at,
                                     image: article.banner_media?.url,
                                     section: article.section
@@ -1062,7 +1143,7 @@ export const globalSearchService = {
                                     title: job.title,
                                     company: job.company,
                                     location: job.location,
-                                    url: `/jobs/${job.id}`,
+                                    url: `/jobs/${job.slug || job.id}`,
                                     postedAt: job.posted_at || job.created_at
                                 }));
                         })
@@ -1120,6 +1201,53 @@ export const globalSearchService = {
                         .catch(err => console.error('Current affairs search error:', err))
                 );
             }
+            // Search Academics (Materials & Chapters)
+            if (types.includes('all') || types.includes('academics')) {
+                promises.push(
+                    academicsService.getMaterials({ search: searchQuery, limit: 10 })
+                        .then(materials => {
+                            resultMap.academics = (materials || []).map(m => ({
+                                type: 'academic',
+                                id: m.id,
+                                title: m.title || m.name,
+                                summary: m.description,
+                                url: `/academics/material/${m.slug}`,
+                                chapter: m.chapter_name,
+                                subject: m.subject_name
+                            }));
+                        })
+                        .catch(err => console.error('Academics search error:', err))
+                );
+            }
+
+            // Search E-Store (Local Cache)
+            if (types.includes('all') || types.includes('estore')) {
+                promises.push(
+                    (async () => {
+                        try {
+                            const { default: products } = await import('../modules/_cv_sys_cache/data/loader');
+                            resultMap.estore = products
+                                .filter(p => 
+                                    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (p.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .slice(0, 5)
+                                .map(p => ({
+                                    type: 'product',
+                                    id: p.id,
+                                    title: p.name,
+                                    summary: p.description,
+                                    price: p.price,
+                                    image: p.image,
+                                    url: `/e-store/product/${p.id}`
+                                }));
+                        } catch (e) {
+                            console.error('E-Store search error:', e);
+                        }
+                    })()
+                );
+            }
 
             await Promise.all(promises);
 
@@ -1128,7 +1256,9 @@ export const globalSearchService = {
                 ...resultMap.articles,
                 ...resultMap.jobs,
                 ...resultMap.papers,
-                ...resultMap.currentAffairs
+                ...resultMap.currentAffairs,
+                ...resultMap.academics,
+                ...resultMap.estore
             ];
 
             return {
@@ -1139,7 +1269,9 @@ export const globalSearchService = {
                     articles: resultMap.articles.length,
                     jobs: resultMap.jobs.length,
                     papers: resultMap.papers.length,
-                    currentAffairs: resultMap.currentAffairs.length
+                    currentAffairs: resultMap.currentAffairs.length,
+                    academics: resultMap.academics.length,
+                    estore: resultMap.estore.length
                 }
             };
         } catch (error) {

@@ -541,7 +541,7 @@ const MediaManagement = () => {
                     {filteredMedia.length > 0 && (
                         <div className="mm-pagination">
                             <div className="mm-pagination-info">
-                                Showing {filteredMedia.length} of {totalCount} items
+                                Showing {filteredMedia.length} {totalCount > 0 ? `of ${totalCount}` : ''} items
                             </div>
                             {hasNext && (
                                 <button 

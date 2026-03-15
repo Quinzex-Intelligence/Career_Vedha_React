@@ -4,6 +4,7 @@ import AppDownload from '../ui/AppDownload';
 import QuizWidget from '../ui/QuizWidget';
 import TrendingWidget from '../ui/TrendingWidget';
 import RelatedWidget from '../ui/RelatedWidget';
+import SidebarJobsWidget from '../ui/SidebarJobsWidget';
 import { mockLatestUpdates } from '../../utils/mockData';
 
 const Sidebar = memo(({ tags, currentId, section, slug }) => {
@@ -19,6 +20,7 @@ const Sidebar = memo(({ tags, currentId, section, slug }) => {
             )}
             
             <TrendingWidget />
+            <SidebarJobsWidget />
 
             {/* <NewsletterForm /> */}
             {/* <AppDownload /> */}

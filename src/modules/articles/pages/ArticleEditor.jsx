@@ -97,9 +97,6 @@ const ArticleEditor = () => {
     const [mainMediaId, setMainMediaId] = useState(null);
     const [mainPreview, setMainPreview] = useState(null);
     
-    const [pdfFile, setPdfFile] = useState(null);
-    const [pdfFileName, setPdfFileName] = useState('');
-    
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [activeMediaTarget, setActiveMediaTarget] = useState('banner');
 
@@ -198,9 +195,16 @@ const ArticleEditor = () => {
         });
     }, []);
 
-    // Helper to remove a category from the list
-    const removeCategory = (id) => {
-        setSelectedCategories(prev => prev.filter(c => c.id !== id));
+    // Toggle an additional secondary section
+    const toggleAdditionalSection = (secSlug) => {
+        if (!secSlug || secSlug === formData.section) return;
+        setFormData(prev => {
+            const current = prev.additional_sections || [];
+            if (current.includes(secSlug)) {
+                return { ...prev, additional_sections: current.filter(s => s !== secSlug) };
+            }
+            return { ...prev, additional_sections: [...current, secSlug] };
+        });
     };
 
     const [errors, setErrors] = useState({});
@@ -214,40 +218,53 @@ const ArticleEditor = () => {
 
     const validateForm = () => {
         const newErrors = {};
-        const lang = formData.language;
         
-        // Check content based on selected language
-        if (lang === 'en') {
-            if (!formData.eng_title?.trim()) newErrors.eng_title = true;
-            if (isContentEmpty(formData.eng_content)) newErrors.eng_content = true;
-        } else {
-            if (!formData.tel_title?.trim()) newErrors.tel_title = true;
-            if (isContentEmpty(formData.tel_content)) newErrors.tel_content = true;
-        }
-
-        if (Object.keys(newErrors).length > 0) {
-            showSnackbar('Please fill in the heading and content', 'error');
-            setErrors(newErrors);
-            return false;
-        }
-
+        // 1. Core Mandatory Fields
         if (!formData.slug?.trim()) {
             newErrors.slug = true;
             showSnackbar('URL Slug is required', 'error');
-            setErrors(newErrors);
-            return false;
         }
 
         if (!level1) {
             newErrors.level1 = true;
-            showSnackbar('Please select a Category (Level 1)', 'error');
-            setErrors(newErrors);
-            return false;
+            showSnackbar('Main Section (Level 1) is required', 'error');
         }
 
+        if (selectedCategories.length === 0 && (formData.category_ids || []).length === 0) {
+            newErrors.categories = true;
+            showSnackbar('At least one Category is required *', 'error');
+        }
+
+        // 2. Content Requirement: (tel_title && tel_summary) OR (eng_title && eng_summary)
+        const hasTelugu = formData.tel_title?.trim() && !isContentEmpty(formData.tel_content) && formData.tel_summary?.trim();
+        const hasEnglish = formData.eng_title?.trim() && !isContentEmpty(formData.eng_content) && formData.eng_summary?.trim();
+
+        if (!hasTelugu && !hasEnglish) {
+            showSnackbar('Please provide Title, Content, and Summary in at least one language (Telugu or English)', 'error');
+            if (formData.language === 'te') {
+                if (!formData.tel_title?.trim()) newErrors.tel_title = true;
+                if (isContentEmpty(formData.tel_content)) newErrors.tel_content = true;
+                if (!formData.tel_summary?.trim()) newErrors.tel_summary = true;
+            } else {
+                if (!formData.eng_title?.trim()) newErrors.eng_title = true;
+                if (isContentEmpty(formData.eng_content)) newErrors.eng_content = true;
+                if (!formData.eng_summary?.trim()) newErrors.eng_summary = true;
+            }
+        }
+
+        // 3. Additional Required Fields
+        if (!formData.keywords?.trim()) {
+            newErrors.keywords = true;
+            showSnackbar('Keywords are required for better SEO *', 'error');
+        }
+
+        // 4. Media Requirement
         if (!mainFile && !mainMediaId && !bannerFile && !bannerMediaId) {
             newErrors.media = true;
-            showSnackbar('Please upload at least one image', 'error');
+            showSnackbar('Please upload or select at least one image *', 'error');
+        }
+
+        if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return false;
         }
@@ -329,7 +346,7 @@ const ArticleEditor = () => {
     ];
 
     // Media Upload Handlers
-    const handleImageFileChange = (e) => {
+    const handleImageFileChange = (e, target = 'main') => {
         const file = e.target.files[0];
         if (file) {
             const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -342,61 +359,49 @@ const ArticleEditor = () => {
                 showSnackbar('File size exceeds 10MB limit.', 'error');
                 return;
             }
-            // Set as both banner and main for simplicity
-            setBannerFile(file);
-            setMainFile(file);
-            setBannerMediaId(null);
-            setMainMediaId(null);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setBannerPreview(reader.result);
-                setMainPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+            
+            if (target === 'banner') {
+                setBannerFile(file);
+                setBannerMediaId(null);
+                const reader = new FileReader();
+                reader.onloadend = () => setBannerPreview(reader.result);
+                reader.readAsDataURL(file);
+            } else {
+                setMainFile(file);
+                setMainMediaId(null);
+                const reader = new FileReader();
+                reader.onloadend = () => setMainPreview(reader.result);
+                reader.readAsDataURL(file);
+            }
         }
     };
 
-    const handlePdfFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.type !== 'application/pdf') {
-                showSnackbar('Please upload a PDF file.', 'error');
-                return;
-            }
-            if (file.size > 25 * 1024 * 1024) {
-                showSnackbar('PDF size exceeds 25MB limit.', 'error');
-                return;
-            }
-            setPdfFile(file);
-            setPdfFileName(file.name);
-        }
-    };
 
     const handleMediaLibrarySelect = (mediaId, mediaUrl) => {
-        if (activeMediaTarget === 'image') {
+        if (activeMediaTarget === 'banner') {
             setBannerMediaId(mediaId);
-            setMainMediaId(mediaId);
             setBannerFile(null);
-            setMainFile(null);
             setBannerPreview(mediaUrl);
+        } else {
+            setMainMediaId(mediaId);
+            setMainFile(null);
             setMainPreview(mediaUrl);
         }
         setShowMediaLibrary(false);
     };
 
-    const clearImageMedia = () => {
+    const clearBannerMedia = () => {
         setBannerFile(null);
         setBannerMediaId(null);
         setBannerPreview(null);
+    };
+
+    const clearMainMedia = () => {
         setMainFile(null);
         setMainMediaId(null);
         setMainPreview(null);
     };
 
-    const clearPdf = () => {
-        setPdfFile(null);
-        setPdfFileName('');
-    };
 
     const handleDirectPublish = async (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -419,18 +424,42 @@ const ArticleEditor = () => {
             formDataToSubmit.append('eng_summary', formData.eng_summary || '');
 
             // Taxonomy and Sections
-            formData.category_ids.forEach(id => formDataToSubmit.append('category_ids', id));
-            formData.additional_sections.forEach(sec => formDataToSubmit.append('additional_sections', sec));
+            const cleanCategoryIds = (formData.category_ids || [])
+                .map(id => parseInt(id, 10))
+                .filter(id => !isNaN(id));
+            
+            // Using [] suffix for array fields in multipart data
+            cleanCategoryIds.forEach(id => formDataToSubmit.append('category_ids[]', id));
+            (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections[]', sec));
+
+            // Tags and Keywords
+            formDataToSubmit.append('tags', formData.tags || '');
+            formDataToSubmit.append('keywords', formData.keywords || '');
 
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
             if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
+            if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
+
+            // SEO and Metadata
+            formDataToSubmit.append('meta_title', formData.meta_title || '');
+            formDataToSubmit.append('meta_description', formData.meta_description || '');
+            formDataToSubmit.append('og_title', formData.og_title || '');
+            formDataToSubmit.append('og_description', formData.og_description || '');
+            formDataToSubmit.append('og_image_url', formData.og_image_url || '');
+            formDataToSubmit.append('noindex', formData.noindex ? 'true' : 'false');
+            formDataToSubmit.append('youtube_url', formData.youtube_url || '');
 
             // Status and Scheduling
-            formDataToSubmit.append('status', scheduleDate ? 'PUBLISHED' : 'PUBLISHED'); // Publisher+ context
+            formDataToSubmit.append('status', 'PUBLISHED'); 
             if (scheduleDate) {
                 formDataToSubmit.append('scheduled_at', new Date(scheduleDate).toISOString());
             }
+
+            // Ensure we have section and slug (crucial for backend validator)
+            if (!formDataToSubmit.has('section')) formDataToSubmit.append('section', formData.section);
+            if (!formDataToSubmit.has('slug')) formDataToSubmit.append('slug', formData.slug);
 
             if (!isEditMode) {
                 const newArticle = await newsService.createArticle(formDataToSubmit);
@@ -470,15 +499,39 @@ const ArticleEditor = () => {
             formDataToSubmit.append('eng_summary', formData.eng_summary || '');
 
             // Taxonomy and Sections
-            formData.category_ids.forEach(id => formDataToSubmit.append('category_ids', id));
-            formData.additional_sections.forEach(sec => formDataToSubmit.append('additional_sections', sec));
+            const cleanCategoryIds = (formData.category_ids || [])
+                .map(id => parseInt(id, 10))
+                .filter(id => !isNaN(id));
+            
+            // Using [] suffix for array fields in multipart data
+            cleanCategoryIds.forEach(id => formDataToSubmit.append('category_ids[]', id));
+            (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections[]', sec));
+
+            // Tags and Keywords
+            formDataToSubmit.append('tags', formData.tags || '');
+            formDataToSubmit.append('keywords', formData.keywords || '');
 
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
             if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
+            if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
+
+            // SEO and Metadata
+            formDataToSubmit.append('meta_title', formData.meta_title || '');
+            formDataToSubmit.append('meta_description', formData.meta_description || '');
+            formDataToSubmit.append('og_title', formData.og_title || '');
+            formDataToSubmit.append('og_description', formData.og_description || '');
+            formDataToSubmit.append('og_image_url', formData.og_image_url || '');
+            formDataToSubmit.append('noindex', formData.noindex ? 'true' : 'false');
+            formDataToSubmit.append('youtube_url', formData.youtube_url || '');
 
             // Status - Use DRAFT for handleSave
             formDataToSubmit.append('status', 'DRAFT');
+
+            // Ensure we have section and slug
+            if (!formDataToSubmit.has('section')) formDataToSubmit.append('section', formData.section);
+            if (!formDataToSubmit.has('slug')) formDataToSubmit.append('slug', formData.slug);
 
             if (isEditMode) {
                 await newsService.updateArticle(id, formDataToSubmit);
@@ -515,21 +568,24 @@ const ArticleEditor = () => {
 
     // Build level 2/3/4 dropdown options from categories tree
     const level2List = (Array.isArray(categories) ? categories : []).map(c => ({
-        value: c.id?.toString() || c.name,
+        value: (c.id || c.category_id)?.toString(),
         label: c.name
-    }));
+    })).filter(o => o.value);
+
     const level3List = (Array.isArray(level3Options) ? level3Options : []).map(c => ({
-        value: c.id?.toString() || c.name,
+        value: (c.id || c.category_id)?.toString(),
         label: c.name
-    }));
+    })).filter(o => o.value);
+
     const level4List = (Array.isArray(level4Options) ? level4Options : []).map(c => ({
-        value: c.id?.toString() || c.name,
+        value: (c.id || c.category_id)?.toString(),
         label: c.name
-    }));
+    })).filter(o => o.value);
+
     const level5List = (Array.isArray(level5Options) ? level5Options : []).map(c => ({
-        value: c.id?.toString() || c.name,
+        value: (c.id || c.category_id)?.toString(),
         label: c.name
-    }));
+    })).filter(o => o.value);
 
     const sidebarProps = {
         activeSection: 'articles',
@@ -666,15 +722,15 @@ const ArticleEditor = () => {
                             </div>
                         </div>
 
-                        <div className="ae-field">
-                            <label className="ae-label">Summary / Excerpt</label>
+                        <div className="ae-field ae-full-width">
+                            <label className="ae-label">Long Summary / Excerpt <span className="ae-required">*</span></label>
                             <textarea
                                 name={summaryField}
                                 value={formData[summaryField] || ''}
                                 onChange={handleInputChange}
                                 placeholder={summaryPlaceholder}
                                 rows="3"
-                                className="ae-textarea"
+                                className={`ae-textarea ${errors[summaryField] ? 'ae-textarea-error' : ''}`}
                             ></textarea>
                         </div>
                     </div>
@@ -690,21 +746,21 @@ const ArticleEditor = () => {
                             <div className="ae-field">
                                 <label className="ae-label">
                                     <i className="fas fa-layer-group"></i>
-                                    Level 1 – Section <span className="ae-required">*</span>
+                                    Main Section (Level 1) <span className="ae-required">*</span>
                                 </label>
                                 <CustomSelect
                                     value={level1}
                                     onChange={(val) => setLevel1(val)}
-                                    options={sections.map(s => ({ value: s.slug || s.id, label: s.name }))}
+                                    options={sections.map(s => ({ value: s.slug || s.name, label: s.name }))}
                                     placeholder="Select Section"
-                                    isInvalid={errors.level1}
+                                    isInvalid={!!errors.level1}
                                 />
                             </div>
                             
                             <div className="ae-field">
                                 <label className="ae-label">
                                     <i className="fas fa-sitemap"></i>
-                                    Level 2 – Category
+                                    Level 2 – Category <span className="ae-required">*</span>
                                 </label>
                                 <CustomSelect
                                     value={level2}
@@ -714,8 +770,8 @@ const ArticleEditor = () => {
                                         if (cat) addCategory(val, cat.label, 2);
                                     }}
                                     options={level2List}
-                                    placeholder={level1 ? "Select Category" : "Select Section first"}
-                                    disabled={!level1}
+                                    placeholder="Select Root Category"
+                                    isInvalid={!!errors.categories}
                                 />
                             </div>
                             
@@ -778,7 +834,7 @@ const ArticleEditor = () => {
                             <div className="ae-selected-categories">
                                 <div className="ae-selected-label">
                                     <i className="fas fa-check-double"></i>
-                                    Applied Categories ({selectedCategories.length})
+                                    Applied Categories ({selectedCategories.length}) <span className="ae-required">*</span>
                                 </div>
                                 <div className="ae-chips-container">
                                     {selectedCategories.map(cat => (
@@ -818,18 +874,18 @@ const ArticleEditor = () => {
                         </div>
 
                         <div className="ae-media-grid">
-                            {/* Image Upload */}
+                            {/* Main Media Upload */}
                             <div className="ae-media-box">
                                 <div className="ae-media-box-header">
                                     <i className="fas fa-image"></i>
-                                    <span>Image</span>
-                                    <span className="ae-size-hint">Max 10MB • JPEG, PNG, WebP</span>
+                                    <span>Main Article Media</span>
+                                    <span className="ae-size-hint">Max 10MB • Standard Ratio</span>
                                 </div>
                                 
-                                {(bannerPreview || mainPreview) ? (
+                                {mainPreview ? (
                                     <div className="ae-media-preview">
-                                        <img src={bannerPreview || mainPreview} alt="Preview" />
-                                        <button type="button" className="ae-media-remove" onClick={clearImageMedia}>
+                                        <img src={mainPreview} alt="Main Preview" />
+                                        <button type="button" className="ae-media-remove" onClick={clearMainMedia}>
                                             <i className="fas fa-trash-alt"></i>
                                         </button>
                                     </div>
@@ -838,66 +894,67 @@ const ArticleEditor = () => {
                                         <input
                                             type="file"
                                             accept="image/jpeg,image/jpg,image/png,image/webp"
-                                            onChange={handleImageFileChange}
-                                            id="image-upload"
+                                            onChange={(e) => handleImageFileChange(e, 'main')}
+                                            id="main-image-upload"
                                             hidden
                                         />
-                                        <label htmlFor="image-upload" className="ae-upload-label">
+                                        <label htmlFor="main-image-upload" className="ae-upload-label">
                                             <i className="fas fa-cloud-upload-alt"></i>
-                                            <span>Click to upload image</span>
+                                            <span>Upload Main Media</span>
                                         </label>
                                         <div className="ae-upload-divider"><span>or</span></div>
                                         <button
                                             type="button"
                                             className="ae-btn ae-btn-server"
-                                            onClick={() => { setActiveMediaTarget('image'); setShowMediaLibrary(true); }}
+                                            onClick={() => { setActiveMediaTarget('main'); setShowMediaLibrary(true); }}
                                         >
-                                            <i className="fas fa-server"></i> Select from Server
+                                            <i className="fas fa-server"></i> Select Main
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            {/* PDF Upload */}
+                            {/* Banner Media Upload */}
                             <div className="ae-media-box">
                                 <div className="ae-media-box-header">
-                                    <i className="fas fa-file-pdf"></i>
-                                    <span>PDF</span>
-                                    <span className="ae-size-hint">Max 25MB • PDF only</span>
+                                    <i className="fas fa-panorama"></i>
+                                    <span>Wide Banner Media</span>
+                                    <span className="ae-size-hint">Max 10MB • 16:9 or 21:9</span>
                                 </div>
                                 
-                                {pdfFileName ? (
-                                    <div className="ae-pdf-preview">
-                                        <i className="fas fa-file-pdf ae-pdf-icon"></i>
-                                        <span className="ae-pdf-name">{pdfFileName}</span>
-                                        <button type="button" className="ae-media-remove-inline" onClick={clearPdf}>
-                                            <i className="fas fa-times"></i>
+                                {bannerPreview ? (
+                                    <div className="ae-media-preview">
+                                        <img src={bannerPreview} alt="Banner Preview" />
+                                        <button type="button" className="ae-media-remove" onClick={clearBannerMedia}>
+                                            <i className="fas fa-trash-alt"></i>
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="ae-upload-zone">
                                         <input
                                             type="file"
-                                            accept="application/pdf"
-                                            onChange={handlePdfFileChange}
-                                            id="pdf-upload"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                                            onChange={(e) => handleImageFileChange(e, 'banner')}
+                                            id="banner-image-upload"
                                             hidden
                                         />
-                                        <label htmlFor="pdf-upload" className="ae-upload-label">
+                                        <label htmlFor="banner-image-upload" className="ae-upload-label">
                                             <i className="fas fa-cloud-upload-alt"></i>
-                                            <span>Click to upload PDF</span>
+                                            <span>Upload Banner Media</span>
                                         </label>
                                         <div className="ae-upload-divider"><span>or</span></div>
                                         <button
                                             type="button"
                                             className="ae-btn ae-btn-server"
-                                            onClick={() => { setActiveMediaTarget('pdf'); setShowMediaLibrary(true); }}
+                                            onClick={() => { setActiveMediaTarget('banner'); setShowMediaLibrary(true); }}
                                         >
-                                            <i className="fas fa-server"></i> Select from Server
+                                            <i className="fas fa-server"></i> Select Banner
                                         </button>
                                     </div>
                                 )}
                             </div>
+
+                            {/* PDF Upload Removed */}
                         </div>
                     </div>
 
@@ -926,7 +983,74 @@ const ArticleEditor = () => {
                         </div>
                     </div>
 
-                    {/* ── STEP 5: Additional Settings ── */}
+                    {/* ── STEP 5: SEO & Metadata ── */}
+                    {/* <div className="ae-card">
+                        <div className="ae-card-header">
+                            <span className="ae-step-badge">5</span>
+                            <h2>SEO & Social Media</h2>
+                        </div>
+
+                        <div className="ae-row-2">
+                            <div className="ae-field">
+                                <label className="ae-label">Meta Title</label>
+                                <input
+                                    name="meta_title"
+                                    value={formData.meta_title || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="SEO Title for Google"
+                                    className="ae-input"
+                                />
+                            </div>
+                            <div className="ae-field">
+                                <label className="ae-label">OG Title (Social)</label>
+                                <input
+                                    name="og_title"
+                                    value={formData.og_title || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="Title for Facebook/Twitter"
+                                    className="ae-input"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="ae-field">
+                            <label className="ae-label">Meta Description</label>
+                            <textarea
+                                name="meta_description"
+                                value={formData.meta_description || ''}
+                                onChange={handleInputChange}
+                                placeholder="Brief description for search engines..."
+                                rows="2"
+                                className="ae-textarea"
+                            ></textarea>
+                        </div>
+
+                        <div className="ae-row-2">
+                            <div className="ae-field">
+                                <label className="ae-label">OG Image URL</label>
+                                <input
+                                    name="og_image_url"
+                                    value={formData.og_image_url || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="https://..."
+                                    className="ae-input"
+                                />
+                            </div>
+                            
+                        </div>
+
+                        <div className="ae-toggle-row">
+                            <div className="ae-toggle-item">
+                                <span>NoIndex (Social/Search Hide)</span>
+                                <label className="ae-switch">
+                                    <input type="checkbox" name="noindex" checked={formData.noindex || false} onChange={handleInputChange} />
+                                    <span className="ae-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div> */}
+
+                    {/* ── STEP 6: Additional Settings ── */}
                     <div className="ae-card">
                         <div className="ae-card-header">
                             <span className="ae-step-badge">5</span>
@@ -935,15 +1059,48 @@ const ArticleEditor = () => {
 
                         <div className="ae-row-2">
                             <div className="ae-field">
-                                <label className="ae-label"><i className="fab fa-youtube"></i> YouTube URL</label>
+                                <label className="ae-label">Keywords <span className="ae-required">*</span></label>
                                 <input
-                                    name="youtube_url"
-                                    value={formData.youtube_url || ''}
+                                    name="keywords"
+                                    value={formData.keywords || ''}
                                     onChange={handleInputChange}
-                                    placeholder="https://youtube.com/watch?v=..."
-                                    className="ae-input"
+                                    placeholder="e.g. Budget, Finance, AP News"
+                                    className={`ae-input ${errors.keywords ? 'ae-input-error' : ''}`}
                                 />
                             </div>
+                            <div className="ae-field">
+                                <label className="ae-label"><i className="fas fa-layer-group"></i> Additional Sections</label>
+                                <CustomSelect
+                                    placeholder="Add secondary section..."
+                                    options={(sections || []).filter(s => s.slug !== formData.section).map(s => ({
+                                        value: s.slug || s.name,
+                                        label: s.name
+                                    }))}
+                                    onChange={toggleAdditionalSection}
+                                />
+                                {formData.additional_sections?.length > 0 && (
+                                    <div className="ae-chips-container" style={{ marginTop: '0.75rem' }}>
+                                        {formData.additional_sections.map(secSlug => {
+                                            const secName = (sections || []).find(s => s.slug === secSlug)?.name || secSlug;
+                                            return (
+                                                <div key={secSlug} className="ae-category-chip">
+                                                    {secName}
+                                                    <button 
+                                                        className="ae-chip-remove" 
+                                                        onClick={() => toggleAdditionalSection(secSlug)}
+                                                        type="button"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="ae-row-2">
                             <div className="ae-field">
                                 <label className="ae-label"><i className="fas fa-calendar-alt"></i> Article Expiry Date</label>
                                 <input
@@ -951,6 +1108,16 @@ const ArticleEditor = () => {
                                     name="expires_at"
                                     value={formData.expires_at || ''}
                                     onChange={handleInputChange}
+                                    className="ae-input"
+                                />
+                            </div>
+                            <div className="ae-field">
+                                <label className="ae-label"><i className="fab fa-youtube"></i> YouTube URL</label>
+                                <input
+                                    name="youtube_url"
+                                    value={formData.youtube_url || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="https://youtube.com/watch?v=..."
                                     className="ae-input"
                                 />
                             </div>

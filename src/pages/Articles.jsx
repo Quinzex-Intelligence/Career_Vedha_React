@@ -4,8 +4,10 @@ import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { useTrendingArticles } from '../hooks/useHomeContent';
 import API_CONFIG from '../config/api.config';
 import { newsService, taxonomyService } from '../services';
+import TopStoriesHero from '../components/home/TopStoriesHero';
 import './Articles.css';
 
 const ArticlesPage = () => {
@@ -99,6 +101,8 @@ const ArticlesPage = () => {
         }
     };
 
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
+
     const allArticles = data?.pages.flatMap(page => page.results) || [];
 
     return (
@@ -143,6 +147,26 @@ const ArticlesPage = () => {
                     </div>
                 </div>
             </div>
+
+            <TopStoriesHero 
+                topStories={allArticles.slice(0, 5)}
+                loading={isLoading || trendingLoading}
+                activeLanguage={activeLanguage}
+                title="Top Articles"
+                viewAllLink="/articles"
+                sidebarBlocks={[
+                    {
+                        title: "Next in Articles",
+                        items: allArticles.slice(5, 8),
+                        viewAllLink: "/articles"
+                    },
+                    {
+                        title: "Most Popular",
+                        items: trendingArticles || [],
+                        viewAllLink: "/articles"
+                    }
+                ]}
+            />
 
             {/* Main Content */}
             <main className="articles-main">

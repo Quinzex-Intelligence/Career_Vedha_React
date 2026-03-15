@@ -20,7 +20,10 @@ const RelatedWidget = ({ tags, currentId, section, slug }) => {
                     // The backend returns { results: [...] }
                     setRelatedContent(prev => ({
                         ...prev,
-                        articles: (response.results || []).slice(0, 5)
+                        articles: (response.results || []).slice(0, 5).map(a => ({
+                            ...a,
+                            url: a.url || `/article/${a.section || section}/${a.slug}`
+                        }))
                     }));
                     
                     // Also fetch some jobs/current affairs based on tags as fallback for those sections
@@ -49,7 +52,7 @@ const RelatedWidget = ({ tags, currentId, section, slug }) => {
                 return;
             }
 
-            const tagList = Array.isArray(tags) ? tags : tags.split(',');
+            const tagList = Array.isArray(tags) ? tags : (tags || '').split(',');
             const searchQuery = tagList.slice(0, 2).map(t => t.trim()).join(' ');
 
             if (!searchQuery) {
@@ -103,31 +106,27 @@ const RelatedWidget = ({ tags, currentId, section, slug }) => {
     return (
         <div className="related-widgets-container">
             {relatedContent.articles.length > 0 && (
-                <div className="sidebar-widget related-articles-widget section-fade-in">
+                <div className="sidebar-widget related-stories-widget section-fade-in">
                     <h3 className="widget-title">
                         <i className="fas fa-newspaper" style={{ color: '#3b82f6', marginRight: '8px' }}></i>
-                        Related Articles
+                        Related Stories
                     </h3>
-                    <ul className="latest-updates">
+                    <div className="sidebar-compact-list">
                         {relatedContent.articles.map((item) => (
-                            <li key={`rel-art-${item.id}`}>
-                                <Link to={item.url} className="trending-item">
-                                    <div className="trending-content">
-                                        <span className="trending-title">{item.title}</span>
-                                        {item.publishedAt && (
-                                            <span className="trending-meta">
-                                                <i className="far fa-calendar"></i> {new Date(item.publishedAt).toLocaleDateString()}
-                                            </span>
-                                        )}
-                                    </div>
-                                </Link>
-                            </li>
+                            <Link to={item.url} key={`rel-art-${item.id}`} className="sidebar-compact-item">
+                                <div className="compact-thumb">
+                                    <img src={item.image || "https://placehold.co/120x120/f8fafc/cbd5e1?text=CV"} alt={item.title} />
+                                </div>
+                                <div className="compact-info">
+                                    <h4 className="compact-title">{item.title}</h4>
+                                    <span className="compact-meta">
+                                        {item.publishedAt && !isNaN(Date.parse(item.publishedAt)) 
+                                            ? new Date(item.publishedAt).toLocaleDateString() 
+                                            : (item.section || 'Latest')}
+                                    </span>
+                                </div>
+                            </Link>
                         ))}
-                    </ul>
-                    <div className="widget-footer" style={{ textAlign: 'right', marginTop: '12px' }}>
-                        <Link to="/articles" className="view-link" style={{ fontSize: '12px', fontWeight: '700', color: '#3b82f6' }}>
-                            View all <i className="fas fa-angle-double-right"></i>
-                        </Link>
                     </div>
                 </div>
             )}
@@ -138,24 +137,16 @@ const RelatedWidget = ({ tags, currentId, section, slug }) => {
                         <i className="fas fa-briefcase" style={{ color: '#10b981', marginRight: '8px' }}></i>
                         Career Opportunities
                     </h3>
-                    <ul className="latest-updates">
+                    <div className="sidebar-compact-list">
                         {relatedContent.jobs.map((item) => (
-                            <li key={`rel-job-${item.id}`}>
-                                <Link to={item.url} className="trending-item">
-                                    <div className="trending-content">
-                                        <span className="trending-title">{item.title}</span>
-                                        <span className="trending-meta">
-                                            <i className="fas fa-building"></i> {item.company}
-                                        </span>
-                                    </div>
-                                </Link>
-                            </li>
+                            <Link to={item.url} key={`rel-job-${item.id}`} className="sidebar-compact-item">
+                                <div className="compact-icon-box"><i className="fas fa-building" style={{ color: '#10b981' }}></i></div>
+                                <div className="compact-info">
+                                    <h4 className="compact-title">{item.title}</h4>
+                                    <span className="compact-meta">{item.company}</span>
+                                </div>
+                            </Link>
                         ))}
-                    </ul>
-                    <div className="widget-footer" style={{ textAlign: 'right', marginTop: '12px' }}>
-                        <Link to="/jobs" className="view-link" style={{ fontSize: '12px', fontWeight: '700', color: '#10b981' }}>
-                            View all <i className="fas fa-angle-double-right"></i>
-                        </Link>
                     </div>
                 </div>
             )}
@@ -166,24 +157,16 @@ const RelatedWidget = ({ tags, currentId, section, slug }) => {
                         <i className="fas fa-calendar-alt" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
                         Current Affairs
                     </h3>
-                    <ul className="latest-updates">
+                    <div className="sidebar-compact-list">
                         {relatedContent.currentAffairs.map((item) => (
-                            <li key={`rel-ca-${item.id}`}>
-                                <Link to={item.url} className="trending-item">
-                                    <div className="trending-content">
-                                        <span className="trending-title">{item.title}</span>
-                                        <span className="trending-meta">
-                                            {item.language === 'te' ? 'Telugu' : 'English'}
-                                        </span>
-                                    </div>
-                                </Link>
-                            </li>
+                            <Link to={item.url} key={`rel-ca-${item.id}`} className="sidebar-compact-item">
+                                <div className="compact-icon-box"><i className="fas fa-globe" style={{ color: '#f59e0b' }}></i></div>
+                                <div className="compact-info">
+                                    <h4 className="compact-title">{item.title}</h4>
+                                    <span className="compact-meta">{item.language === 'te' ? 'Telugu' : 'English'} Special</span>
+                                </div>
+                            </Link>
                         ))}
-                    </ul>
-                    <div className="widget-footer" style={{ textAlign: 'right', marginTop: '12px' }}>
-                        <Link to="/current-affairs" className="view-link" style={{ fontSize: '12px', fontWeight: '700', color: '#f59e0b' }}>
-                            View all <i className="fas fa-angle-double-right"></i>
-                        </Link>
                     </div>
                 </div>
             )}

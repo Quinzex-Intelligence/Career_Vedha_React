@@ -24,20 +24,25 @@ const TrendingWidget = () => {
                 <i className="fas fa-fire" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
                 Trending Stories
             </h3>
-            <ul className="latest-updates">
+            <div className="sidebar-compact-list">
                 {trending.map((article, index) => (
-                    <li key={article.id}>
-                        <Link to={`/article/${article.section}/${article.slug}`}>
-                            <div className="trending-item">
-                                <span className="trending-rank">0{index + 1}</span>
-                                <div className="trending-content">
-                                    <span className="trending-title">{article.title || article.summary}</span>
-                                </div>
-                            </div>
-                        </Link>
-                    </li>
+                    <Link to={`/article/${article.section}/${article.slug}`} key={article.id} className="sidebar-trending-item">
+                        <div className="trending-rank-index">0{index + 1}</div>
+                        <div className="trending-thumb">
+                            <img 
+                                src={article.image_url || article.featured_media?.url || "https://placehold.co/120x120/f1f5f9/94a3b8?text=CV"} 
+                                alt={article.title} 
+                            />
+                        </div>
+                        <div className="trending-info">
+                            <h4 className="trending-item-title">{article.title || article.summary}</h4>
+                            <span className="trending-item-meta">
+                                <i className="fas fa-arrow-trend-up"></i> {article.section}
+                            </span>
+                        </div>
+                    </Link>
                 ))}
-            </ul>
+            </div>
         </div>
     );
 };

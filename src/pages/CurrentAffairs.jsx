@@ -6,6 +6,9 @@ import TopBar from '../components/layout/TopBar';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
+import TopStoriesHero from '../components/home/TopStoriesHero';
+import { useTrendingArticles } from '../hooks/useHomeContent';
+import { getBestImageUrl } from '../utils/articleUtils';
 import '../styles/CurrentAffairs.css';
 
 // Translation data
@@ -44,6 +47,10 @@ const CurrentAffairs = () => {
     const [news, setNews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeLanguage, setActiveLanguage] = useState(() => {
+        return localStorage.getItem('preferredLanguage') || 'english';
+    });
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     // Sync with URL param
@@ -65,9 +72,6 @@ const CurrentAffairs = () => {
     const [selectedDoc, setSelectedDoc] = useState(null); // Document viewer state
     const LIMIT = 12;
 
-    const [activeLanguage, setActiveLanguage] = useState(() => {
-        return localStorage.getItem('preferredLanguage') || 'english';
-    });
 
     const lang = activeLanguage === 'telugu' ? 'te' : 'en';
     const langUpper = lang.toUpperCase();
@@ -231,6 +235,27 @@ const CurrentAffairs = () => {
                     </div>
                 </div>
 
+                <TopStoriesHero 
+                    topStories={news.slice(0, 5)}
+                    loading={loading || trendingLoading}
+                    activeLanguage={activeLanguage}
+                    title={t.title || "Current Affairs Headlines"}
+                    viewAllLink="/current-affairs"
+                    onItemClick={(item) => setSelectedDoc(item)}
+                    sidebarBlocks={[
+                        {
+                            title: "More Headlines",
+                            items: news.slice(5, 8),
+                            viewAllLink: "/current-affairs"
+                        },
+                        {
+                            title: "Most Popular",
+                            items: trendingArticles?.slice(0, 3) || [],
+                            viewAllLink: "/articles"
+                        }
+                    ]}
+                />
+
                 {loading ? (
                     <div className="premium-loader-container">
                         <div className="premium-spinner"></div>
@@ -247,14 +272,16 @@ const CurrentAffairs = () => {
                             {news.length > 0 ? (
                                 news.map((item, index) => (
                                     <div key={item.id || index} className="news-card-premium">
-                                        {item.fileUrl && (
+                                    {(() => {
+                                        const imageUrl = getBestImageUrl(item);
+                                        return imageUrl ? (
                                             <div className="news-card-image">
                                                 <img 
-                                                    src={item.fileUrl} 
+                                                    src={imageUrl} 
                                                     alt={item.title} 
                                                     onError={(e) => {
                                                         // Fallback for PDF icons or broken images
-                                                        if (item.fileUrl.toLowerCase().endsWith('.pdf')) {
+                                                        if (imageUrl.toLowerCase().endsWith('.pdf')) {
                                                             e.target.src = 'https://cdn-icons-png.flaticon.com/512/337/337946.png';
                                                         } else {
                                                             e.target.style.display = 'none';
@@ -262,7 +289,8 @@ const CurrentAffairs = () => {
                                                     }}
                                                 />
                                             </div>
-                                        )}
+                                        ) : null;
+                                    })()}
                                         <div className="news-card-content">
                                             <span className="region-tag">
                                                 {item.region}

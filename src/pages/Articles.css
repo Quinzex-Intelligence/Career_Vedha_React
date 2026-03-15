@@ -116,10 +116,9 @@
 
 /* Articles Grid */
 .articles-main {
-    padding: 48px 0;
+    padding: 2.5rem 1.25rem; /* Reduced from 4rem */
     max-width: 1280px;
     margin: 0 auto;
-    padding: 48px 20px;
 }
 
 .articles-grid {

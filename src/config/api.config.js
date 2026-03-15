@@ -89,9 +89,27 @@ const API_CONFIG = {
         HOME_ARTICLES: 'cms/articles/home/',
         PUBLISHED_ARTICLES: 'cms/articles/published/',
         ARTICLE_CREATE: 'cms/articles/',
-        TAXONOMY_SECTIONS: 'taxonomy/sections/',
-        TAXONOMY_SECTIONS_CREATE: 'taxonomy/sections/create/',
-        TAXONOMY_CATEGORIES_CREATE: 'taxonomy/categories/create/',
+        
+        // Taxonomy CMS (CONTRIBUTOR+)
+        TAXONOMY_SECTIONS_CMS: 'cms/taxonomy/cms-sections/',
+        TAXONOMY_SECTIONS_CREATE: 'cms/taxonomy/sections/create/',
+        TAXONOMY_SECTION_DETAIL: (id) => `cms/taxonomy/sections/${id}/`,
+        TAXONOMY_SECTION_DELETE: (id) => `cms/taxonomy/sections/${id}/delete/`,
+        
+        TAXONOMY_CATEGORIES_CMS: 'cms/taxonomy/categories/',
+        TAXONOMY_CATEGORIES_CREATE: 'cms/taxonomy/categories/create/',
+        TAXONOMY_CATEGORY_DETAIL: (id) => `cms/taxonomy/categories/${id}/`,
+        TAXONOMY_CATEGORY_DELETE: (id) => `cms/taxonomy/categories/${id}/delete/`,
+        TAXONOMY_CATEGORY_DISABLE: (id) => `cms/taxonomy/categories/${id}/disable/`,
+        TAXONOMY_CATEGORY_ENABLE: (id) => `cms/taxonomy/categories/${id}/enable/`,
+
+        // Taxonomy Public
+        TAXONOMY_SECTIONS_PUBLIC: 'taxonomy/sections/',
+        TAXONOMY_ROOT_CATEGORIES: (slug) => `taxonomy/${slug}/`,
+        TAXONOMY_TREE: (slug) => `taxonomy/${slug}/tree/`,
+        TAXONOMY_LEVELS: (slug) => `taxonomy/${slug}/levels/`,
+        TAXONOMY_CHILDREN: (slug) => `taxonomy/${slug}/children/`,
+
         TOP_STORIES_CMS: 'cms/articles/top-stories-cms/',
         TOP_STORIES_PUBLIC: 'cms/articles/top-stories/list/',
     },

@@ -55,3 +55,35 @@ export const isArticleScheduled = (article) => {
     
     return publishDate > now;
 };
+
+/**
+ * Extract the best available image URL from a content object (Article, Current Affair, etc.)
+ */
+export const getBestImageUrl = (item) => {
+    if (!item) return null;
+
+    // 1. Django Style: Media Array
+    if (item.media && item.media.length > 0) {
+        // Prefer position 0 or first available
+        const sorted = [...item.media].sort((a, b) => (a.position || 0) - (b.position || 0));
+        const firstMedia = sorted[0]?.media_details || sorted[0];
+        if (firstMedia?.url) return firstMedia.url;
+    }
+
+    // 2. Django Style: De-coupled Media Fields
+    if (item.main_media?.url) return item.main_media.url;
+    if (item.banner_media?.url) return item.banner_media.url;
+
+    // 3. Spring Boot Style: Direct URL fields
+    if (item.fileUrl) return item.fileUrl;
+    if (item.imageUrl) return item.imageUrl;
+    if (item.image_url) return item.image_url;
+    if (item.image) return item.image;
+
+    // 4. Fallbacks (OG Tags or Featured Media)
+    if (item.featured_media?.url) return item.featured_media.url;
+    if (item.og?.image || item.og?.image_url) return item.og.image || item.og.image_url;
+    if (item.og_image_url) return item.og_image_url;
+
+    return null;
+};

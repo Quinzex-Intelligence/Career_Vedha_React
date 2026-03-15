@@ -9,8 +9,8 @@
 /* Hero Section */
 .section-header {
   text-align: center;
-  margin-bottom: 3rem;
-  padding: 4rem 1rem 2rem;
+  margin-bottom: 2rem; /* Reduced from 3rem */
+  padding: 2.5rem 1rem 1.5rem; /* Reduced from 4rem 1rem 2rem */
   background: linear-gradient(to bottom, #ffffff, #f8fafc);
   border-bottom: 1px solid #e2e8f0;
 }
@@ -43,7 +43,7 @@
   padding: 0 1rem;
   margin-bottom: 3rem;
   position: relative;
-  z-index: 10;
+  z-index: 100001;
 }
 
 .region-filter-container {
@@ -110,7 +110,7 @@
   gap: 2.5rem 2rem;
   padding: 0 1rem;
   max-width: 1400px;
-  margin: 0 auto 5rem auto;
+  margin: 1.5rem auto 4rem auto; /* Reduced from 3rem auto 5rem auto */
 }
 
 .news-card-premium {
@@ -320,7 +320,7 @@
   bottom: 0;
   background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(8px);
-  z-index: 2000;
+  z-index: 100001;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useInfiniteArticles } from '../hooks/useArticles';
+import { useTrendingArticles } from '../hooks/useHomeContent';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
 import { Link } from 'react-router-dom';
 import API_CONFIG from '../config/api.config';
 import { getTranslations } from '../utils/translations';
+import TopStoriesHero from '../components/home/TopStoriesHero';
 import './Articles.css';
 
 const NewsPage = () => {
@@ -42,6 +44,8 @@ const NewsPage = () => {
         isError,
         refetch
     } = useInfiniteArticles(filters);
+
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
 
     const handleLanguageChange = (lang) => {
         setActiveLanguage(lang);
@@ -107,6 +111,26 @@ const NewsPage = () => {
                     </div>
                 </div>
             </div>
+            
+            <TopStoriesHero 
+                topStories={allArticles.slice(0, 5)}
+                loading={isLoading || trendingLoading}
+                activeLanguage={activeLanguage}
+                title={t.topStories || "Top News"}
+                viewAllLink="/news"
+                sidebarBlocks={[
+                    {
+                        title: "More News",
+                        items: allArticles.slice(5, 8),
+                        viewAllLink: "/news"
+                    },
+                    {
+                        title: "Most Popular",
+                        items: trendingArticles || [],
+                        viewAllLink: "/articles"
+                    }
+                ]}
+            />
 
             {/* Main Content */}
             <main className="articles-main">
