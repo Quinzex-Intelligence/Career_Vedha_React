@@ -14,12 +14,27 @@ const Module_OrderDetail = () => {
     const handleRetry = async () => {
         try {
             setLoading(true);
-            const res = await inventoryApi.post(`/payment/retry/${id}`);
-            const newOrderId = res.data;
-            navigate(`/e-store/process?orderId=${newOrderId}`);
+            setError(null);
+
+            // 1. Trigger backend retry to release inventory and create new order
+            const retryRes = await inventoryApi.post(`/payment/retry/${id}`);
+            const newOrderId = retryRes.data; // Backend returns the new orderId
+
+            if (!newOrderId) {
+                throw new Error("Failed to generate a new order ID for retry.");
+            }
+
+            // 2. Persist for recovery in case of refresh during polling
+            sessionStorage.setItem("currentOrderId", newOrderId);
+            sessionStorage.setItem("retryTotal", order.totalAmount);
+
+            // 3. Navigate to process page with retry context
+            // Pass total since /orders/my/orders won't show PENDING orders
+            navigate(`/e-store/process?orderId=${newOrderId}&isRetry=true&total=${order.totalAmount}`);
         } catch (err) {
             console.error("Retry failed", err);
-            setError("Failed to initiate retry. Please try again later.");
+            const msg = err.response?.data?.message || err.response?.data || err.message || "Failed to initiate retry. Please try again later.";
+            setError(typeof msg === 'string' ? msg : "Failed to initiate retry. Please try again later.");
             setLoading(false);
         }
     };
@@ -30,7 +45,7 @@ const Module_OrderDetail = () => {
                 // 1. Fetch from the orders list
                 const listRes = await inventoryApi.get('/orders/my/orders');
                 const foundOrder = listRes.data.find(o => String(o.orderId) === String(id));
-                
+
                 if (foundOrder) {
                     // 2. Fetch the specific items for this order
                     try {
@@ -70,6 +85,10 @@ const Module_OrderDetail = () => {
 
     const formattedDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown Date';
 
+    // Retry only allowed for FAILED or INVENTORY_RESERVED (unpaid) orders.
+    // Explicitly hide if status is REPLACED (already retried).
+    const canRetry = (order.status === 'FAILED' || order.status === 'INVENTORY_RESERVED') && order.status !== 'REPLACED';
+
     return (
         <div style={{ paddingTop: '8rem', paddingBottom: '5rem', background: '#111', minHeight: '100vh' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem' }}>
@@ -86,25 +105,27 @@ const Module_OrderDetail = () => {
                         <span style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', background: order.status === 'PAID' || order.status === 'SUCCESS' || order.status === 'DELIVERED' ? 'rgba(16, 185, 129, 0.1)' : order.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(212, 168, 67, 0.1)', color: order.status === 'PAID' || order.status === 'SUCCESS' || order.status === 'DELIVERED' ? '#10b981' : order.status === 'FAILED' ? '#ef4444' : '#D4A843', borderRadius: '100px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
                             {order.status}
                         </span>
-                        {order.status === 'FAILED' && (
-                            <button 
+                        {canRetry && (
+                            <button
                                 onClick={handleRetry}
+                                disabled={loading}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.5rem',
                                     padding: '0.6rem 1.25rem',
-                                    background: '#D4A843',
-                                    color: '#111',
+                                    background: loading ? '#333' : '#D4A843',
+                                    color: loading ? '#666' : '#111',
                                     border: 'none',
                                     borderRadius: '0.75rem',
                                     fontWeight: 800,
                                     fontSize: '0.85rem',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 8px 16px rgba(212, 168, 67, 0.25)'
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: loading ? 'none' : '0 8px 16px rgba(212, 168, 67, 0.25)'
                                 }}
                             >
-                                <RefreshCw size={16} /> RETRY PAYMENT
+                                {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} 
+                                RETRY PAYMENT
                             </button>
                         )}
                     </div>
@@ -145,16 +166,16 @@ const Module_OrderDetail = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
                                             {(order.status === 'PAID' || order.status === 'SUCCESS' || order.status === 'DELIVERED') && item.bookCategory === 'EBOOK' && (
-                                                <Link 
-                                                    to="/e-store/library" 
+                                                <Link
+                                                    to="/e-store/library"
                                                     state={{ highlightId: item.bookId }}
-                                                    style={{ 
-                                                        fontSize: '0.8rem', 
-                                                        color: '#D4A843', 
-                                                        fontWeight: 700, 
+                                                    style={{
+                                                        fontSize: '0.8rem',
+                                                        color: '#D4A843',
+                                                        fontWeight: 700,
                                                         textDecoration: 'none',
                                                         padding: '0.5rem 1rem',
                                                         borderRadius: '0.5rem',
