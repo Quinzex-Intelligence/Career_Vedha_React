@@ -38,7 +38,7 @@ jobs:
           tar -czf frontend.tar.gz -C dist .
 
       - name: Set release tag
-        run: echo "RELEASE_TAG=frontend-${GITHUB_SHA}" >> $GITHUB_ENV
+        run: echo "RELEASE_TAG=Quinzex_CVedha-${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
