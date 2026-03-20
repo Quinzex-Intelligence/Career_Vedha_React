@@ -1,52 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { academicsService } from '../../../services/academicsService';
+import { useInfiniteArticles } from '../../../hooks/useArticles';
 import TopBar from '../../../components/layout/TopBar';
 import Header from '../../../components/layout/Header';
 import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
 import TopStoriesHero from '../../../components/home/TopStoriesHero';
-import { useHomeContent } from '../../../hooks/useHomeContent';
+import { useHomeContent, useTrendingArticles } from '../../../hooks/useHomeContent';
 import ContentHubWidget from '../../../components/ui/ContentHubWidget';
+import TaxonomyTabs from '../../../components/ui/TaxonomyTabs';
+import API_CONFIG from '../../../config/api.config';
+import { getTranslations } from '../../../utils/translations';
 import './Academics.css';
+import '../../../pages/Articles.css'; // Reuse article styles
 
 const AcademicsHome = () => {
-    const [selectedBoard, setSelectedBoard] = useState('AP');
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [searchParams] = useSearchParams();
+    const categoryParam = searchParams.get('category') || searchParams.get('level');
+    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
+    const segmentParam = searchParams.get('segment');
 
-    const [levelBlocks, setLevelBlocks] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const isFiltered = !!(categoryParam || subParam || segmentParam);
+
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeLanguage, setActiveLanguage] = useState(() => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
+    
+    const t = getTranslations(activeLanguage);
 
-    const { data: homeData, isLoading: homeLoading } = useHomeContent(activeLanguage, 10);
+    const filters = useMemo(() => ({
+        lang: activeLanguage === 'telugu' ? 'te' : 'en',
+        section: 'academics',
+        category: categoryParam || undefined,
+        sub_category: subParam || undefined,
+        segment: segmentParam || undefined,
+        limit: 12
+    }), [activeLanguage, categoryParam, subParam, segmentParam]);
 
-    useEffect(() => {
-        let isMounted = true;
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                const data = await academicsService.getLevelBlocks(selectedBoard);
-                if (isMounted) {
-                    setLevelBlocks(data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch level blocks", error);
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        };
+    const {
+        data: articlesData,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading: articlesLoading,
+        isError: articlesError,
+        refetch
+    } = useInfiniteArticles(filters);
 
-        fetchData();
-        return () => { isMounted = false; };
-    }, [selectedBoard]);
+    const { data: homeContent, isLoading: homeLoading } = useHomeContent(activeLanguage, 10);
+    const { data: trendingArticles } = useTrendingArticles(5, activeLanguage);
 
-    const boards = [
-        { id: 'AP', name: 'Andhra Pradesh', icon: '🏛️' },
-        { id: 'TS', name: 'Telangana', icon: '🏛️' },
-        { id: 'CBSE', name: 'CBSE', icon: '🏫' },
-    ];
+    const allArticles = useMemo(() => 
+        articlesData?.pages.flatMap(page => page.results) || [], 
+    [articlesData]);
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Recent';
+        try {
+            const date = new Date(dateString);
+            const locale = activeLanguage === 'telugu' ? 'te-IN' : 'en-IN';
+            return date.toLocaleDateString(locale, {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (e) {
+            return 'Recent';
+        }
+    };
+
+
 
     return (
         <div className="academics-home-page">
@@ -57,112 +82,109 @@ const AcademicsHome = () => {
             }} />
             <PrimaryNav isOpen={isMobileMenuOpen} />
 
-            <TopStoriesHero 
-                topStories={homeData?.top_stories?.filter(s => s.section === 'academics') || homeData?.latest?.results?.filter(s => s.section === 'academics')?.slice(0, 5) || []}
-                loading={homeLoading}
-                activeLanguage={activeLanguage}
-                title="Academic Top Stories"
-                viewAllLink="/academics"
-                sidebarBlocks={[
-                    {
-                        title: "Next in Academics",
-                        items: homeData?.latest?.results?.filter(s => s.section === 'academics')?.slice(5, 8) || [],
-                        viewAllLink: "/academics"
-                    },
-                    {
-                        title: "Most Popular",
-                        items: homeData?.trending?.filter(s => s.section === 'academics')?.slice(0, 3) || homeData?.trending?.slice(0, 3) || [],
-                        viewAllLink: "/articles"
-                    }
-                ]}
-            />
-
-            <div className="academics-hero">
-                <div className="container">
-                    <div className="hero-content">
-                        <h1>Academic Excellence</h1>
-                        <p>Comprehensive study materials, previous papers, and chapter-wise analysis for your success.</p>
-                        
-                        <div className="board-selector">
-                            {boards.map(board => (
-                                <button
-                                    key={board.id}
-                                    className={`board-btn ${selectedBoard === board.id ? 'active' : ''}`}
-                                    onClick={() => setSelectedBoard(board.id)}
-                                >
-                                    <span className="board-icon">{board.icon}</span>
-                                    <span className="board-name">{board.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+            <div className="container mt-4">
+                <TaxonomyTabs sectionSlug="academics" />
             </div>
 
-            <main className="container main-content">
-                {isLoading ? (
-                    <div className="loading-grid">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton-block"></div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="level-blocks-grid">
-                        {levelBlocks?.map((block, index) => (
-                            <React.Fragment key={block.level.id}>
-                                <section className="level-section">
-                                    <div className="section-header">
-                                        <div className="header-title">
-                                            <div className="marker"></div>
-                                            <h2>{block.level.name}</h2>
-                                        </div>
-                                        <Link to={`/academics/level/${block.level.slug}`} className="view-all">
-                                            View All Subjects <i className="fas fa-arrow-right"></i>
-                                        </Link>
-                                    </div>
+            {!isFiltered && (
+                <TopStoriesHero 
+                    topStories={homeContent?.top_stories?.filter(s => s.section === 'academics') || homeContent?.latest?.results?.filter(s => s.section === 'academics')?.slice(0, 5) || []}
+                    loading={homeLoading}
+                    activeLanguage={activeLanguage}
+                    title="Academic Top Stories"
+                    viewAllLink="/academics"
+                    sidebarBlocks={[
+                        {
+                            title: "Next in Academics",
+                            items: homeContent?.latest?.results?.filter(s => s.section === 'academics')?.slice(5, 8) || [],
+                            viewAllLink: "/academics"
+                        },
+                        {
+                            title: "Most Popular",
+                            items: trendingArticles?.filter(s => s.section === 'academics')?.slice(0, 3) || trendingArticles?.slice(0, 3) || [],
+                            viewAllLink: "/articles"
+                        }
+                    ]}
+                />
+            )}
 
-                                    <div className="subjects-grid">
-                                        {block.subjects.map(subject => (
-                                            <Link 
-                                                key={subject.id} 
-                                                to={`/academics/subject/${subject.slug}`} 
-                                                className="subject-card-premium"
-                                            >
-                                                <div className="card-icon">
-                                                    {subject.icon ? (
-                                                        <img src={subject.icon} alt={subject.name} />
-                                                    ) : (
-                                                        <i className="fas fa-book-open"></i>
-                                                    )}
-                                                </div>
-                                                <div className="card-content">
-                                                    <h3>{subject.name}</h3>
-                                                    <span className="material-count">
-                                                        {subject.material_count || 0} Materials
-                                                    </span>
-                                                </div>
-                                                <div className="hover-indicator">
-                                                    <i className="fas fa-chevron-right"></i>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </section>
+            <main className="container main-content articles-page">
+                <div className="academics-articles-section">
+                    {articlesLoading && allArticles.length === 0 ? (
+                        <div className="articles-loading py-5 text-center">
+                            <div className="spinner mx-auto mb-3"></div>
+                            <p>Loading articles...</p>
+                        </div>
+                    ) : articlesError ? (
+                        <div className="articles-error py-5 text-center">
+                            <i className="fas fa-exclamation-triangle mb-3 text-red-500 fa-2x"></i>
+                            <h2>Failed to load articles</h2>
+                            <button onClick={() => refetch()} className="btn-premium mt-3">Retry</button>
+                        </div>
+                    ) : allArticles.length === 0 ? (
+                        <div className="articles-empty py-5 text-center bg-gray-50 rounded-lg">
+                            <i className="fas fa-search mb-3 text-gray-300 fa-2x"></i>
+                            <h3>No articles found</h3>
+                            <p>Try selecting a different category or state.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="section-title mb-3">
+                                <h2 className="premium-title" style={{fontSize: '1.5rem'}}>
+                                    {isFiltered ? 'Filtered Content' : 'Latest in Academics'}
+                                </h2>
+                            </div>
+                            <div className="articles-grid">
+                                {allArticles.map((article) => {
+                                    let imageUrl = article.featured_media?.url || article.og_image_url;
+                                    if (imageUrl && imageUrl.startsWith('/')) {
+                                        imageUrl = `${API_CONFIG.DJANGO_BASE_URL.replace('/api', '')}${imageUrl}`;
+                                    }
+                                    imageUrl = imageUrl || `https://placehold.co/600x400/6366f1/ffffff?text=${encodeURIComponent(article.section || 'Academic')}`;
 
-                                {/* Content Split: Contextual Hub between blocks */}
-                                {index < levelBlocks.length - 1 && (
-                                    <div className="academics-content-split py-4">
-                                        <ContentHubWidget 
-                                            searchQuery={block.level.name} 
-                                            title={`Updates for ${block.level.name}`}
-                                            minimal={true}
-                                        />
-                                    </div>
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                )}
+                                    return (
+                                        <article key={article.id} className="article-card">
+                                            <div className="article-card-image">
+                                                <img src={imageUrl} alt={article.title} />
+                                                <div className="article-card-badge">
+                                                    {article.section || 'Academic'}
+                                                </div>
+                                            </div>
+                                            <div className="article-card-content">
+                                                <h3 className="news-title">{article.title}</h3>
+                                                <p className="news-description">{article.summary || article.title}</p>
+                                                <div className="news-card-footer">
+                                                    <div className="news-date">
+                                                        <i className="far fa-clock"></i>
+                                                        {formatDate(article.published_at || article.created_at)}
+                                                    </div>
+                                                    <Link 
+                                                        to={`/article/${article.section || 'academics'}/${article.slug}`} 
+                                                        className="read-more-btn"
+                                                    >
+                                                        {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+
+                            {hasNextPage && (
+                                <div className="load-more-section mt-5 text-center">
+                                    <button
+                                        onClick={() => fetchNextPage()}
+                                        disabled={isFetchingNextPage}
+                                        className="btn-load-more"
+                                    >
+                                        {isFetchingNextPage ? 'Loading...' : 'Load More'}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
             </main>
 
             <Footer />

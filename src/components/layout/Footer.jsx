@@ -5,6 +5,7 @@ import ContactForm from '../ui/ContactForm';
 const Footer = () => {
     const currentYear = new Date().getFullYear();
     const [showContactForm, setShowContactForm] = useState(false);
+    const activeLanguage = localStorage.getItem('preferredLanguage') || 'english';
 
     return (
         <>
@@ -76,16 +77,15 @@ const Footer = () => {
                                 <a href="https://x.com/careervedha" target="_blank" rel="noopener noreferrer" className="social-icon x-twitter"><i className="fab fa-twitter"></i></a>
                                 <a href="https://www.instagram.com/careervedha/" target="_blank" rel="noopener noreferrer" className="social-icon insta"><i className="fab fa-instagram"></i></a>
                                 
-                                {/* Dynamic YouTube Hover Selection */}
-                                <div className="social-icon yt-wrapper">
-                                    <div className="social-icon yt">
+                                {activeLanguage === 'telugu' ? (
+                                    <a href="https://www.youtube.com/@careervedhatelugu" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha Telugu YouTube">
                                         <i className="fab fa-youtube"></i>
-                                    </div>
-                                    <div className="yt-popover">
-                                        <a href="https://youtube.com/@careervedha" target="_blank" rel="noopener noreferrer" className="yt-lang-btn">EN</a>
-                                        <a href="https://www.youtube.com/@careervedhatelugu" target="_blank" rel="noopener noreferrer" className="yt-lang-btn">TE</a>
-                                    </div>
-                                </div>
+                                    </a>
+                                ) : (
+                                    <a href="https://youtube.com/@careervedha" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha English YouTube">
+                                        <i className="fab fa-youtube"></i>
+                                    </a>
+                                )}
                             </div>
                         </div>
                         

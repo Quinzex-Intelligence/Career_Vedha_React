@@ -84,6 +84,31 @@
     box-shadow: 0 6px 15px var(--primary-yellow-glow);
 }
 
+.refresh-btn {
+    background: white;
+    color: var(--slate-600);
+    border: 1px solid var(--slate-200);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.refresh-btn:hover {
+    background: var(--slate-50);
+    border-color: var(--slate-300);
+    color: var(--slate-900);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .mgmt-table-container {
     overflow-x: auto;
 }
@@ -489,67 +514,118 @@ input:checked + .slider::before {
     margin-top: 10px;
 }
 
-.hierarchy-level-box {
-    background: #f8fafc;
+/* Hierarchy View Styles - New 4-Level Structure */
+.hierarchy-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    margin-top: 10px;
+}
+
+.hierarchy-category-box {
+    background: #ffffff;
     border: 1px solid var(--slate-200);
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-.hierarchy-level-box:hover {
+.hierarchy-category-box:hover {
     border-color: var(--primary-yellow);
-    box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
-.level-header-row {
-    padding: 18px 24px;
-    background: white;
-    border-bottom: 1px solid var(--slate-100);
+.category-header {
+    background: linear-gradient(to right, #ffffff, #f8fafc);
+    border-bottom: 2px solid #f1f5f9;
+    padding: 24px 30px;
+}
+
+.depth-badge {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--primary-yellow-hover);
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+.category-sub-categories {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    background: #fafcfe;
+}
+
+.hierarchy-level-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sub-category-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-left: 4px solid var(--primary-yellow);
+    padding-left: 16px;
 }
 
-.level-main-info {
+.sub-cat-info {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
-.level-icon {
-    font-size: 1.5rem;
-    background: var(--slate-100);
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
+.sub-cat-icon {
+    font-size: 1.2rem;
 }
 
-.level-text h4 {
+.sub-cat-info h5 {
     font-size: 1.1rem;
     font-weight: 800;
-    color: var(--slate-900);
-    margin-bottom: 2px;
+    color: var(--slate-800);
 }
 
-.board-pills {
+.board-pills-mini {
     font-size: 0.7rem;
     font-weight: 800;
-    background: var(--slate-900);
-    color: white;
+    background: var(--slate-200);
+    color: var(--slate-600);
     padding: 2px 8px;
-    border-radius: 6px;
+    border-radius: 5px;
     text-transform: uppercase;
 }
 
 .level-subjects-container {
-    padding: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    padding-left: 10px;
+}
+
+.subj-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--slate-800);
+}
+
+.subj-title i {
+    color: var(--primary-yellow-hover);
+    font-size: 0.9rem;
+}
+
+.subj-title h6 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
 }
 
 .hierarchy-subject-card {

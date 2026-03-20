@@ -44,7 +44,7 @@ const AcademicsSidebar = ({ activeLevelId, onLevelChange }) => {
                         <div 
                             key={level.id} 
                             className={`luxury-option-item ${activeLevelId === level.id ? 'active' : ''}`}
-                            onClick={() => onLevelChange(activeLevelId === level.id ? null : level.id)}
+                            onClick={() => onLevelChange(activeLevelId === level.id ? null : level)}
                         >
                             <div className="selection-indicator">
                                 <div className="indicator-inner"></div>

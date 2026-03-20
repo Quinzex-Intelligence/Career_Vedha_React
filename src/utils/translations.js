@@ -24,6 +24,9 @@ export const translations = {
         navLongVideos: "Long Videos",
         navShorts: "Shorts",
         navEStore: "E-Store",
+        navExams: "Exams",
+        navCampusPages: "Campus Pages",
+        navMore: "More",
         
         // ===== HOME PAGE =====
         latestUpdates: "Latest Updates",
@@ -156,6 +159,9 @@ export const translations = {
         navLongVideos: "లాంగ్ వీడియోలు",
         navShorts: "షార్ట్స్",
         navEStore: "ఈ-స్టోర్",
+        navExams: "పరీక్షలు",
+        navCampusPages: "క్యాంపస్ పేజీలు",
+        navMore: "మరిన్ని",
         
         // ===== HOME PAGE =====
         latestUpdates: "తాజా నవీకరణలు",

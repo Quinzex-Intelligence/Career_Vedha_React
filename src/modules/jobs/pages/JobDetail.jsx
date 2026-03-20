@@ -6,6 +6,7 @@ import TopBar from '../../../components/layout/TopBar';
 import Header from '../../../components/layout/Header';
 import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
+import ContentHubWidget from '../../../components/ui/ContentHubWidget';
 import './JobDetail.css';
 
 const JobDetail = () => {
@@ -213,6 +214,14 @@ const JobDetail = () => {
                             </div>
                         </aside>
                     </div>
+                </div>
+
+                <div className="container mt-5 pt-4">
+                    <ContentHubWidget 
+                        searchQuery={job.title} 
+                        title="Related for You"
+                        minimal={true} 
+                    />
                 </div>
             </main>
 

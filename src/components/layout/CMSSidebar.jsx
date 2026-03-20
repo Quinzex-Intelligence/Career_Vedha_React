@@ -180,16 +180,6 @@ const CMSSidebar = ({
                             </button>
                         )}
                         
-                         {checkAccess(MODULES.ACADEMICS_MANAGEMENT) && (
-                            <button
-                                className={`menu-item ${activeSection === 'academics' ? 'active' : ''}`}
-                                onClick={() => navigate('/cms/academics')}
-                                style={{ paddingLeft: '40px' }}
-                            >
-                                <i className="fas fa-graduation-cap"></i>
-                                <span>Academics</span>
-                            </button>
-                        )}
                         
                         {checkAccess(MODULES.CURRENT_AFFAIRS_MANAGEMENT) && (
                             <button

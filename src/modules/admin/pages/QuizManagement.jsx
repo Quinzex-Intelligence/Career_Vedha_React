@@ -19,23 +19,38 @@ const QuizManagement = () => {
 
     // Filter/Search parameters
     const [selectedLevelId, setSelectedLevelId] = useState('');
-    const [selectedSubjectId, setSelectedSubjectId] = useState('');
-    const [selectedChapterId, setSelectedChapterId] = useState('');
+    const [selectedSubCategoryId, setSelectedSubCategoryId] = useState('');
+    const [selectedSegmentId, setSelectedSegmentId] = useState('');
+    const [selectedTopicId, setSelectedTopicId] = useState('');
     const [fetchCount, setFetchCount] = useState(50);
 
     // Data Hooks
     const { data: categories } = useExamCategories();
     const { data: hierarchy, isLoading: hierarchyLoading } = useAcademicsHierarchy();
 
-    // Find category name from selected subject if needed
-    const getCategoryName = (levelId, subjectId) => {
-        if (!hierarchy || !levelId || !subjectId) return '';
+    // Find category name from selected segment if needed
+    const getCategoryName = (levelId, subCatId, segmentId) => {
+        if (!hierarchy || !levelId || !subCatId || !segmentId) return '';
         const level = hierarchy.find(l => String(l.id) === String(levelId));
-        const subject = level?.subjects?.find(s => String(s.id) === String(subjectId));
-        return subject?.name || '';
+        const subCat = level?.sub_categories?.find(sc => String(sc.id) === String(subCatId));
+        const segment = subCat?.segments?.find(s => String(s.id) === String(segmentId));
+        return segment?.name || '';
     };
 
-    const selectedCategory = getCategoryName(selectedLevelId, selectedSubjectId);
+    const getTopicName = (chapterId) => {
+        if (!hierarchy || !chapterId) return '';
+        for (const level of hierarchy) {
+            for (const subCat of (level.sub_categories || [])) {
+                for (const segment of (subCat.segments || [])) {
+                    const topic = segment.topics?.find(t => String(t.id) === String(chapterId));
+                    if (topic) return topic.name;
+                }
+            }
+        }
+        return `CH: ${chapterId}`;
+    };
+
+    const selectedCategory = getCategoryName(selectedLevelId, selectedSubCategoryId, selectedSegmentId);
 
     const {
         data: quizData,
@@ -43,9 +58,14 @@ const QuizManagement = () => {
         error: quizError
     } = useQuizQuestions({
         category: selectedCategory,
-        chapterId: selectedChapterId,
+        chapterId: selectedTopicId,
         count: fetchCount
     });
+    
+    // Derived flattened data for modal selections
+    const selectedLevel = hierarchy?.find(l => String(l.id) === String(selectedLevelId));
+    const selectedSubCategory = selectedLevel?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId));
+    const selectedSegment = selectedSubCategory?.segments?.find(s => String(s.id) === String(selectedSegmentId));
 
     const quizQuestions = quizData?.content || [];
     const quizTotalElements = quizData?.totalElements || 0;
@@ -71,7 +91,8 @@ const QuizManagement = () => {
             chapterId: '',
             // UI helper state for hierarchical selection in modal
             _levelId: '',
-            _subjectId: ''
+            _subCategoryId: '',
+            _segmentId: ''
         }
     ]);
     const [selectedQuizIds, setSelectedQuizIds] = useState([]);
@@ -96,9 +117,10 @@ const QuizManagement = () => {
             {
                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
                 category: selectedCategory || '',
-                chapterId: selectedChapterId || '',
+                chapterId: selectedTopicId || '',
                 _levelId: selectedLevelId || '',
-                _subjectId: selectedSubjectId || ''
+                _subCategoryId: selectedSubCategoryId || '',
+                _segmentId: selectedSegmentId || ''
             }
         ]);
         showSnackbar("New question form added", "info");
@@ -142,9 +164,10 @@ const QuizManagement = () => {
                     option4: q.option4 || '',
                     correctOption: correct,
                     category: q.category || selectedCategory || '',
-                    chapterId: q.chapterId || selectedChapterId || '',
+                    chapterId: q.chapterId || selectedTopicId || '',
                     _levelId: selectedLevelId || '',
-                    _subjectId: selectedSubjectId || ''
+                    _subCategoryId: selectedSubCategoryId || '',
+                    _segmentId: selectedSegmentId || ''
                 };
             });
 
@@ -205,7 +228,7 @@ const QuizManagement = () => {
             setQuestionList([{
                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
                 category: selectedCategory || '',
-                chapterId: selectedChapterId || ''
+                chapterId: selectedTopicId || ''
             }]);
             setIsEditingQuestion(false);
             setEditingQuestionId(null);
@@ -221,14 +244,18 @@ const QuizManagement = () => {
 
         // Try to reverse-engineer Level/Subject from chapterId if possible
         let foundLevelId = '';
-        let foundSubjectId = '';
+        let foundSubCategoryId = '';
+        let foundSegmentId = '';
         if (hierarchy && q.chapterId) {
             for (const l of hierarchy) {
-                for (const s of l.subjects) {
-                    if (s.chapters?.some(c => String(c.id) === String(q.chapterId))) {
-                        foundLevelId = String(l.id);
-                        foundSubjectId = String(s.id);
-                        break;
+                for (const sc of (l.sub_categories || [])) {
+                    for (const s of (sc.segments || [])) {
+                        if (s.topics?.some(t => String(t.id) === String(q.chapterId))) {
+                            foundLevelId = String(l.id);
+                            foundSubCategoryId = String(sc.id);
+                            foundSegmentId = String(s.id);
+                            break;
+                        }
                     }
                 }
             }
@@ -244,7 +271,8 @@ const QuizManagement = () => {
             category: q.category || '',
             chapterId: q.chapterId || '',
             _levelId: foundLevelId,
-            _subjectId: foundSubjectId
+            _subCategoryId: foundSubCategoryId,
+            _segmentId: foundSegmentId
         }]);
         setShowQuestionModal(true);
     };
@@ -302,9 +330,10 @@ const QuizManagement = () => {
                             setQuestionList([{
                                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
                                 category: selectedCategory || '',
-                                chapterId: selectedChapterId || '',
+                                chapterId: selectedTopicId || '',
                                 _levelId: selectedLevelId || '',
-                                _subjectId: selectedSubjectId || ''
+                                _subCategoryId: selectedSubCategoryId || '',
+                                _segmentId: selectedSegmentId || ''
                             }]);
                             setShowBulkModal(true);
                         }}
@@ -317,9 +346,10 @@ const QuizManagement = () => {
                         setQuestionList([{
                             question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
                             category: selectedCategory || '',
-                            chapterId: selectedChapterId || '',
+                            chapterId: selectedTopicId || '',
                             _levelId: selectedLevelId || '',
-                            _subjectId: selectedSubjectId || ''
+                            _subCategoryId: selectedSubCategoryId || '',
+                            _segmentId: selectedSegmentId || ''
                         }]);
                         setShowQuestionModal(true);
                     }}>
@@ -335,8 +365,9 @@ const QuizManagement = () => {
                     value={selectedLevelId}
                     onChange={(val) => {
                         setSelectedLevelId(val);
-                        setSelectedSubjectId('');
-                        setSelectedChapterId('');
+                        setSelectedSubCategoryId('');
+                        setSelectedSegmentId('');
+                        setSelectedTopicId('');
                     }}
                     options={[
                         { value: '', label: '-- All Levels --' },
@@ -344,30 +375,48 @@ const QuizManagement = () => {
                     ]}
                 />
                 <CustomSelect
-                    label="Subject"
+                    label="Sub-category"
                     disabled={!selectedLevelId}
-                    value={selectedSubjectId}
+                    value={selectedSubCategoryId}
                     onChange={(val) => {
-                        setSelectedSubjectId(val);
-                        setSelectedChapterId('');
+                        setSelectedSubCategoryId(val);
+                        setSelectedSegmentId('');
+                        setSelectedTopicId('');
                     }}
-                    placeholder={selectedLevelId ? '-- All Subjects --' : 'Select Level First'}
+                    placeholder={selectedLevelId ? '-- All Sections --' : 'Select Level First'}
                     options={[
-                        { value: '', label: selectedLevelId ? '-- All Subjects --' : 'Select Level First' },
-                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))?.subjects?.map(sub => ({ value: sub.id, label: sub.name })) || [])
+                        { value: '', label: selectedLevelId ? '-- All Sections --' : 'Select Level First' },
+                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))?.sub_categories?.map(sc => ({ value: sc.id, label: sc.name })) || [])
+                    ]}
+                />
+                <CustomSelect
+                    label="Subject"
+                    disabled={!selectedSubCategoryId}
+                    value={selectedSegmentId}
+                    onChange={(val) => {
+                        setSelectedSegmentId(val);
+                        setSelectedTopicId('');
+                    }}
+                    placeholder={selectedSubCategoryId ? '-- All Subjects --' : 'Select Section First'}
+                    options={[
+                        { value: '', label: selectedSubCategoryId ? '-- All Subjects --' : 'Select Section First' },
+                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))
+                            ?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId))
+                            ?.segments?.map(seg => ({ value: seg.id, label: seg.name })) || [])
                     ]}
                 />
                 <CustomSelect
                     label="Chapter"
-                    disabled={!selectedSubjectId}
-                    value={selectedChapterId}
-                    onChange={(val) => setSelectedChapterId(val)}
-                    placeholder={selectedSubjectId ? '-- All Chapters --' : 'Select Subject First'}
+                    disabled={!selectedSegmentId}
+                    value={selectedTopicId}
+                    onChange={(val) => setSelectedTopicId(val)}
+                    placeholder={selectedSegmentId ? '-- All Chapters --' : 'Select Subject First'}
                     options={[
-                        { value: '', label: selectedSubjectId ? '-- All Chapters --' : 'Select Subject First' },
+                        { value: '', label: selectedSegmentId ? '-- All Chapters --' : 'Select Subject First' },
                         ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))
-                            ?.subjects?.find(s => String(s.id) === String(selectedSubjectId))
-                            ?.chapters?.map(chap => ({ value: chap.id, label: chap.name })) || [])
+                            ?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId))
+                            ?.segments?.find(seg => String(seg.id) === String(selectedSegmentId))
+                            ?.topics?.map(topic => ({ value: topic.id, label: topic.name })) || [])
                     ]}
                 />
                 <CustomSelect
@@ -395,7 +444,7 @@ const QuizManagement = () => {
             <div className="dashboard-section table-container-modern">
                 {isLoadingQuiz || hierarchyLoading ? (
                     <SkeletonTable columns={6} rows={10} />
-                ) : !selectedCategory && !selectedChapterId ? (
+                ) : !selectedCategory && !selectedTopicId ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">
                             <i className="fas fa-filter"></i>
@@ -440,7 +489,7 @@ const QuizManagement = () => {
                                         <td>
                                             <div className="q-meta">
                                                 {q.category && <span className="m-tag">{q.category}</span>}
-                                                {q.chapterId && <span className="m-tag gray">CH: {q.chapterId}</span>}
+                                                {q.chapterId && <span className="m-tag gray" title={`ID: ${q.chapterId}`}>{getTopicName(q.chapterId)}</span>}
                                             </div>
                                         </td>
                                         <td>
@@ -537,14 +586,14 @@ const QuizManagement = () => {
                                             >D</div>
                                         </div>
                                     </div>
-                                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                                         <CustomSelect
                                             label="Level"
                                             value={q._levelId}
                                             onChange={val => {
                                                 setQuestionList(prev => {
                                                     const newList = [...prev];
-                                                    newList[idx] = { ...newList[idx], _levelId: val, _subjectId: '', chapterId: '', category: '' };
+                                                    newList[idx] = { ...newList[idx], _levelId: val, _subCategoryId: '', _segmentId: '', chapterId: '', category: '' };
                                                     return newList;
                                                 });
                                             }}
@@ -554,17 +603,36 @@ const QuizManagement = () => {
                                             ]}
                                         />
                                         <CustomSelect
-                                            label="Subject (Category)"
+                                            label="Section"
                                             disabled={!q._levelId}
-                                            value={q._subjectId}
+                                            value={q._subCategoryId}
                                             onChange={val => {
-                                                const sub = hierarchy.find(l => String(l.id) === String(q._levelId))?.subjects?.find(s => String(s.id) === String(val));
+                                                setQuestionList(prev => {
+                                                    const newList = [...prev];
+                                                    newList[idx] = { ...newList[idx], _subCategoryId: val, _segmentId: '', category: '', chapterId: '' };
+                                                    return newList;
+                                                });
+                                            }}
+                                            placeholder="Select Section"
+                                            options={[
+                                                { value: '', label: 'Select Section' },
+                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))?.sub_categories?.map(sc => ({ value: sc.id, label: sc.name })) || [])
+                                            ]}
+                                        />
+                                        <CustomSelect
+                                            label="Subject"
+                                            disabled={!q._subCategoryId}
+                                            value={q._segmentId}
+                                            onChange={val => {
+                                                const seg = hierarchy.find(l => String(l.id) === String(q._levelId))
+                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
+                                                    ?.segments?.find(s => String(s.id) === String(val));
                                                 setQuestionList(prev => {
                                                     const newList = [...prev];
                                                     newList[idx] = {
                                                         ...newList[idx],
-                                                        _subjectId: val,
-                                                        category: sub?.name || '',
+                                                        _segmentId: val,
+                                                        category: seg?.name || '',
                                                         chapterId: ''
                                                     };
                                                     return newList;
@@ -573,12 +641,14 @@ const QuizManagement = () => {
                                             placeholder="Select Subject"
                                             options={[
                                                 { value: '', label: 'Select Subject' },
-                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))?.subjects?.map(s => ({ value: s.id, label: s.name })) || [])
+                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))
+                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
+                                                    ?.segments?.map(s => ({ value: s.id, label: s.name })) || [])
                                             ]}
                                         />
                                         <CustomSelect
-                                            label="Chapter"
-                                            disabled={!q._subjectId}
+                                            label="Chapter (Topic)"
+                                            disabled={!q._segmentId}
                                             value={q.chapterId}
                                             onChange={val => {
                                                 setQuestionList(prev => {
@@ -587,12 +657,13 @@ const QuizManagement = () => {
                                                     return newList;
                                                 });
                                             }}
-                                            placeholder="-- Optional Chapter --"
+                                            placeholder="-- Optional Topic --"
                                             options={[
-                                                { value: '', label: '-- Optional Chapter --' },
+                                                { value: '', label: '-- Optional Topic --' },
                                                 ...(hierarchy?.find(l => String(l.id) === String(q._levelId))
-                                                    ?.subjects?.find(s => String(s.id) === String(q._subjectId))
-                                                    ?.chapters?.map(c => ({ value: c.id, label: c.name })) || [])
+                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
+                                                    ?.segments?.find(s => String(s.id) === String(q._segmentId))
+                                                    ?.topics?.map(t => ({ value: t.id, label: t.name })) || [])
                                             ]}
                                         />
                                     </div>

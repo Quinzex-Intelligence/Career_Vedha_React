@@ -48,7 +48,9 @@ const SearchResults = () => {
             article: 'Article',
             job: 'Job',
             paper: 'Question Paper',
-            currentAffair: 'Current Affairs'
+            currentAffair: 'Current Affairs',
+            academic: 'Academics',
+            product: 'E-Store'
         };
         return labels[type] || type;
     };
@@ -58,7 +60,9 @@ const SearchResults = () => {
             article: 'fa-newspaper',
             job: 'fa-briefcase',
             paper: 'fa-file-pdf',
-            currentAffair: 'fa-calendar-day'
+            currentAffair: 'fa-calendar-day',
+            academic: 'fa-graduation-cap',
+            product: 'fa-shopping-cart'
         };
         return icons[type] || 'fa-file';
     };
@@ -140,6 +144,22 @@ const SearchResults = () => {
                             <i className="fas fa-calendar-day"></i>
                             Current Affairs
                             <span className="count">{resultsByType.currentAffairs || 0}</span>
+                        </button>
+                        <button
+                            className={`filter-btn ${activeFilter === 'academics' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('academics')}
+                        >
+                            <i className="fas fa-graduation-cap"></i>
+                            Academics
+                            <span className="count">{resultsByType.academics || 0}</span>
+                        </button>
+                        <button
+                            className={`filter-btn ${activeFilter === 'estore' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('estore')}
+                        >
+                            <i className="fas fa-shopping-cart"></i>
+                            E-Store
+                            <span className="count">{resultsByType.estore || 0}</span>
                         </button>
                     </div>
 

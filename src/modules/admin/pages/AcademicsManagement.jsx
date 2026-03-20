@@ -110,7 +110,50 @@ const AcademicsManagement = () => {
     const { data: categories, isLoading: categoriesLoading } = useCategories();
     const { data: chapters, isLoading: chaptersLoading } = useChapters();
     const { data: materials, isLoading: materialsLoading } = useMaterials();
-    const { data: hierarchy, isLoading: hierarchyLoading, refetch: refetchHierarchy } = useAcademicsDjangoHierarchy();
+    
+    // NEW: Use Django Hierarchy exclusively for management to support the 4-level structure
+    const { data: djangoHierarchy, isLoading: hierarchyLoading, refetch: refetchHierarchy } = useAcademicsDjangoHierarchy();
+    
+    // Derived flattened data for the tabs to ensure consistency with the 4-level structure
+    const flattenedData = React.useMemo(() => {
+        if (!djangoHierarchy) return { levels: [], subjects: [], chapters: [] };
+        const lvls = [];
+        const subs = [];
+        const chaps = [];
+        
+        djangoHierarchy.forEach(category => {
+            (category.sub_categories || []).forEach(subCat => {
+                lvls.push({ 
+                    ...subCat, 
+                    category_id: category.id, 
+                    category_name: category.name,
+                    board: category.name.split(' - ')[1] || 'AP' // Heuristic for board
+                });
+                (subCat.segments || []).forEach(segment => {
+                    subs.push({ 
+                        ...segment, 
+                        level_id: subCat.id, 
+                        level_name: subCat.name,
+                        category_name: category.name
+                    });
+                    (segment.topics || []).forEach(topic => {
+                        chaps.push({ 
+                            ...topic, 
+                            subject_id: segment.id, 
+                            subject_name: segment.name,
+                            level_name: subCat.name
+                        });
+                    });
+                });
+            });
+        });
+        return { levels: lvls, subjects: subs, chapters: chaps };
+    }, [djangoHierarchy]);
+
+    // Override the raw query data with flattened tree data where appropriate
+    const displayLevels = flattenedData.levels.length > 0 ? flattenedData.levels : (Array.isArray(levels) ? levels : levels?.results || []);
+    const displaySubjects = flattenedData.subjects.length > 0 ? flattenedData.subjects : (Array.isArray(subjects) ? subjects : subjects?.results || []);
+    const displayChapters = flattenedData.chapters.length > 0 ? flattenedData.chapters : (Array.isArray(chapters) ? chapters : chapters?.results || []);
 
 
     // Mutations
@@ -327,7 +370,7 @@ const AcademicsManagement = () => {
                         <div className="mgmt-section">
                             <div className="section-header">
                                 <h3>Academics Hierarchy</h3>
-                                <button className="add-btn" onClick={() => refetchHierarchy()} disabled={hierarchyLoading}>
+                                <button className="refresh-btn" onClick={() => refetchHierarchy()} disabled={hierarchyLoading}>
                                     <i className={`fas ${hierarchyLoading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} style={{marginRight: '8px'}}></i>
                                     {hierarchyLoading ? 'Refreshing...' : 'Refresh'}
                                 </button>
@@ -337,40 +380,57 @@ const AcademicsManagement = () => {
                                 <Skeleton count={3} height={100} style={{marginBottom: '20px', borderRadius: '15px'}} />
                             ) : (
                                 <div className="hierarchy-tree">
-                                    {hierarchy?.length > 0 ? hierarchy.map(level => (
-                                        <div key={level.id} className="hierarchy-level-box">
-                                            <div className="level-header-row">
+                                    {djangoHierarchy?.length > 0 ? djangoHierarchy.map(category => (
+                                        <div key={category.id} className="hierarchy-category-box">
+                                            <div className="level-header-row category-header">
                                                 <div className="level-main-info">
-                                                    <span className="level-icon">🎓</span>
+                                                    <span className="level-icon">🏛️</span>
                                                     <div className="level-text">
-                                                        <h4>{level.name}</h4>
-                                                        <span className="board-pills">{level.board}</span>
+                                                        <h4>{category.name}</h4>
+                                                        <span className="depth-badge">Category</span>
                                                     </div>
-                                                </div>
-                                                <div className="level-actions">
-                                                    <button className="icon-btn edit" onClick={() => handleEdit(level)}><i className="fas fa-edit"></i></button>
                                                 </div>
                                             </div>
 
-                                            <div className="level-subjects-container">
-                                                {level.subjects?.length > 0 ? level.subjects.map(subject => (
-                                                    <div key={subject.id} className="hierarchy-subject-card">
-                                                        <div className="subject-header">
-                                                            <h5>{subject.name}</h5>
-                                                            <button className="icon-btn edit small" onClick={() => handleEdit(subject)}><i className="fas fa-edit"></i></button>
+                                            <div className="category-sub-categories">
+                                                {category.sub_categories?.length > 0 ? category.sub_categories.map(level => (
+                                                    <div key={level.id} className="hierarchy-level-section">
+                                                        <div className="sub-category-header">
+                                                            <div className="sub-cat-info">
+                                                                <span className="sub-cat-icon">🎓</span>
+                                                                <h5>{level.name}</h5>
+                                                                <span className="board-pills-mini">{category.name.split(' - ')[1]}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="subject-chapters-list">
-                                                            {subject.chapters?.length > 0 ? subject.chapters.map(chapter => (
-                                                                <div key={chapter.id} className="hierarchy-chapter-pill" onClick={() => handleEdit(chapter)}>
-                                                                    <i className="fas fa-book-open"></i>
-                                                                    <span>{chapter.name}</span>
+
+                                                        <div className="level-subjects-container">
+                                                            {level.segments?.length > 0 ? level.segments.map(subject => (
+                                                                <div key={subject.id} className="hierarchy-subject-card">
+                                                                    <div className="subject-header">
+                                                                        <div className="subj-title">
+                                                                            <i className="fas fa-book"></i>
+                                                                            <h6>{subject.name}</h6>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="subject-chapters-list">
+                                                                        {subject.topics?.length > 0 ? subject.topics.map(topic => (
+                                                                            <div key={topic.id} className="hierarchy-chapter-pill">
+                                                                                <i className="fas fa-book-open"></i>
+                                                                                <span>{topic.name}</span>
+                                                                            </div>
+                                                                        )) : <span className="empty-text">No Topics</span>}
+                                                                    </div>
                                                                 </div>
-                                                            )) : <span className="empty-text">No Chapters</span>}
+                                                            )) : (
+                                                                <div className="empty-info" style={{padding: '1rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
+                                                                    <p>No subjects assigned to this level yet.</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )) : (
-                                                    <div className="empty-info" style={{padding: '1rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
-                                                        <p>No subjects assigned to this level yet.</p>
+                                                    <div className="empty-info" style={{padding: '2rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
+                                                        <p>No levels assigned to this category yet.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -390,11 +450,10 @@ const AcademicsManagement = () => {
                         <div className="mgmt-section">
                             <div className="section-header">
                                 <h3>Academic Levels</h3>
-                                <button className="add-btn" onClick={handleAdd}>+ Add Level</button>
                             </div>
                             <div className="mgmt-table-container">
                                 {levelsLoading ? (
-                                    <SkeletonTable rows={5} columns={6} />
+                                    <SkeletonTable rows={5} columns={5} />
                                 ) : (
                                     <table className="mgmt-table">
                                         <thead>
@@ -404,11 +463,10 @@ const AcademicsManagement = () => {
                                                 <th>Board</th>
                                                 <th>Rank</th>
                                                 <th>Status</th>
-                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(Array.isArray(levels) ? levels : levels?.results || []).map(level => (
+                                            {displayLevels.map(level => (
                                                 <tr key={level.id}>
                                                     <td>{level.id}</td>
                                                     <td className="font-semibold">{level.name}</td>
@@ -417,10 +475,6 @@ const AcademicsManagement = () => {
                                                     <td>
                                                         <span className={`status-dot ${level.is_active ? 'active' : 'inactive'}`}></span>
                                                         {level.is_active ? 'Active' : 'Disabled'}
-                                                    </td>
-                                                    <td className="actions-cell">
-                                                        <button className="icon-btn edit" onClick={() => handleEdit(level)}><i className="fas fa-edit"></i></button>
-                                                        <button className="icon-btn delete"><i className="fas fa-trash"></i></button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -435,11 +489,10 @@ const AcademicsManagement = () => {
                         <div className="mgmt-section">
                             <div className="section-header">
                                 <h3>Subjects</h3>
-                                <button className="add-btn" onClick={handleAdd}>+ Add Subject</button>
                             </div>
                             <div className="mgmt-table-container">
                                 {subjectsLoading ? (
-                                    <SkeletonTable rows={5} columns={6} />
+                                    <SkeletonTable rows={5} columns={5} />
                                 ) : (
                                     <table className="mgmt-table">
                                         <thead>
@@ -449,23 +502,17 @@ const AcademicsManagement = () => {
                                                 <th>Name</th>
                                                 {/* <th>Slug</th> */}
                                                 <th>Rank</th>
-                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(Array.isArray(subjects) ? subjects : subjects?.results || []).map(subject => (
+                                            {displaySubjects.map(subject => (
                                                 <tr key={subject.id}>
                                                     <td>{subject.id}</td>
                                                     <td>
                                                         <span className="badge">{subject.level_name || (levels?.find(l => l.id === subject.level)?.name)}</span>
                                                     </td>
                                                     <td className="font-semibold">{subject.name}</td>
-                                                    <td><code>{subject.slug}</code></td>
                                                     <td>{subject.rank}</td>
-                                                    <td className="actions-cell">
-                                                        <button className="icon-btn edit" onClick={() => handleEdit(subject)}><i className="fas fa-edit"></i></button>
-                                                        <button className="icon-btn delete"><i className="fas fa-trash"></i></button>
-                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -479,11 +526,10 @@ const AcademicsManagement = () => {
                         <div className="mgmt-section">
                             <div className="section-header">
                                 <h3>Chapters</h3>
-                                <button className="add-btn" onClick={handleAdd}>+ Add Chapter</button>
                             </div>
                             <div className="mgmt-table-container">
                                 {chaptersLoading ? (
-                                    <SkeletonTable rows={5} columns={5} />
+                                    <SkeletonTable rows={5} columns={4} />
                                 ) : (
                                     <table className="mgmt-table">
                                         <thead>
@@ -492,11 +538,10 @@ const AcademicsManagement = () => {
                                                 <th>Subject</th>
                                                 <th>Name</th>
                                                 <th>Rank</th>
-                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(Array.isArray(chapters) ? chapters : chapters?.results || []).map(chapter => (
+                                            {displayChapters.map(chapter => (
                                                 <tr key={chapter.id}>
                                                     <td>{chapter.id}</td>
                                                     <td>
@@ -504,10 +549,6 @@ const AcademicsManagement = () => {
                                                     </td>
                                                     <td className="font-semibold">{chapter.name}</td>
                                                     <td>{chapter.rank}</td>
-                                                    <td className="actions-cell">
-                                                        <button className="icon-btn edit" onClick={() => handleEdit(chapter)}><i className="fas fa-edit"></i></button>
-                                                        <button className="icon-btn delete"><i className="fas fa-trash"></i></button>
-                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -521,11 +562,10 @@ const AcademicsManagement = () => {
                         <div className="mgmt-section">
                             <div className="section-header">
                                 <h3>Materials</h3>
-                                <button className="add-btn" onClick={handleAdd}>+ Add Material</button>
                             </div>
                             <div className="mgmt-table-container">
                                 {materialsLoading ? (
-                                    <SkeletonTable rows={5} columns={6} />
+                                    <SkeletonTable rows={5} columns={5} />
                                 ) : (
                                     <table className="mgmt-table">
                                         <thead>
@@ -535,7 +575,6 @@ const AcademicsManagement = () => {
                                                 <th>Type</th>
                                                 <th>Chapter</th>
                                                 <th>Status</th>
-                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -554,15 +593,6 @@ const AcademicsManagement = () => {
                                                         <td><span className="badge">{catName || 'General'}</span></td>
                                                         <td>{chName || '-'}</td>
                                                         <td>{getStatusBadge(material.status)}</td>
-                                                        <td className="actions-cell">
-                                                            <button className="icon-btn edit" title="View Details" onClick={() => handleView(material)}>
-                                                                <i className="fas fa-eye"></i>
-                                                            </button>
-                                                            <button className="icon-btn edit" title="Edit" onClick={() => handleEdit(material)}>
-                                                                <i className="fas fa-edit"></i>
-                                                            </button>
-                                                            <button className="icon-btn delete"><i className="fas fa-trash"></i></button>
-                                                        </td>
                                                     </tr>
                                                 );
                                             })}

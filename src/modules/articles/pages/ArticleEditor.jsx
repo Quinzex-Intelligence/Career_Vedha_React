@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import CustomSelect from '../../../components/ui/CustomSelect';
 import LuxuryDateTimePicker from '../../../components/ui/LuxuryDateTimePicker';
@@ -10,7 +11,7 @@ import API_CONFIG from '../../../config/api.config';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 import { useArticle, useCreateArticle, useUpdateArticle, usePublishArticle, useAssignCategories } from '../../../hooks/useArticles';
-import { useAdminCategories, useCategoriesBySection, useSections, useCategoryChildren, useFetchCategoryChildren } from '../../../hooks/useTaxonomy';
+import { useAdminCategories, useTaxonomyLevels, useTaxonomyTree, useSections, useCategoryChildren, useFetchCategoryChildren, useCategoriesBySection } from '../../../hooks/useTaxonomy';
 import './ArticleEditor.css';
 import '../../../styles/Dashboard.css';
 import ReactQuill from 'react-quill';
@@ -61,17 +62,126 @@ const ArticleEditor = () => {
     // Multi-selection state
     const [selectedCategories, setSelectedCategories] = useState([]);
     
-    // React Query hooks
-    const { data: articleData, isLoading: loadingArticle } = useArticle(id, { enabled: isEditMode });
-    const { data: adminCategoriesData } = useAdminCategories();
-    const { data: sectionCategories } = useCategoriesBySection(level1);
-    const { data: dynamicSections } = useSections();
+    const userRole = getUserContext().role;
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
+    const isAdminUser = ['SUPER_ADMIN', 'ADMIN', 'EDITOR'].includes(userRole);
     
-    // Cascading children hooks — Level 2 uses sectionCategories (top-level cats for section)
-    // Level 3 & 4 use actual category IDs from selection
-    const { data: level3Options } = useCategoryChildren(level1, level2 || null);
-    const { data: level4Options } = useCategoryChildren(level1, level3 || null);
-    const { data: level5Options } = useCategoryChildren(level1, level4 || null);
+    // React Query hooks
+    const { data: dynamicSections } = useSections(isAdminUser);
+    const sections = useMemo(() => Array.isArray(dynamicSections) ? dynamicSections : (dynamicSections?.results || []), [dynamicSections]);
+
+    // Pre-fetch taxonomy for ALL sections at mount
+    const levelsQueries = useQueries({
+        queries: sections.map(s => ({
+            queryKey: ['taxonomy', 'admin', 'categories', 'levels', s.slug || s.name],
+            queryFn: () => newsService.getTaxonomyLevels(s.slug || s.name),
+            staleTime: 5 * 60 * 1000,
+        }))
+    });
+
+    const treeQueries = useQueries({
+        queries: sections.map(s => ({
+            queryKey: ['taxonomy', 'admin', 'categories', 'tree', s.slug || s.name],
+            queryFn: () => newsService.getTaxonomyTree(s.slug || s.name),
+            staleTime: 5 * 60 * 1000,
+        }))
+    });
+
+    const currentSectionSlug = level1?.toLowerCase() || sectionParam?.toLowerCase() || '';
+    const currentLevelsIdx = sections.findIndex(s => {
+        const slug = (s.slug || '').toLowerCase();
+        const name = (s.name || '').toLowerCase();
+        return slug === currentSectionSlug || name === currentSectionSlug;
+    });
+    
+    // Background loading status for UI feedback (localized)
+    const activeLevelQuery = (currentLevelsIdx !== -1) ? levelsQueries[currentLevelsIdx] : null;
+    const activeTreeQuery = (currentLevelsIdx !== -1) ? treeQueries[currentLevelsIdx] : null;
+    
+    const loadingTaxonomy = !!(activeLevelQuery?.isLoading || activeTreeQuery?.isLoading);
+    const isTaxonomyError = !!(activeLevelQuery?.isError || activeTreeQuery?.isError);
+    
+    // Derived lists for cascading dropdowns
+    const hierarchy = useMemo(() => {
+        const flat = [];
+        
+        const flattenTree = (nodes) => {
+            if (!Array.isArray(nodes)) return;
+            nodes.forEach(node => {
+                flat.push({ id: node.id, name: node.name, parent_id: node.parent_id || node.parent, level: node.level });
+                if (node.children) flattenTree(node.children);
+            });
+        };
+
+        const currentLevels = activeLevelQuery?.data;
+        const currentTree = activeTreeQuery?.data;
+
+        // 1. Flatten current section levelsData
+        if (currentLevels && typeof currentLevels === 'object' && !Array.isArray(currentLevels)) {
+            // Collect all arrays found in the object
+            Object.keys(currentLevels).forEach(k => {
+                if (Array.isArray(currentLevels[k])) {
+                    currentLevels[k].forEach(item => flat.push(item));
+                }
+            });
+        }
+        
+        // 2. Flatten current section treeData
+        if (currentTree && Array.isArray(currentTree)) {
+            flattenTree(currentTree);
+        }
+
+        // 3. Fallback for raw arrays
+        if (Array.isArray(currentLevels)) {
+            currentLevels.forEach(item => flat.push(item));
+        }
+
+        // Deduplicate records by ID
+        const seen = new Set();
+        const result = flat.filter(item => {
+            if (!item?.id && !item?.category_id) return false;
+            const id = (item.id || item.category_id).toString();
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+
+        if (result.length > 0) {
+            console.log(`[Taxonomy] ${level1}: Found ${result.length} total categories.`);
+            console.log(`[Taxonomy] Sample items:`, result.slice(0, 3).map(i => ({ id: i.id, name: i.name, parent: i.parent_id, level: i.level })));
+        }
+        return result;
+    }, [activeLevelQuery?.data, activeTreeQuery?.data, level1]);
+    
+    const level2List = useMemo(() => {
+        const list = (hierarchy || [])
+            .filter(cat => !cat.parent_id || cat.parent_id === '0' || cat.parent_id === 0 || cat.level === 2 || cat.level === 1)
+            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }));
+        
+        if (hierarchy?.length > 0 && list.length === 0) {
+            console.warn(`[Taxonomy] ${level1}: No root categories found in ${hierarchy.length} items. Falling back to all items.`);
+            return hierarchy.slice(0, 50).map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }));
+        }
+        return list;
+    }, [hierarchy, level1]);
+
+    const level3List = useMemo(() => level2 
+        ? (hierarchy || [])
+            .filter(cat => cat.parent_id?.toString() === level2?.toString())
+            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
+        : [], [hierarchy, level2]);
+
+    const level4List = useMemo(() => level3 
+        ? (hierarchy || [])
+            .filter(cat => cat.parent_id?.toString() === level3?.toString())
+            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
+        : [], [hierarchy, level3]);
+
+    const level5List = useMemo(() => level4 
+        ? (hierarchy || [])
+            .filter(cat => cat.parent_id?.toString() === level4?.toString())
+            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
+        : [], [hierarchy, level4]);
     
     const createArticleMutation = useCreateArticle();
     const updateArticleMutation = useUpdateArticle();
@@ -84,9 +194,7 @@ const ArticleEditor = () => {
                      publishArticleMutation.isPending || 
                      assignCategoriesMutation.isPending;
 
-    // Derived state
-    const sections = Array.isArray(dynamicSections) ? dynamicSections : (dynamicSections?.results || []);
-    const categories = sectionCategories || [];
+    const { data: articleData, isLoading: loadingArticle } = useArticle(id, { enabled: isEditMode });
 
     // Media Upload State
     const [bannerFile, setBannerFile] = useState(null);
@@ -97,14 +205,18 @@ const ArticleEditor = () => {
     const [mainMediaId, setMainMediaId] = useState(null);
     const [mainPreview, setMainPreview] = useState(null);
     
+    // PDF Upload State
+    const [pdfFile, setPdfFile] = useState(null);
+    const [pdfPreview, setPdfPreview] = useState(null); // Just for displaying filename
+    const [pdfFile2, setPdfFile2] = useState(null);
+    const [pdfPreview2, setPdfPreview2] = useState(null);
+    
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [activeMediaTarget, setActiveMediaTarget] = useState('banner');
 
     // Publish State
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [scheduleDate, setScheduleDate] = useState('');
-    const userRole = getUserContext().role;
-    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
 
     // Related Articles Preview
     const [relatedArticles, setRelatedArticles] = useState([]);
@@ -160,6 +272,13 @@ const ArticleEditor = () => {
             if (mainMedia && mainMedia.media_details) {
                 setMainMediaId(mainMedia.media_details.id);
                 setMainPreview(mainMedia.media_details.url);
+            }
+
+            // Prefill PDF
+            const pdfMedias = mediaLinks.filter(m => m.media_type === 'pdf' || (m.media_details && m.media_details.media_type === 'pdf'));
+            if (pdfMedias.length > 0) {
+                if (pdfMedias[0].media_details) setPdfPreview(pdfMedias[0].media_details.url);
+                if (pdfMedias[1] && pdfMedias[1].media_details) setPdfPreview2(pdfMedias[1].media_details.url);
             }
         }
     }, [articleData, isEditMode, sectionParam]);
@@ -402,6 +521,37 @@ const ArticleEditor = () => {
         setMainPreview(null);
     };
 
+    const handlePdfFileChange = (e, index = 1) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.type !== 'application/pdf') {
+                showSnackbar('Please upload a valid PDF file', 'error');
+                return;
+            }
+            if (file.size > 20 * 1024 * 1024) { // 20MB limit
+                showSnackbar('PDF file size should be less than 20MB', 'error');
+                return;
+            }
+            if (index === 2) {
+                setPdfFile2(file);
+                setPdfPreview2(file.name);
+            } else {
+                setPdfFile(file);
+                setPdfPreview(file.name);
+            }
+        }
+    };
+
+    const clearPdfMedia = (index = 1) => {
+        if (index === 2) {
+            setPdfFile2(null);
+            setPdfPreview2(null);
+        } else {
+            setPdfFile(null);
+            setPdfPreview(null);
+        }
+    };
+
 
     const handleDirectPublish = async (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -439,6 +589,8 @@ const ArticleEditor = () => {
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
             if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
+            if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
             if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
             if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
 
@@ -514,6 +666,8 @@ const ArticleEditor = () => {
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
             if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
+            if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
             if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
             if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
 
@@ -548,7 +702,8 @@ const ArticleEditor = () => {
         }
     };
 
-    const isLoading = loadingArticle && isEditMode;
+    // CRITICAL: Removed loadingTaxonomy from here to prevent full-page "refresh"
+    const isLoading = (loadingArticle && isEditMode);
     
     if (isLoading) return (
         <div className="cms-loading-overlay">
@@ -566,26 +721,6 @@ const ArticleEditor = () => {
     const contentPlaceholder = lang === 'en' ? 'Write your article content here...' : 'కంటెంట్ ఇక్కడ రాయండి...';
     const summaryPlaceholder = lang === 'en' ? 'Short summary/excerpt...' : 'చిన్న సారాంశం...';
 
-    // Build level 2/3/4 dropdown options from categories tree
-    const level2List = (Array.isArray(categories) ? categories : []).map(c => ({
-        value: (c.id || c.category_id)?.toString(),
-        label: c.name
-    })).filter(o => o.value);
-
-    const level3List = (Array.isArray(level3Options) ? level3Options : []).map(c => ({
-        value: (c.id || c.category_id)?.toString(),
-        label: c.name
-    })).filter(o => o.value);
-
-    const level4List = (Array.isArray(level4Options) ? level4Options : []).map(c => ({
-        value: (c.id || c.category_id)?.toString(),
-        label: c.name
-    })).filter(o => o.value);
-
-    const level5List = (Array.isArray(level5Options) ? level5Options : []).map(c => ({
-        value: (c.id || c.category_id)?.toString(),
-        label: c.name
-    })).filter(o => o.value);
 
     const sidebarProps = {
         activeSection: 'articles',
@@ -740,6 +875,12 @@ const ArticleEditor = () => {
                         <div className="ae-card-header">
                             <span className="ae-step-badge">2</span>
                             <h2>Categorization</h2>
+                            {loadingTaxonomy && (
+                                <div className="ae-local-loader" style={{ marginLeft: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--slate-500)' }}>
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                    <span>Syncing categories...</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="ae-taxonomy-grid">
@@ -770,8 +911,9 @@ const ArticleEditor = () => {
                                         if (cat) addCategory(val, cat.label, 2);
                                     }}
                                     options={level2List}
-                                    placeholder="Select Root Category"
+                                    placeholder={loadingTaxonomy ? "Loading categories..." : "Select Root Category"}
                                     isInvalid={!!errors.categories}
+                                    noOptionsMessage={() => isTaxonomyError ? "Error loading categories" : "No root categories found"}
                                 />
                             </div>
                             
@@ -788,8 +930,9 @@ const ArticleEditor = () => {
                                         if (cat) addCategory(val, cat.label, 3);
                                     }}
                                     options={level3List}
-                                    placeholder={level2 ? "Select Sub-Category" : "Select Category first"}
-                                    disabled={!level2}
+                                    placeholder={loadingTaxonomy ? "Loading..." : (level2 ? "Select Sub-Category" : "Select Category first")}
+                                    disabled={!level2 || loadingTaxonomy}
+                                    noOptionsMessage={() => loadingTaxonomy ? "Loading..." : "No items found"}
                                 />
                             </div>
                             
@@ -954,7 +1097,75 @@ const ArticleEditor = () => {
                                 )}
                             </div>
 
-                            {/* PDF Upload Removed */}
+                            {/* PDF Upload 1 */}
+                            <div className="ae-media-box">
+                                <div className="ae-media-box-header">
+                                    <i className="fas fa-file-pdf"></i>
+                                    <span>Primary PDF (Optional)</span>
+                                    <span className="ae-size-hint">Max 20MB • PDF only</span>
+                                </div>
+                                
+                                {pdfPreview ? (
+                                    <div className="ae-media-preview ae-pdf-preview">
+                                        <div className="ae-pdf-info">
+                                            <i className="fas fa-file-pdf"></i>
+                                            <span title={pdfPreview}>{pdfPreview.length > 30 ? pdfPreview.substring(0, 27) + '...' : pdfPreview}</span>
+                                        </div>
+                                        <button type="button" className="ae-media-remove" onClick={() => clearPdfMedia(1)}>
+                                            <i className="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="ae-upload-zone">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={(e) => handlePdfFileChange(e, 1)}
+                                            id="pdf-upload-1"
+                                            hidden
+                                        />
+                                        <label htmlFor="pdf-upload-1" className="ae-upload-label">
+                                            <i className="fas fa-cloud-upload-alt"></i>
+                                            <span>Upload Primary PDF</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* PDF Upload 2 */}
+                            <div className="ae-media-box">
+                                <div className="ae-media-box-header">
+                                    <i className="fas fa-file-pdf"></i>
+                                    <span>Secondary PDF (Optional)</span>
+                                    <span className="ae-size-hint">Max 20MB • PDF only</span>
+                                </div>
+                                
+                                {pdfPreview2 ? (
+                                    <div className="ae-media-preview ae-pdf-preview">
+                                        <div className="ae-pdf-info">
+                                            <i className="fas fa-file-pdf"></i>
+                                            <span title={pdfPreview2}>{pdfPreview2.length > 30 ? pdfPreview2.substring(0, 27) + '...' : pdfPreview2}</span>
+                                        </div>
+                                        <button type="button" className="ae-media-remove" onClick={() => clearPdfMedia(2)}>
+                                            <i className="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="ae-upload-zone">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={(e) => handlePdfFileChange(e, 2)}
+                                            id="pdf-upload-2"
+                                            hidden
+                                        />
+                                        <label htmlFor="pdf-upload-2" className="ae-upload-label">
+                                            <i className="fas fa-cloud-upload-alt"></i>
+                                            <span>Upload Secondary PDF</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 

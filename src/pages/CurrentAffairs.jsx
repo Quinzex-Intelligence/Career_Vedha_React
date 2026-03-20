@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
-import djangoApi from '../services/djangoApi'; // Keep for other parts if needed, but we use currentAffairsService
-import { currentAffairsService } from '../services';
+import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import djangoApi from '../services/djangoApi'; 
+import { currentAffairsService, newsService } from '../services';
 import TopBar from '../components/layout/TopBar';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
@@ -9,6 +9,8 @@ import Footer from '../components/layout/Footer';
 import TopStoriesHero from '../components/home/TopStoriesHero';
 import { useTrendingArticles } from '../hooks/useHomeContent';
 import { getBestImageUrl } from '../utils/articleUtils';
+import TaxonomyTabs from '../components/ui/TaxonomyTabs';
+import ContentHubWidget from '../components/ui/ContentHubWidget';
 import '../styles/CurrentAffairs.css';
 
 // Translation data
@@ -52,18 +54,14 @@ const CurrentAffairs = () => {
     });
     const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const navigate = useNavigate();
     
-    // Sync with URL param
-    const regionParam = searchParams.get('region');
-    const [selectedRegion, setSelectedRegion] = useState(() => regionParam || 'ALL');
+    // Sync with URL params
+    const categoryParam = searchParams.get('category') || searchParams.get('level') || searchParams.get('region');
+    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
+    const segmentParam = searchParams.get('segment');
 
-    useEffect(() => {
-        if (regionParam) {
-            setSelectedRegion(regionParam);
-        } else if (location.search === "") {
-            setSelectedRegion('ALL');
-        }
-    }, [regionParam]);
+    // Empty useEffect or removed since we'll just use searchParams directly
 
     const [hasMore, setHasMore] = useState(false);
     // Cursor pagination state
@@ -77,99 +75,93 @@ const CurrentAffairs = () => {
     const langUpper = lang.toUpperCase();
     const t = translations[lang];
 
-    // All Indian states and UTs with their codes and Telugu translations
-    const regions = [
-        { value: 'ALL', label: lang === 'te' ? 'అన్ని ప్రాంతాలు' : 'All Regions' },
-        { value: 'INDIA', label: lang === 'te' ? 'భారతదేశం (జాతీయ)' : 'India (National)' },
-        { value: 'AP', label: lang === 'te' ? 'ఆంధ్ర ప్రదేశ్' : 'Andhra Pradesh' },
-        { value: 'AR', label: lang === 'te' ? 'అరుణాచల్ ప్రదేశ్' : 'Arunachal Pradesh' },
-        { value: 'AS', label: lang === 'te' ? 'అస్సాం' : 'Assam' },
-        { value: 'BR', label: lang === 'te' ? 'బీహార్' : 'Bihar' },
-        { value: 'CG', label: lang === 'te' ? 'ఛత్తీస్‌గఢ్' : 'Chhattisgarh' },
-        { value: 'GA', label: lang === 'te' ? 'గోవా' : 'Goa' },
-        { value: 'GJ', label: lang === 'te' ? 'గుజరాత్' : 'Gujarat' },
-        { value: 'HR', label: lang === 'te' ? 'హర్యానా' : 'Haryana' },
-        { value: 'HP', label: lang === 'te' ? 'హిమాచల్ ప్రదేశ్' : 'Himachal Pradesh' },
-        { value: 'JH', label: lang === 'te' ? 'జార్ఖండ్' : 'Jharkhand' },
-        { value: 'KA', label: lang === 'te' ? 'కర్ణాటక' : 'Karnataka' },
-        { value: 'KL', label: lang === 'te' ? 'కేరళ' : 'Kerala' },
-        { value: 'MP', label: lang === 'te' ? 'మధ్య ప్రదేశ్' : 'Madhya Pradesh' },
-        { value: 'MH', label: lang === 'te' ? 'మహారాష్ట్ర' : 'Maharashtra' },
-        { value: 'MN', label: lang === 'te' ? 'మణిపూర్' : 'Manipur' },
-        { value: 'ML', label: lang === 'te' ? 'మేఘాలయ' : 'Meghalaya' },
-        { value: 'MZ', label: lang === 'te' ? 'మిజోరం' : 'Mizoram' },
-        { value: 'NL', label: lang === 'te' ? 'నాగాలాండ్' : 'Nagaland' },
-        { value: 'OD', label: lang === 'te' ? 'ఒడిశా' : 'Odisha' },
-        { value: 'PB', label: lang === 'te' ? 'పంజాబ్' : 'Punjab' },
-        { value: 'RJ', label: lang === 'te' ? 'రాజస్థాన్' : 'Rajasthan' },
-        { value: 'SK', label: lang === 'te' ? 'సిక్కిం' : 'Sikkim' },
-        { value: 'TN', label: lang === 'te' ? 'తమిళనాడు' : 'Tamil Nadu' },
-        { value: 'TS', label: lang === 'te' ? 'తెలంగాణ' : 'Telangana' },
-        { value: 'TR', label: lang === 'te' ? 'త్రిపుర' : 'Tripura' },
-        { value: 'UP', label: lang === 'te' ? 'ఉత్తర ప్రదేశ్' : 'Uttar Pradesh' },
-        { value: 'UK', label: lang === 'te' ? 'ఉత్తరాఖండ్' : 'Uttarakhand' },
-        { value: 'WB', label: lang === 'te' ? 'పశ్చిమ బెంగాల్' : 'West Bengal' },
-        { value: 'DL', label: lang === 'te' ? 'ఢిల్లీ' : 'Delhi' },
-        { value: 'JK', label: lang === 'te' ? 'జమ్మూ & కాశ్మీర్' : 'Jammu & Kashmir' },
-        { value: 'LA', label: lang === 'te' ? 'లడఖ్' : 'Ladakh' },
-        { value: 'PY', label: lang === 'te' ? 'పుదుచ్చేరి' : 'Puducherry' },
-        { value: 'AN', label: lang === 'te' ? 'అండమాన్ & నికోబార్' : 'Andaman & Nicobar' },
-        { value: 'CH', label: lang === 'te' ? 'చండీగఢ్' : 'Chandigarh' },
-        { value: 'DN', label: lang === 'te' ? 'దాద్రా & నగర్ హవేలీ' : 'Dadra & Nagar Haveli' },
-        { value: 'DD', label: lang === 'te' ? 'దామన్ & డయ్యూ' : 'Daman & Diu' },
-        { value: 'LD', label: lang === 'te' ? 'లక్షద్వీప్' : 'Lakshadweep' }
-    ];
+    // Mapping Django levels to Spring region codes for backward compatibility with Spring data
+    const LEVEL_TO_SPRING_REGION = {
+        'national': 'INDIA',
+        'state-ap': 'AP',
+        'state-tg': 'TS',
+        'tg': 'TS',
+        'ap': 'AP'
+    };
 
     useEffect(() => {
         setNews([]);
         setCursorTime(null);
         setCursorId(null);
         fetchNews(null, null, true);
-    }, [activeLanguage, selectedRegion]);
+    }, [activeLanguage, categoryParam, subParam, segmentParam]);
 
     const fetchNews = async (cTime = null, cId = null, isFresh = false) => {
         try {
             setLoading(true);
-            const params = { 
-                language: langUpper, 
-                limit: LIMIT 
-            };
             
-            if (cTime) params.cursorTime = cTime;
-            if (cId) params.cursorId = cId;
+            // 1. Prepare Params
+            const springParams = { 
+                language: langUpper, 
+                limit: (categoryParam === 'INDIA' || categoryParam === 'national') ? 20 : LIMIT 
+            };
+            if (cTime) springParams.cursorTime = cTime;
+            if (cId) springParams.cursorId = cId;
 
-            let response;
-            if (selectedRegion === 'ALL') {
-                // Fetch all current affairs
-                response = await currentAffairsService.getAllAffairs(params);
-            } else if (selectedRegion === 'INDIA') {
-                // Use getAllAffairs with limit 20 for INDIA as specifically requested
-                const indiaParams = { ...params, limit: 20 };
-                response = await currentAffairsService.getAllAffairs(indiaParams);
-            } else {
-                // Fetch by specific region
-                response = await currentAffairsService.getByRegion(selectedRegion, params);
+            // 2. Fetch from Both Sources
+            let djangoArticles = [];
+            if (isFresh) {
+                try {
+                    const djangoParams = {
+                        section: 'current-affairs',
+                        lang: lang,
+                        limit: 15
+                    };
+                    
+                    if (categoryParam) djangoParams.category = categoryParam;
+                    if (subParam) djangoParams.sub_category = subParam;
+                    if (segmentParam) djangoParams.segment = segmentParam;
+                    
+                    if (categoryParam === 'INDIA' || categoryParam === 'national') djangoParams.category = 'national';
+                    
+                    const djangoRes = await newsService.getPublicArticles(djangoParams);
+                    djangoArticles = (djangoRes.results || []).map(art => ({
+                        ...art,
+                        isDjango: true,
+                        title: art.headline || art.title,
+                        creationorupdationDate: art.published_at,
+                        region: categoryParam === 'national' ? 'India' : (categoryParam || 'General')
+                    }));
+                } catch (djangoErr) {
+                    console.error('Error fetching Django current affairs:', djangoErr);
+                }
             }
 
-            console.log(`[CurrentAffairs] Fetched for region: ${selectedRegion}, lang: ${langUpper}`, response);
-            const newArticles = Array.isArray(response) ? response : [];
+            let springResponse;
+            const springRegion = categoryParam || LEVEL_TO_SPRING_REGION[categoryParam] || LEVEL_TO_SPRING_REGION[subParam];
+
+            if (!springRegion || springRegion === 'ALL') {
+                springResponse = await currentAffairsService.getAllAffairs(springParams);
+            } else if (springRegion === 'INDIA') {
+                springResponse = await currentAffairsService.getAllAffairs(springParams);
+            } else {
+                springResponse = await currentAffairsService.getByRegion(springRegion, springParams);
+            }
+
+            console.log(`[CurrentAffairs] Fetched Django: ${djangoArticles.length}, Spring: ${springResponse?.length}`);
+            
+            const springArticles = Array.isArray(springResponse) ? springResponse : [];
+            const combinedBatch = [...djangoArticles, ...springArticles];
             
             if (isFresh) {
-                setNews(newArticles);
+                setNews(combinedBatch);
             } else {
-                setNews(prev => [...prev, ...newArticles]);
+                setNews(prev => [...prev, ...combinedBatch]);
             }
             
-            // Cursor update for next page
-            if (newArticles.length > 0) {
-                const lastItem = newArticles[newArticles.length - 1];
-                setCursorTime(lastItem.creationorupdationDate);
-                setCursorId(lastItem.id);
+            if (springArticles.length > 0) {
+                const lastSpringItem = springArticles[springArticles.length - 1];
+                setCursorTime(lastSpringItem.creationorupdationDate);
+                setCursorId(lastSpringItem.id);
             }
 
-            // Determine the limit used for this request
-            const limitUsed = (selectedRegion === 'INDIA') ? 20 : LIMIT;
-            setHasMore(newArticles.length === limitUsed);
+            const limitUsed = (springRegion === 'INDIA') ? 20 : LIMIT;
+            setHasMore(springArticles.length === limitUsed);
             setError(null);
         } catch (err) {
             console.error('Error fetching news:', err);
@@ -204,34 +196,14 @@ const CurrentAffairs = () => {
                 onLanguageChange={handleLanguageChange}
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
+            
+            <TaxonomyTabs sectionSlug="current-affairs" />
 
             <div className="container py-5">
                 <div className="section-header mb-4">
                     <div className="header-title-section">
                         <h1 className="premium-title">{t.title}</h1>
                         <p className="premium-subtitle">{t.subtitle}</p>
-                    </div>
-                    
-                    {/* Region Filter Dropdown */}
-                    <div className="controls-row">
-                        <div className="region-filter-container">
-                            <label htmlFor="region-select" className="filter-label">
-                                <i className="fas fa-map-marked-alt"></i> 
-                                {lang === 'te' ? 'ప్రాంతం ఎంచుకోండి' : 'Filter by Region'}:
-                            </label>
-                            <select
-                                id="region-select"
-                                className="region-select-styled"
-                                value={selectedRegion}
-                                onChange={(e) => setSelectedRegion(e.target.value)}
-                            >
-                                {regions.map((region) => (
-                                    <option key={region.value} value={region.value}>
-                                        {region.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
                     </div>
                 </div>
 
@@ -241,7 +213,13 @@ const CurrentAffairs = () => {
                     activeLanguage={activeLanguage}
                     title={t.title || "Current Affairs Headlines"}
                     viewAllLink="/current-affairs"
-                    onItemClick={(item) => setSelectedDoc(item)}
+                    onItemClick={(item) => {
+                        if (item.isDjango) {
+                            navigate(`/article/${item.section}/${item.slug}`);
+                        } else {
+                            setSelectedDoc(item);
+                        }
+                    }}
                     sidebarBlocks={[
                         {
                             title: "More Headlines",
@@ -303,13 +281,23 @@ const CurrentAffairs = () => {
                                                 <span className="news-date">
                                                     {item.creationorupdationDate ? new Date(item.creationorupdationDate).toLocaleDateString() : ''}
                                                 </span>
-                                                <button 
-                                                    onClick={() => setSelectedDoc(item)} 
-                                                    className="read-more-link"
-                                                    style={{background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}
-                                                >
-                                                    {t.readFull} <i className="fas fa-arrow-right"></i>
-                                                </button>
+                                                {item.isDjango ? (
+                                                    <Link 
+                                                        to={`/article/${item.section}/${item.slug}`}
+                                                        className="read-more-link"
+                                                        style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}
+                                                    >
+                                                        {t.readFull} <i className="fas fa-arrow-right"></i>
+                                                    </Link>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => setSelectedDoc(item)} 
+                                                        className="read-more-link"
+                                                        style={{background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}
+                                                    >
+                                                        {t.readFull} <i className="fas fa-arrow-right"></i>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -406,6 +394,14 @@ const CurrentAffairs = () => {
                     </div>
                 </div>
             )}
+
+            <div className="container mt-5 mb-5 pt-4">
+                <ContentHubWidget 
+                    searchQuery="Current Affairs" 
+                    title="Discover More"
+                    minimal={false} 
+                />
+            </div>
 
             <Footer />
         </div>

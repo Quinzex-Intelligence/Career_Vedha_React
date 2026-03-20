@@ -1,47 +1,75 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useInfiniteArticles } from '../hooks/useArticles';
-import { useTrendingArticles } from '../hooks/useHomeContent';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { useTrendingArticles } from '../hooks/useHomeContent';
 import API_CONFIG from '../config/api.config';
-import { getTranslations } from '../utils/translations';
+import { newsService, taxonomyService } from '../services';
 import TopStoriesHero from '../components/home/TopStoriesHero';
-import TaxonomyTabs from '../components/ui/TaxonomyTabs';
-import ContentHubWidget from '../components/ui/ContentHubWidget';
 import './Articles.css';
 
-const NewsPage = () => {
+const ArticlesPage = () => {
+    const [sections, setSections] = useState([]);
+    const [isLoadingSections, setIsLoadingSections] = useState(true);
+
+    // Fetch sections from backend
+    useEffect(() => {
+        const fetchSections = async () => {
+            try {
+                setIsLoadingSections(true);
+                const data = await taxonomyService.getSections();
+                // Ensure ALL is always there
+                const dynamicSections = [
+                    { id: 'all', name: 'ALL' },
+                    ...(Array.isArray(data) ? data : [])
+                ];
+                setSections(dynamicSections);
+            } catch (error) {
+                console.error('Failed to fetch sections:', error);
+                setSections([{ id: 'all', name: 'ALL' }]);
+            } finally {
+                setIsLoadingSections(false);
+            }
+        };
+        fetchSections();
+    }, []);
+
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeLanguage, setActiveLanguage] = useState(() => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
-    const t = getTranslations(activeLanguage);
+    const [searchQuery, setSearchQuery] = useState('');
     const [searchParams] = useSearchParams();
     const categoryParam = searchParams.get('category') || searchParams.get('level');
-    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
-    const segmentParam = searchParams.get('segment');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const sectionParam = searchParams.get('section');
 
-    // Debounce search query to prevent excessive API calls
+    const [activeSection, setActiveSection] = useState(() => (sectionParam || 'all').toLowerCase());
+    const [activeCategory, setActiveCategory] = useState(() => categoryParam?.toLowerCase() || null);
+
+    // Sync state with URL params
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
+        if (sectionParam) {
+            setActiveSection(sectionParam.toLowerCase());
+        } else if (!sectionParam && location.search === "") {
+             // Reset to all if no params (back to main articles)
+             setActiveSection('all');
+        }
+    }, [sectionParam, location.search]);
 
-    // Memoize filters to prevent unnecessary re-renders/refetches
-    const filters = useMemo(() => ({
-        lang: activeLanguage === 'telugu' ? 'te' : 'en',
-        section: 'news',
-        category: categoryParam || undefined,
-        sub_category: subParam || undefined,
-        segment: segmentParam || undefined,
-        q: debouncedSearch || undefined,
-        limit: 12
-    }), [activeLanguage, debouncedSearch, categoryParam, subParam, segmentParam]);
+    useEffect(() => {
+        if (categoryParam) {
+            setActiveCategory(categoryParam.toLowerCase());
+        }
+    }, [categoryParam]);
+
+    const filters = {
+        lang: activeLanguage,
+        section: activeSection !== 'all' ? activeSection : undefined,
+        category: activeCategory || undefined,
+        q: searchQuery || undefined
+    };
 
     const {
         data,
@@ -52,8 +80,6 @@ const NewsPage = () => {
         isError,
         refetch
     } = useInfiniteArticles(filters);
-
-    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
 
     const handleLanguageChange = (lang) => {
         setActiveLanguage(lang);
@@ -75,23 +101,9 @@ const NewsPage = () => {
         }
     };
 
-    const allArticles = data?.pages.flatMap(page => page.results) || [];
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
 
-    // Client-side filtering because backend published endpoint ignores q/search when section is present
-    const filteredArticles = useMemo(() => {
-        if (!debouncedSearch) return allArticles;
-        
-        const query = debouncedSearch.toLowerCase().trim();
-        return allArticles.filter(article => {
-            const title = (article.title || '').toLowerCase();
-            const summary = (article.summary || '').toLowerCase();
-            const section = (article.section || '').toLowerCase();
-            
-            return title.includes(query) || 
-                   summary.includes(query) || 
-                   section.includes(query);
-        });
-    }, [allArticles, debouncedSearch]);
+    const allArticles = data?.pages.flatMap(page => page.results) || [];
 
     return (
         <div className="articles-page-wrapper">
@@ -101,20 +113,52 @@ const NewsPage = () => {
             />
             <PrimaryNav />
 
-            <TaxonomyTabs sectionSlug="news" />
 
-            
+
+
+            {/* Filters Bar */}
+            <div className="articles-filters-bar">
+                <div className="filters-container">
+                    <div className="section-tabs">
+                        {isLoadingSections ? (
+                            <div className="tabs-loading-shimmer"></div>
+                        ) : (
+                            sections.map(section => (
+                                <button
+                                    key={section.id}
+                                    onClick={() => setActiveSection(section.id)}
+                                    className={`section-tab ${activeSection === section.id ? 'active' : ''}`}
+                                >
+                                    {section.name}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                    
+                    <div className="search-input-wrapper">
+                        <i className="fas fa-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search articles..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="articles-search-input"
+                        />
+                    </div>
+                </div>
+            </div>
+
             <TopStoriesHero 
                 topStories={allArticles.slice(0, 5)}
                 loading={isLoading || trendingLoading}
                 activeLanguage={activeLanguage}
-                title={t.topStories || "Top News"}
-                viewAllLink="/news"
+                title="Top Articles"
+                viewAllLink="/articles"
                 sidebarBlocks={[
                     {
-                        title: "More News",
+                        title: "Next in Articles",
                         items: allArticles.slice(5, 8),
-                        viewAllLink: "/news"
+                        viewAllLink: "/articles"
                     },
                     {
                         title: "Most Popular",
@@ -129,13 +173,13 @@ const NewsPage = () => {
                 {isLoading ? (
                     <div className="articles-loading">
                         <div className="spinner mx-auto mb-4"></div>
-                        <p>{t.loading || 'Loading news...'}</p>
+                        <p>Loading your articles...</p>
                     </div>
                 ) : isError ? (
                     <div className="articles-error">
                         <i className="fas fa-exclamation-triangle mb-4 text-red-500" style={{ fontSize: '48px' }}></i>
                         <h2>Something went wrong</h2>
-                        <p className="mb-6">We couldn't load the news. Please try again later.</p>
+                        <p className="mb-6">We couldn't load the articles. Please try again later.</p>
                         <button 
                             onClick={() => refetch()}
                             className="btn-load-more"
@@ -143,22 +187,22 @@ const NewsPage = () => {
                             Retry Request
                         </button>
                     </div>
-                ) : filteredArticles.length === 0 ? (
+                ) : allArticles.length === 0 ? (
                     <div className="articles-empty">
                         <i className="fas fa-search"></i>
-                        <h2>{t.noNewsFound || 'No news found'}</h2>
-                        <p>{debouncedSearch ? `No results for "${debouncedSearch}" in loaded articles.` : "Try adjusting your search to find what you're looking for."}</p>
+                        <h2>No articles found</h2>
+                        <p>Try adjusting your search or filters to find what you're looking for.</p>
                     </div>
                 ) : (
                     <>
                         <div className="articles-grid">
-                            {filteredArticles.map((article) => {
+                            {allArticles.map((article) => {
                                 // Resolve image URL
                                 let imageUrl = article.featured_media?.url || article.og_image_url;
                                 if (imageUrl && imageUrl.startsWith('/')) {
                                     imageUrl = `${API_CONFIG.DJANGO_BASE_URL.replace('/api', '')}${imageUrl}`;
                                 }
-                                imageUrl = imageUrl || `https://placehold.co/600x400/FFC107/333333?text=${encodeURIComponent(article.section || 'News')}`;
+                                imageUrl = imageUrl || "https://placehold.co/600x400/FFC107/333333?text=Article";
 
                                 return (
                                     <article key={article.id} className="article-card">
@@ -167,11 +211,11 @@ const NewsPage = () => {
                                                 src={imageUrl}
                                                 alt={article.title}
                                                 onError={(e) => {
-                                                    e.target.src = "https://placehold.co/600x400/FFC107/333333?text=News";
+                                                    e.target.src = "https://placehold.co/600x400/FFC107/333333?text=Article";
                                                 }}
                                             />
                                             <div className="article-card-badge">
-                                                {article.section || 'News'}
+                                                {article.section}
                                             </div>
                                         </div>
                                         <div className="article-card-content">
@@ -183,10 +227,10 @@ const NewsPage = () => {
                                                     {formatDate(article.published_at || article.created_at)}
                                                 </div>
                                                 <Link 
-                                                    to={`/article/${article.section || 'news'}/${article.slug}`} 
+                                                    to={`/article/${article.section || 'null'}/${article.slug}`} 
                                                     className="read-more-btn"
                                                 >
-                                                    {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
+                                                    Read Full Story <i className="fas fa-arrow-right"></i>
                                                 </Link>
                                             </div>
                                         </div>
@@ -205,10 +249,10 @@ const NewsPage = () => {
                                     {isFetchingNextPage ? (
                                         <>
                                             <div className="spinner"></div>
-                                            {t.loading || 'Loading...'}
+                                            Loading more...
                                         </>
                                     ) : (
-                                        t.loadMore || 'Load More'
+                                        'Load More Articles'
                                     )}
                                 </button>
                             </div>
@@ -217,17 +261,9 @@ const NewsPage = () => {
                 )}
             </main>
 
-            <div className="container mt-5 mb-5 pt-4">
-                <ContentHubWidget 
-                    searchQuery="Trending" 
-                    title="Discover More"
-                    minimal={false} 
-                />
-            </div>
-
             <Footer />
         </div>
     );
 };
 
-export default NewsPage;
+export default ArticlesPage;

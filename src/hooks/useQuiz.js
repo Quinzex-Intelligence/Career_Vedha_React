@@ -53,13 +53,13 @@ export function useQuizQuestions(params = {}) {
         queryFn: async () => {
             if (!category && !chapterId) return { content: [] };
 
-            const endpoint = category
-                ? API_CONFIG.ENDPOINTS.GET_RANDOM_QUESTIONS_BY_CATEGORY
-                : API_CONFIG.ENDPOINTS.GET_RANDOM_QUESTIONS_BY_CHAPTER;
+            const endpoint = chapterId
+                ? API_CONFIG.ENDPOINTS.GET_RANDOM_QUESTIONS_BY_CHAPTER
+                : API_CONFIG.ENDPOINTS.GET_RANDOM_QUESTIONS_BY_CATEGORY;
 
-            const queryParams = category
-                ? { category, count }
-                : { chapterId, count };
+            const queryParams = chapterId
+                ? { chapterId, count }
+                : { category, count };
 
             const res = await api.get(endpoint, { params: queryParams });
             const data = res.data || [];

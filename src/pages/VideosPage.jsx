@@ -5,12 +5,14 @@ import TopBar from '../components/layout/TopBar';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
+import { useSearchParams } from 'react-router-dom';
+import TaxonomyTabs from '../components/ui/TaxonomyTabs';
 import Skeleton from '../components/ui/Skeleton';
 import VideoPlayerModal from '../components/ui/VideoPlayerModal';
 import '../styles/VideosPage.css';
 
 /* ── Small reusable section that fetches one category ── */
-const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick }) => {
+const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters = {} }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -22,7 +24,7 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick }) => {
         else { setLoadingMore(true); }
 
         try {
-            const data = await youtubeService.getYoutubeUrls(apiCategory, cursorIdRef.current);
+            const data = await youtubeService.getYoutubeUrls(apiCategory, cursorIdRef.current, filters);
             if (isInitial) setVideos(data);
             else setVideos(prev => [...prev, ...data]);
 
@@ -40,7 +42,7 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick }) => {
         }
     }, [apiCategory, label]);
 
-    useEffect(() => { fetchVideos(true); }, [fetchVideos]);
+    useEffect(() => { fetchVideos(true); }, [fetchVideos, filters.category, filters.sub_category, filters.segment]);
 
     const getYoutubeId = (url) => {
         const m = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]{11})/);
@@ -118,15 +120,25 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick }) => {
     );
 };
 
-/* ── Main Page ── */
 const VideosPage = () => {
-    const { category } = useParams(); // undefined when on /videos
+    const { category } = useParams();
+    const [searchParams] = useSearchParams();
     const [activeLanguage, setActiveLanguage] = useState(() => localStorage.getItem('preferredLanguage') || 'english');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => { window.scrollTo(0, 0); }, [category]);
+    const categoryParam = searchParams.get('category') || searchParams.get('level');
+    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
+    const segmentParam = searchParams.get('segment');
+
+    const videoFilters = React.useMemo(() => ({
+        category: categoryParam || undefined,
+        sub_category: subParam || undefined,
+        segment: segmentParam || undefined
+    }), [categoryParam, subParam, segmentParam]);
+
+    useEffect(() => { window.scrollTo(0, 0); }, [category, categoryParam, subParam, segmentParam]);
 
     const handleVideoClick = (video) => {
         setSelectedVideo(video);
@@ -153,6 +165,8 @@ const VideosPage = () => {
                 onLanguageChange={handleLanguageChange}
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
+            
+            <TaxonomyTabs sectionSlug="videos" />
 
             <main className="videos-main-content">
                 <div className="container">
@@ -168,6 +182,7 @@ const VideosPage = () => {
                             label="Long Videos"
                             layoutClass="long-layout"
                             onVideoClick={handleVideoClick}
+                            filters={videoFilters}
                         />
                     )}
 
@@ -177,6 +192,7 @@ const VideosPage = () => {
                             label="Shorts"
                             layoutClass="shorts-layout"
                             onVideoClick={handleVideoClick}
+                            filters={videoFilters}
                         />
                     )}
                 </div>

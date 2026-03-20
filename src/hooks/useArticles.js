@@ -32,7 +32,7 @@ export function useArticles(filters = {}) {
  * Infinite query hook for public articles with cursor pagination
  * @param {Object} filters - Filter options (lang, section, etc.)
  */
-export function useInfiniteArticles(filters = {}) {
+export function useInfiniteArticles(filters = {}, options = {}) {
     return useInfiniteQuery({
         queryKey: articleKeys.publicList(filters),
         queryFn: async ({ pageParam = null }) => {
@@ -45,6 +45,7 @@ export function useInfiniteArticles(filters = {}) {
         staleTime: 0,              // Always consider data stale so it refetches on mount
         refetchOnMount: true,      // Always refetch when the component mounts
         refetchOnWindowFocus: false, // Skip on window focus to avoid excessive calls
+        ...options
     });
 }
 

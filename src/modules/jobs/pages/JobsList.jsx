@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { jobsService } from '../../../services/jobsService';
 import api, { getUserContext } from '../../../services/api';
 import TopBar from '../../../components/layout/TopBar';
@@ -17,12 +18,21 @@ const JobsList = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasNext, setHasNext] = useState(false);
     const [cursor, setCursor] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchParams] = useSearchParams();
+    const levelParam = searchParams.get('level');
     const [filters, setFilters] = useState({
         job_type: '',
         location: '',
-        organization: ''
+        organization: '',
+        level: levelParam || ''
     });
+
+    // Sync filters with URL param
+    useEffect(() => {
+        if (levelParam) {
+            setFilters(prev => ({ ...prev, level: levelParam }));
+        }
+    }, [levelParam]);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeLanguage, setActiveLanguage] = useState(() => {
         return localStorage.getItem('preferredLanguage') || 'english';
@@ -47,6 +57,7 @@ const JobsList = () => {
             if (filters.job_type) params.job_type = filters.job_type;
             if (filters.location) params.location = filters.location;
             if (filters.organization) params.organization = filters.organization;
+            if (filters.level) params.level = filters.level;
 
             const data = await jobsService.getPublicJobs(params);
             
@@ -158,7 +169,7 @@ const JobsList = () => {
                                                 <p>Try adjusting your filters or search query.</p>
                                                 <button 
                                                     className="btn-reset"
-                                                    onClick={() => setFilters({job_type: '', location: '', organization: ''})}
+                                                    onClick={() => setFilters({job_type: '', location: '', organization: '', level: ''})}
                                                 >
                                                     Clear All Filters
                                                 </button>

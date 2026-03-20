@@ -174,15 +174,8 @@ const TaxonomyManagement = () => {
     
     // Memoized flat list for list view
     const flatLevelsData = useMemo(() => {
-        if (!levelsDataResponse || typeof levelsDataResponse !== 'object' || Array.isArray(levelsDataResponse)) {
-            return levelsDataResponse || [];
-        }
-        return [
-            ...(levelsDataResponse.categories || []),
-            ...(levelsDataResponse.sub_categories || []),
-            ...(levelsDataResponse.segments || []),
-            ...(levelsDataResponse.topics || [])
-        ];
+        // Now returns the nested array directly
+        return Array.isArray(levelsDataResponse) ? levelsDataResponse : [];
     }, [levelsDataResponse]);
 
     // Derived state for loading
@@ -448,11 +441,16 @@ const TaxonomyManagement = () => {
     };
     
     // This function replaces the manual fetch for expansion
-    const toggleExpand = async (category) => {
+    const toggleExpand = async (category, level = 0) => {
         const isExpanded = expandedRows[category.id];
         
+        // Define possible child keys
+        const childKeys = ['sub_categories', 'segments', 'topics', 'children'];
+        const childKey = childKeys[level] || 'children';
+        const hasPreloadedChildren = category[childKey] && category[childKey].length > 0;
+
         // Only fetch if children are not already in the tree node OR childData
-        if (!isExpanded && !category.children && !childData[category.id]) {
+        if (!isExpanded && !hasPreloadedChildren && !childData[category.id]) {
             setLoading(true);
             try {
                 const children = await fetchChildrenFn(activeSection, category.id);
@@ -495,20 +493,23 @@ const TaxonomyManagement = () => {
 
     return (
         <CMSLayout sidebarProps={sidebarProps} navbarProps={navbarProps}>
-            <div className="am-header">
-                <div className="am-title-section">
-                    <h1 className="am-title">
+            <div className="am-header redesigned">
+                <div className="am-header-left">
+                    <div className="am-title-icon-wrapper">
                         <i className={`fas ${activeTab === 'sections' ? 'fa-layer-group' : 'fa-tags'}`}></i>
-                        {activeTab === 'sections' ? 'Section Management' : 'Taxonomy Management'}
-                    </h1>
-                    <p className="am-subtitle">
-                        {activeTab === 'sections' ? 'Manage root-level content divisions' : 'Manage categories and tags across the platform'}
-                    </p>
+                    </div>
+                    <div className="am-title-content">
+                        <h1 className="am-title">
+                            {activeTab === 'sections' ? 'Section Management' : 'Taxonomy Management'}
+                        </h1>
+                        <p className="am-subtitle">
+                            {activeTab === 'sections' ? 'Manage root-level content divisions' : 'Manage categories and tags across the platform'}
+                        </p>
+                    </div>
                 </div>
                 
-                <div className="am-actions-container" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    {/* Tab Switcher */}
-                    <div className="am-tabs-switcher">
+                <div className="am-header-right">
+                    <div className="am-tabs-switcher premium">
                         <button 
                             className={`tab-btn ${activeTab === 'taxonomy' ? 'active' : ''}`}
                             onClick={() => setActiveTab('taxonomy')}
@@ -523,7 +524,7 @@ const TaxonomyManagement = () => {
                         </button>
                     </div>
 
-                    <div className="am-actions">
+                    <div className="am-actions-group">
                         {activeTab === 'taxonomy' ? (
                             <div className="am-view-toggle">
                                 <button 
@@ -542,7 +543,7 @@ const TaxonomyManagement = () => {
                                 </button>
                             </div>
                         ) : (
-                            <div className="am-multi-actions">
+                            <div className="am-multi-actions redesigned">
                                 <button className="am-btn-l0" onClick={() => handleOpenModal('SECTION')}>
                                     <i className="fas fa-folder-plus"></i> Section (L0)
                                 </button>
@@ -550,10 +551,10 @@ const TaxonomyManagement = () => {
                                     <i className="fas fa-tag"></i> Category (L1)
                                 </button>
                                 <button className="am-btn-l2" onClick={() => handleOpenModal('SUB_CATEGORY')}>
-                                    <i className="fas fa-layer-group"></i> Sub-Category (L2)
+                                    <i className="fas fa-layer-group"></i> Sub (L2)
                                 </button>
                                 <button className="am-btn-l3" onClick={() => handleOpenModal('SEGMENT')}>
-                                    <i className="fas fa-project-diagram"></i> Segment (L3)
+                                    <i className="fas fa-project-diagram"></i> Seg (L3)
                                 </button>
                                 <button className="am-btn-l4" onClick={() => handleOpenModal('TOPIC')}>
                                     <i className="fas fa-leaf"></i> Topic (L4)
@@ -596,18 +597,51 @@ const TaxonomyManagement = () => {
                                         onChange={(e) => {
                                             const val = e.target.value.toLowerCase();
                                             setSearchQuery(val);
-                                            if (!val) {
-                                                const sourceData = viewMode === 'list' ? flatLevelsData : treeDataResponse;
-                                                if (sourceData) setTaxonomies(sourceData);
+                                            const sourceData = viewMode === 'list' ? flatLevelsData : treeDataResponse;
+                                            
+                                            if (!val || !sourceData) {
+                                                setTaxonomies(sourceData || []);
                                                 return;
                                             }
-                                            const sourceData = viewMode === 'list' ? flatLevelsData : treeDataResponse;
-                                            if (sourceData) {
-                                                setTaxonomies(sourceData.filter(t => 
-                                                    t.name.toLowerCase().includes(val) || 
-                                                    t.slug.toLowerCase().includes(val)
-                                                ));
-                                            }
+
+                                            // Recursive filter and auto-expand for nested hierarchy
+                                            const filterHierarchy = (items, query, depth = 0) => {
+                                                const newExpandedRows = {};
+                                                const filteredItems = items.map(item => {
+                                                    const isMatch = item.name.toLowerCase().includes(query) || 
+                                                                   item.slug.toLowerCase().includes(query);
+                                                    
+                                                    const childKeys = ['sub_categories', 'segments', 'topics', 'children'];
+                                                    let childrenMatches = {};
+                                                    let hasChildMatch = false;
+
+                                                    for (const key of childKeys) {
+                                                        if (item[key] && Array.isArray(item[key])) {
+                                                            const { filtered: f, expanded: e } = filterHierarchy(item[key], query, depth + 1);
+                                                            if (f.length > 0) {
+                                                                childrenMatches[key] = f;
+                                                                Object.assign(newExpandedRows, e);
+                                                                hasChildMatch = true;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    if (isMatch || hasChildMatch) {
+                                                        if (hasChildMatch) {
+                                                            newExpandedRows[item.id] = true;
+                                                        }
+                                                        const result = { ...item, ...childrenMatches };
+                                                        return result;
+                                                    }
+                                                    return null;
+                                                }).filter(Boolean);
+                                                
+                                                return { filtered: filteredItems, expanded: newExpandedRows };
+                                            };
+
+                                            const { filtered, expanded } = filterHierarchy(sourceData, val);
+                                            setTaxonomies(filtered);
+                                            setExpandedRows(prev => ({ ...prev, ...expanded }));
                                         }}
                                     />
                                 </div>
@@ -642,8 +676,11 @@ const TaxonomyManagement = () => {
                                             taxonomies.filter(tax => searchQuery ? true : !tax.parent_id).map((tax) => {
                                                 const renderRow = (item, level = 0) => {
                                                     const isExpanded = expandedRows[item.id];
-                                                    // Find children in the flat taxonomies array
-                                                    const children = taxonomies.filter(c => c.parent_id === item.id);
+                                                    
+                                                    // Get current children from nested data or childData map
+                                                    const childKeys = ['sub_categories', 'segments', 'topics', 'children'];
+                                                    const childKey = childKeys[level] || 'children';
+                                                    const children = item[childKey] || childData[item.id] || [];
                                                     const hasChildren = children.length > 0;
                                                     
                                                     return (
@@ -660,7 +697,7 @@ const TaxonomyManagement = () => {
                                                                     {hasChildren ? (
                                                                         <button 
                                                                             className={`am-expand-btn ${isExpanded ? 'active' : ''}`}
-                                                                            onClick={() => toggleExpand(item)}
+                                                                            onClick={() => toggleExpand(item, level)}
                                                                         >
                                                                             <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
                                                                         </button>
@@ -713,6 +750,7 @@ const TaxonomyManagement = () => {
                                                                                 if (item.content) editMode = 'TOPIC';
                                                                                 else if (level === 1) editMode = 'SUB_CATEGORY';
                                                                                 else if (level === 2) editMode = 'SEGMENT';
+                                                                                else if (level === 3) editMode = 'TOPIC';
                                                                                 handleOpenModal(editMode, item, null, level);
                                                                             }}>
                                                                                 <i className="fas fa-edit"></i>

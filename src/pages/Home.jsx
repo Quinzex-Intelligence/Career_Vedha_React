@@ -13,7 +13,6 @@ import LatestArticles from '../components/home/LatestArticles';
 import SectionCategoryBlocks from '../components/home/SectionCategoryBlocks';
 import TopStoriesHero from '../components/home/TopStoriesHero';
 import MustRead from '../components/home/MustRead';
-import DailySnippet from '../components/home/DailySnippet';
 import Skeleton from '../components/ui/Skeleton';
 
 // Lazy load below-the-fold components
@@ -63,7 +62,6 @@ const Home = () => {
                 onLanguageChange={handleLanguageChange}
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
-            <DailySnippet activeLanguage={activeLanguage} />
             
             <MustRead 
                 activeLanguage={activeLanguage} 

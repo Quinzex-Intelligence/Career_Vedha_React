@@ -1,54 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { questionPaperService } from '../services';
+import React, { useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { newsService } from '../services';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
+import TaxonomyTabs from '../components/ui/TaxonomyTabs';
+import { useInfiniteArticles } from '../hooks/useArticles';
 import '../styles/contact-papers.css';
+import '../styles/Articles.css';
 
 const QuestionPapersPage = () => {
-    const [papers, setPapers] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [cursor, setCursor] = useState(null);
-    const [hasMore, setHasMore] = useState(true);
+    const [searchParams] = useSearchParams();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeLanguage, setActiveLanguage] = useState(() => {
-        return localStorage.getItem('preferredLanguage') || 'telugu';
+        return localStorage.getItem('preferredLanguage') || 'english';
     });
+    
+    const categoryParam = searchParams.get('category') || searchParams.get('level');
+    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
+    const segmentParam = searchParams.get('segment');
 
-    const fetchPapers = async (loadMore = false) => {
-        setIsLoading(true);
-        try {
-            const data = await questionPaperService.getPapersByCategory(
-                'QUESTIONPAPER',
-                loadMore ? cursor : null,
-                20
-            );
-            
-            if (loadMore) {
-                setPapers(prev => [...prev, ...data]);
-            } else {
-                setPapers(data);
-            }
-            
-            // Set cursor for next page (last item's creationDate)
-            if (data.length > 0) {
-                setCursor(data[data.length - 1].creationDate);
-                setHasMore(data.length === 20);
-            } else {
-                setHasMore(false);
-            }
-        } catch (error) {
-            console.error('Failed to fetch papers:', error);
-        } finally {
-            setIsLoading(false);
-        }
+    const filters = React.useMemo(() => ({
+        lang: activeLanguage === 'telugu' ? 'te' : 'en',
+        section: 'papers',
+        category: categoryParam || undefined,
+        sub_category: subParam || undefined,
+        segment: segmentParam || undefined,
+        limit: 12
+    }), [activeLanguage, categoryParam, subParam, segmentParam]);
+
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        isError,
+        refetch
+    } = useInfiniteArticles(filters);
+
+    const papers = data?.pages.flatMap(page => page.results) || [];
+
+    const handleLanguageChange = (lang) => {
+        setActiveLanguage(lang);
+        localStorage.setItem('preferredLanguage', lang);
     };
-
-    useEffect(() => {
-        fetchPapers();
-    }, []);
 
     const filteredPapers = papers.filter(paper =>
         paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,67 +54,62 @@ const QuestionPapersPage = () => {
     return (
         <>
             <Header 
-                isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
                 activeLanguage={activeLanguage}
-                setActiveLanguage={setActiveLanguage}
+                onLanguageChange={handleLanguageChange}
             />
-            <PrimaryNav 
-                isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
-            />
+            <PrimaryNav />
+            
+            <TaxonomyTabs sectionSlug="papers" />
             
             <div className="papers-page">
 
 
                 <div className="container">
                     <div className="papers-controls">
-                        <div className="search-box">
-                            <i className="fas fa-search"></i>
-                            <input
-                                type="text"
-                                placeholder="Search question papers..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="papers-count">
-                            {filteredPapers.length} {filteredPapers.length === 1 ? 'paper' : 'papers'} found
+                        <div className="section-header">
+                            <h1 className="premium-title">Question Papers</h1>
+                            <p className="premium-subtitle">Previous year papers and practice sets</p>
                         </div>
                     </div>
 
                     {isLoading && papers.length === 0 ? (
-                        <div className="papers-loading">
-                            <i className="fas fa-spinner fa-spin"></i> Loading papers...
+                        <div className="premium-loader-container">
+                            <div className="premium-spinner"></div>
+                            <p>Loading papers...</p>
                         </div>
-                    ) : filteredPapers.length > 0 ? (
+                    ) : papers.length > 0 ? (
                         <>
                             <div className="papers-grid-large">
-                                {filteredPapers.map((paper) => (
-                                    <Link
-                                        to={`/paper-viewer?url=${encodeURIComponent(paper.presignedUrl)}&title=${encodeURIComponent(paper.title)}`}
-                                        key={paper.id}
-                                        className="paper-card-large"
-                                    >
-                                        <div className="paper-icon">
-                                            <i className="fas fa-file-pdf"></i>
-                                        </div>
-                                        <span className="paper-title">{paper.title}</span>
-                                        {paper.description && (
-                                            <span className="paper-description">{paper.description}</span>
-                                        )}
-                                    </Link>
-                                ))}
+                                {papers.map((paper) => {
+                                    const fileUrl = paper.file_url || paper.presignedUrl;
+                                    return (
+                                        <Link
+                                            to={`/paper-viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(paper.title)}`}
+                                            key={paper.id}
+                                            className="paper-card-large"
+                                        >
+                                            <div className="paper-icon">
+                                                <i className="fas fa-file-pdf"></i>
+                                            </div>
+                                            <div className="paper-card-content">
+                                                <span className="paper-title">{paper.title}</span>
+                                                {paper.summary && (
+                                                    <span className="paper-description">{paper.summary}</span>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
                             </div>
 
-                            {hasMore && !searchTerm && (
+                            {hasNextPage && (
                                 <div className="load-more-container">
                                     <button
-                                        onClick={() => fetchPapers(true)}
+                                        onClick={() => fetchNextPage()}
                                         className="load-more-btn"
-                                        disabled={isLoading}
+                                        disabled={isFetchingNextPage}
                                     >
-                                        {isLoading ? (
+                                        {isFetchingNextPage ? (
                                             <>
                                                 <i className="fas fa-spinner fa-spin"></i> Loading...
                                             </>
@@ -134,11 +125,7 @@ const QuestionPapersPage = () => {
                     ) : (
                         <div className="papers-empty">
                             <i className="fas fa-folder-open"></i>
-                            <p>
-                                {searchTerm
-                                    ? `No papers found matching "${searchTerm}"`
-                                    : 'No question papers available at the moment.'}
-                            </p>
+                            <p>No question papers available for this selection.</p>
                         </div>
                     )}
                 </div>

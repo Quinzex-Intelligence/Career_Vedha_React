@@ -56,17 +56,32 @@ body {
     scroll-behavior: smooth;
     /* Global smooth scroll */
     -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
-    scroll-behavior: smooth;
+}
+
+/* Global Link Reset for Cards & Discovery */
+a, 
+.article-card a, 
+.news-title, 
+.news-description, 
+.story-link, 
+.update-item a, 
+.suggestion-item, 
+.compact-item-title,
+.compact-item-meta {
+    text-decoration: none !important;
+}
+
+a:hover {
+    text-decoration: none !important;
 }
 
 .desktop-layout-container {
-    max-width: 1040px;
+    max-width: 1200px;
     margin: 0 auto;
     background-color: var(--white);
     box-shadow: 0 0 20px rgba(0,0,0,0.05); /* Optional wrapper drop shadow */
     min-height: 100vh;
     position: relative;
-    overflow-x: hidden;
     border-radius: 8px; /* Smooth corners for the boxed layout */
 }
 
@@ -156,8 +171,8 @@ body {
     background-color: var(--white);
     padding: 16px 0;
     box-shadow: var(--shadow-sm);
-    position: relative;
-    z-index: 10;
+    position: relative; /* Changed from sticky to scroll with page */
+    z-index: 1000001;
 }
 
 .header-content {
@@ -211,44 +226,62 @@ body {
     display: flex;
     border: 2px solid var(--primary-yellow);
     border-radius: 50px;
-    overflow: hidden;
     background-color: var(--white);
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .search-bar:focus-within {
     border-color: var(--dark-yellow);
-    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.15);
+    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.15);
     transform: translateY(-1px);
 }
 
 .search-bar input {
     flex: 1;
-    padding: 12px 24px;
+    padding: 12px 28px;
     border: none;
     outline: none;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 500;
     background-color: transparent;
     color: var(--gray-900);
+    width: 100%;
+    border-radius: 50px 0 0 50px;
+}
+
+.search-bar input::placeholder {
+    color: var(--gray-400);
+    font-weight: 400;
 }
 
 .search-bar button {
     background-color: var(--primary-yellow);
     border: none;
-    padding: 10px 28px;
+    padding: 0 32px;
     cursor: pointer;
     color: var(--gray-900);
-    transition: all 0.2s;
-    font-size: 16px;
+    transition: all 0.3s ease;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-left: 2px solid var(--primary-yellow);
+    border-radius: 0 50px 50px 0;
 }
 
 .search-bar button:hover {
     background-color: var(--dark-yellow);
     color: var(--white);
+    transform: scale(1.05);
+}
+
+.search-bar button i {
+    transition: transform 0.2s ease;
+}
+
+.search-bar button:active i {
+    transform: scale(0.9);
 }
 
 /* Search Suggestions */
@@ -260,9 +293,9 @@ body {
     background: var(--white);
     border-radius: 16px;
     margin-top: 10px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--gray-200);
-    z-index: 1000;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--primary-yellow, #FFC107);
+    z-index: 1000000;
     overflow: hidden;
     animation: slideDown 0.2s ease-out;
 }
@@ -274,7 +307,7 @@ body {
 
 .suggestion-item {
     display: block;
-    padding: 14px 20px;
+    padding: 10px 18px;
     border-bottom: 1px solid var(--gray-100);
     text-decoration: none;
     transition: all 0.2s;
@@ -291,18 +324,88 @@ body {
 .suggestion-content {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 15px;
 }
 
 .suggestion-content i {
-    color: var(--dark-yellow);
-    font-size: 14px;
+    color: var(--primary-yellow);
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
 }
 
-.suggestion-content span {
+.suggestion-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.suggestion-title {
     color: var(--gray-900);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
+    line-height: 1.3;
+}
+
+.suggestion-type {
+    color: var(--dark-yellow, #F59E0B);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.search-suggestions-dropdown {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-suggestions-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-suggestions-dropdown::-webkit-scrollbar-thumb {
+    background: var(--gray-200);
+    border-radius: 10px;
+}
+
+.suggestions-footer {
+    background-color: var(--gray-50);
+    padding: 12px;
+    text-align: center;
+    border-top: 1px solid var(--gray-100);
+}
+
+.suggestions-footer a {
+    color: var(--gray-600);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.suggestions-footer a:hover {
+    color: var(--primary-yellow);
+}
+
+.no-suggestions {
+    padding: 30px 20px;
+    text-align: center;
+    color: var(--gray-400);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.no-suggestions i {
+    font-size: 24px;
+    opacity: 0.5;
+}
+
+.no-suggestions span {
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .header-right {
@@ -348,26 +451,25 @@ body {
 /* Primary Navigation - Premium Floating Pills */
 .primary-nav {
     background-color: var(--primary-yellow);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
-    z-index: 99999;
+    z-index: 999999;
     padding: 4px 0;
-    /* Round bottom corners to fit securely in the boxed layout */
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    width: 100%;
+    overflow: visible; /* must be visible so mega-menu can escape */
 }
 
 .nav-menu {
     display: flex;
     list-style: none;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    margin: 0;
-    padding: 0 12px; /* Keep to stop items from hitting the edge */
-    gap: 4px; /* Reduced gap to fit all items */
-    padding-bottom: 2px;
-    /* Space for shadow */
+    margin: 0 auto;
+    padding: 0;
+    max-width: var(--container-width, 1280px); /* Restored to standard container width */
+    width: 100%;
 }
 
 .nav-menu::-webkit-scrollbar {
@@ -377,39 +479,60 @@ body {
 .nav-menu li {
     position: relative;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Pipe Separator - only show when not active */
+.nav-menu li:not(:last-child)::after {
+    content: "|";
+    color: rgba(0, 0, 0, 0.1);
+    margin: 0 2px;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+/* Hide pipe if the NEXT item is active */
+.nav-menu li:has(+ li a.active)::after {
+    opacity: 0;
+}
+/* Hide pipe if CURRENT item is active */
+.nav-menu li:has(a.active)::after {
+    opacity: 0;
+}
+
+/* Prevent pipes from leaking into dropdowns */
+.nav-dropdown li::after,
+.sub-dropdown li::after {
+    display: none !important;
 }
 
 .nav-menu li a {
     display: flex;
     align-items: center;
-    gap: 5px; /* Decrease icon gap */
-    padding: 5px 12px; /* Reduce padding significantly */
-    /* Sleeker pill height */
+    gap: 6px;
+    padding: 4px 10px;
     color: var(--gray-900);
     text-decoration: none;
     font-weight: 700;
-    font-size: 13px; /* Smaller font to fit items */
+    font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
-    border-radius: 100px;
-    /* Full pill shape */
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.01em;
+    transition: all 0.2s ease;
     border: 1px solid transparent;
-    /* Prevent layout shift */
+    white-space: nowrap;
+    border-radius: 4px;
 }
 
 /* Hover State - Glassmorphic lift */
 .nav-menu li a:hover {
-    background-color: rgba(255, 255, 255, 0.45);
-    transform: translateY(-1px);
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Active State - Solid Clickable Pill */
 .nav-menu li a.active {
     background-color: var(--white);
     color: var(--gray-900);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
-    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Cleanup old effects */
@@ -454,28 +577,52 @@ body {
 /* Nav Dropdown Styles */
 .nav-dropdown {
     position: absolute;
-    top: calc(100% + 5px);
+    top: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(10px);
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    min-width: 180px; /* Reduced from 220px */
-    border-radius: 12px; /* Slightly tighter radius */
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.05);
-    padding: 6px; /* Reduced from 10px */
+    background: var(--white);
+    min-width: 200px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05);
+    padding: 8px;
     list-style: none;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 100000;
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.2s ease-out;
+    z-index: 10000;
+    border: 1px solid var(--gray-200);
 }
 
 .nav-dropdown.show {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
+}
+
+/* Custom Scrollbar for Nav Dropdowns */
+.nav-dropdown::-webkit-scrollbar,
+.sub-dropdown::-webkit-scrollbar {
+    width: 5px;
+}
+
+.nav-dropdown::-webkit-scrollbar-thumb,
+.sub-dropdown::-webkit-scrollbar-thumb {
+    background: var(--gray-200);
+    border-radius: 10px;
+}
+
+.nav-dropdown::-webkit-scrollbar-thumb:hover,
+.sub-dropdown::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-yellow);
+}
+
+/* Bulletproof CSS hover for desktop */
+@media (min-width: 1025px) {
+    .nav-menu li.has-dropdown:hover .nav-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+    }
 }
 
 .nav-dropdown li {
@@ -485,12 +632,12 @@ body {
 
 .nav-dropdown li a {
     display: block;
-    padding: 8px 12px !important; /* Reduced from 10px 16px */
+    padding: 10px 16px !important;
     color: var(--gray-700) !important;
-    text-transform: capitalize !important;
-    font-size: 13px !important; /* Reduced from 14px */
-    font-weight: 500 !important;
-    border-radius: 8px !important; /* Slightly tighter radius */
+    text-transform: none !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
     transition: all 0.2s ease !important;
     white-space: nowrap;
     text-align: left;
@@ -500,13 +647,42 @@ body {
 }
 
 .nav-dropdown li a:hover {
-    background: var(--gray-100) !important;
-    color: var(--primary-yellow-dark) !important;
+    background: var(--light-yellow) !important;
+    color: var(--dark-yellow) !important;
     transform: translateX(4px) !important;
 }
 
-.dropdown-icon.rotate {
-    transform: rotate(180deg);
+/* Nested Dropdowns (Flyout) */
+.nav-dropdown li.has-sub-dropdown {
+    position: relative;
+}
+
+.sub-dropdown {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 5px;
+    background: var(--white);
+    min-width: 200px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05);
+    padding: 8px;
+    list-style: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: all 0.2s ease-out;
+    border: 1px solid var(--gray-200);
+    z-index: 10001;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.nav-dropdown li.has-sub-dropdown:hover > .sub-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
 }
 
 @media (max-width: 1024px) {
@@ -521,25 +697,33 @@ body {
         transition: max-height 0.3s ease;
         opacity: 1;
         visibility: visible;
-        min-width: 0;
         width: 100%;
         border: none;
         margin-top: 5px;
     }
 
     .nav-dropdown.show {
+        max-height: 800px;
+    }
+
+    .sub-dropdown {
+        position: static;
+        transform: none !important;
+        box-shadow: none;
+        background: rgba(0,0,0,0.03);
+        margin-left: 0;
+        margin-top: 5px;
+        padding-left: 15px;
+        max-height: 0;
+        opacity: 1;
+        visibility: visible;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        border: none;
+    }
+
+    .nav-dropdown li.has-sub-dropdown.sub-active > .sub-dropdown {
         max-height: 500px;
-        margin-bottom: 5px;
-    }
-
-    .nav-dropdown li a {
-        color: var(--gray-900) !important;
-        font-size: 13px !important;
-        padding: 8px 12px !important;
-    }
-
-    .nav-menu li.has-dropdown > a {
-        justify-content: space-between;
     }
 }
 
@@ -979,6 +1163,7 @@ section {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    color: inherit; /* Prevent browser default link colors (blue/purple) */
 }
 
 .sidebar-trending-item:hover, .sidebar-compact-item:hover {
@@ -1037,7 +1222,7 @@ section {
     min-width: 0;
 }
 
-.trending-item-title, .compact-title {
+.trending-item-title, .compact-title, .compact-item-title {
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--gray-900);
@@ -1050,7 +1235,7 @@ section {
     overflow: hidden;
 }
 
-.trending-item-meta, .compact-meta {
+.trending-item-meta, .compact-meta, .compact-item-meta {
     font-size: 0.75rem;
     color: var(--gray-500);
     display: flex;
@@ -5301,8 +5486,8 @@ section {
 }
 
 .global-side-ad.left {
-    /* 50% of screen minus half the container (1040/2=520) minus width of ad (160) minus a gap (15) = 695px */
-    left: calc(50% - 695px);
+    /* 50% of screen minus half the container (1200/2=600) minus width of ad (160) minus a gap (20) = 780px */
+    left: calc(50% - 780px);
 }
 
 .global-side-ad.right {
@@ -5313,7 +5498,7 @@ section {
 /* Let's redefine right correctly based on left distance */
 .global-side-ad.right {
     left: auto;
-    right: calc(50% - 695px);
+    right: calc(50% - 780px);
 }
 
 
@@ -5328,12 +5513,10 @@ section {
     transform: rotate(180deg);
 }
 
-/* Show ads only when screen is wide enough: 1040 (container) + 320 (two ads) + 30 (gaps) = 1390px safe area.
-   A 13-inch laptop is usually 1366px or 1440px. 
-   At 1366px, if we use a 1040px container, we have (1366-1040)/2 = 163px on each side.
-   This perfectly fits our 160px ad!
+/* Show ads only when screen is wide enough: 1200 (container) + 320 (two ads) + 40 (gaps) = 1560px safe area.
+   At 1920px (standard HD), this fits perfectly with (1920-1200)/2 = 360px on each side.
 */
-@media (min-width: 1360px) {
+@media (min-width: 1580px) {
     .global-side-ad {
         display: flex; 
     }

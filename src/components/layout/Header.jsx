@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 import { useNavigate, Link } from 'react-router-dom';
-import { newsService, searchService } from '../../services';
+import { newsService, globalSearchService } from '../../services';
 import { getTranslations } from '../../utils/translations';
 
 const Header = ({ onToggleMenu, isMenuOpen, activeLanguage, onLanguageChange }) => {
@@ -14,12 +14,8 @@ const Header = ({ onToggleMenu, isMenuOpen, activeLanguage, onLanguageChange }) 
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (searchQuery.trim().length >= 2) {
-                const results = await newsService.getSearchSuggestions(
-                    searchQuery,
-                    '',
-                    activeLanguage === 'telugu' ? 'te' : 'en'
-                );
-                setSuggestions(results);
+                const results = await globalSearchService.searchAll(searchQuery);
+                setSuggestions(results.results || []);
                 setShowSuggestions(true);
             } else {
                 setSuggestions([]);
@@ -60,7 +56,7 @@ const Header = ({ onToggleMenu, isMenuOpen, activeLanguage, onLanguageChange }) 
                     <form className="search-bar" onSubmit={handleSearch} style={{ position: 'relative' }}>
                         <input
                             type="text"
-                            placeholder={t.searchPlaceholder}
+                            placeholder="Search articles, jobs, exams..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -68,21 +64,49 @@ const Header = ({ onToggleMenu, isMenuOpen, activeLanguage, onLanguageChange }) 
                         />
                         <button type="submit"><i className="fas fa-search"></i></button>
 
-                        {showSuggestions && suggestions.length > 0 && (
+                        {showSuggestions && searchQuery.length >= 2 && (
                             <div className="search-suggestions-dropdown">
-                                {suggestions.map((item) => (
-                                    <Link
-                                        key={item.id}
-                                        to={`/${item.section}/${item.slug}`}
-                                        className="suggestion-item"
-                                        onClick={() => setShowSuggestions(false)}
-                                    >
-                                        <div className="suggestion-content">
-                                            <i className="fas fa-file-alt"></i>
-                                            <span>{item.title}</span>
+                                {suggestions.length > 0 ? (
+                                    <>
+                                        {suggestions.map((item, index) => (
+                                            <Link
+                                                key={`${item.type}-${item.id}-${index}`}
+                                                to={item.url}
+                                                target={item.type === 'paper' ? '_blank' : '_self'}
+                                                className="suggestion-item"
+                                                onClick={() => setShowSuggestions(false)}
+                                            >
+                                                <div className="suggestion-content">
+                                                    <i className={`fas ${
+                                                        item.type === 'article' ? 'fa-newspaper' :
+                                                        item.type === 'job' ? 'fa-briefcase' :
+                                                        item.type === 'paper' ? 'fa-file-pdf' :
+                                                        item.type === 'currentAffair' ? 'fa-calendar-day' :
+                                                        item.type === 'academic' ? 'fa-graduation-cap' :
+                                                        item.type === 'product' ? 'fa-shopping-cart' : 'fa-file-alt'
+                                                    }`}></i>
+                                                    <div className="suggestion-text">
+                                                        <span className="suggestion-title">{item.title}</span>
+                                                        <span className="suggestion-type">{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                        <div className="suggestions-footer">
+                                            <Link 
+                                                to={`/search?q=${encodeURIComponent(searchQuery)}`}
+                                                onClick={() => setShowSuggestions(false)}
+                                            >
+                                                View all results for "{searchQuery}"
+                                            </Link>
                                         </div>
-                                    </Link>
-                                ))}
+                                    </>
+                                ) : (
+                                    <div className="no-suggestions">
+                                        <i className="fas fa-search"></i>
+                                        <span>No results found for "{searchQuery}"</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </form>

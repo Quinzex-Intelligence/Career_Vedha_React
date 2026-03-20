@@ -40,41 +40,18 @@ export const newsService = {
     // Get Published Articles (Public) - cursor pagination + section/lang/search support
     getPublicArticles: async (params = {}) => {
         try {
-            // Mapping for backend language codes
-            if (params.lang) {
-                params.lang = params.lang === 'telugu' ? 'te' : (params.lang === 'english' ? 'en' : params.lang);
-            }
-
             const cleanParams = Object.fromEntries(
                 Object.entries(params).filter(([_, v]) => v !== null && v !== undefined && v !== '')
             );
-
-            // Use specialized taxonomy filters if hierarchical params are present
-            // Handle both 'level' (legacy) and 'category' (standard)
-            const hasHierarchy = cleanParams.category || cleanParams.level || cleanParams.sub_category || cleanParams.sub || cleanParams.segment;
-            
-            const endpoint = hasHierarchy
-                ? API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_FILTERS
-                : API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES;
-
-            // Map frontend params to backend expected names if needed
-            const backendParams = { ...cleanParams };
-            if (cleanParams.level && !cleanParams.category) backendParams.category = cleanParams.level;
-            if (cleanParams.sub && !cleanParams.sub_category) backendParams.sub_category = cleanParams.sub;
-
-            const response = await djangoApi.get(endpoint, { params: backendParams });
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES, { params: cleanParams });
             const data = response.data;
-
-            // Handle different response formats (Article Filters endpoint returns { articles, total_published })
-            const results = data.articles || data.results || (Array.isArray(data) ? data : []);
-            
+            if (Array.isArray(data)) {
+                return { results: data, next_cursor: null, has_next: false };
+            }
             return {
-                ...data, // Include total_published, top_categories etc from backend
-                results: results,
-                total: data.total_published || data.count || results.length,
+                results: data.results || [],
                 next_cursor: data.next_cursor || null,
                 has_next: data.has_next || !!data.next_cursor,
-                categoryInfo: data.category || null // Pass back the resolved category info if available
             };
         } catch (error) {
             console.error('Error fetching public articles:', error);
@@ -649,9 +626,7 @@ export const newsService = {
             const response = await djangoApi.get('cms/articles/search-suggestions/', {
                 params: { q, section, lang: langCode }
             });
-            const data = response.data;
-            // Handle different response formats: direct array, or object with 'suggestions', 'results', 'data', 'content'
-            return Array.isArray(data) ? data : (data?.suggestions || data?.results || data?.data || data?.content || []);
+            return response.data.suggestions;
         } catch (error) {
             console.error('Error fetching search suggestions:', error);
             return [];
@@ -690,6 +665,22 @@ export const newsService = {
         }
     },
 
+    // Get public articles with cursor-based pagination
+    getPublicArticles: async (params = {}) => {
+        try {
+            // Mapping for backend language codes
+            if (params.lang) {
+                params.lang = params.lang === 'telugu' ? 'te' : (params.lang === 'english' ? 'en' : params.lang);
+            }
+
+            const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES, { params });
+            // The published endpoint returns { results, next_cursor, has_next, limit } directly
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching public articles:', error);
+            return { results: [], has_next: false, next_cursor: null };
+        }
+    }
 };
 
 // Exam Service
@@ -965,20 +956,15 @@ export const youtubeService = {
         LONG: 'LONG'
     },
 
-    // Get YouTube URLs by category/filters
-    getYoutubeUrls: async (category, cursorId = null, filters = {}) => {
+    // Get YouTube URLs by category
+    getYoutubeUrls: async (category, cursorId = null) => {
         try {
-            const params = { category, ...filters };
+            const params = { category };
             if (cursorId) params.cursorId = cursorId;
-            
-            // Map frontend standard names to backend expected if different
-            if (filters.category) params.category_slug = filters.category;
-            if (filters.sub_category) params.sub_category_slug = filters.sub_category;
-
             const response = await apiClient.get(API_CONFIG.ENDPOINTS.GET_YT_URLS_BY_CATEGORY, { params });
             return response.data;
         } catch (error) {
-            console.error(`Error fetching YouTube URLs:`, error);
+            console.error(`Error fetching YouTube URLs for category ${category}:`, error);
             return [];
         }
     },
@@ -1090,9 +1076,7 @@ export const taxonomyService = {
     }
 };
 
-// Global Search Service — Pure client-side deep search across ALL modules.
-// No dedicated backend search endpoint. Fetches raw content from regular APIs
-// and the public taxonomy tree, then filters entirely in the browser.
+// Global Search Service (Aggregates results from multiple sources)
 export const globalSearchService = {
     searchAll: async (query, types = ['all']) => {
         if (!query || query.trim().length < 2) {
@@ -1100,351 +1084,241 @@ export const globalSearchService = {
         }
 
         const searchQuery = query.trim();
-        const searchTerm = searchQuery.toLowerCase();
-        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
-
-        // Deep match helper: every search word must appear somewhere in the serialised object
-        const deepMatch = (obj) => {
-            const str = JSON.stringify(obj).toLowerCase();
-            return searchWords.every(w => str.includes(w));
-        };
-
+        const promises = [];
         const resultMap = {
-            articles: [],       // News
-            campusPages: [],    // Campus Pages
+            articles: [],
             jobs: [],
             papers: [],
             currentAffairs: [],
             academics: [],
-            exams: [],
-            taxonomy: [],       // Sections / Categories / Sub-cats / Segments / Topics
             estore: []
         };
 
-        const promises = [];
-
-        // ── Articles: fetch ALL published — split into News + Campus Pages ──────
-        if (types.includes('all') || types.includes('article') || types.includes('campusPages')) {
-            promises.push(
-                djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES, { params: { limit: 500 } })
-                    .then(res => {
-                        const items = res.data?.results || (Array.isArray(res.data) ? res.data : []);
-
-                        items.forEach(a => {
-                            if (!deepMatch(a)) return;
-                            const sec = (a.section || '').toLowerCase().replace(/_/g, '-');
-                            const mapped = {
-                                id: a.id,
-                                title: a.headline || a.title || a.title_en || a.title_te || a.headline_en || a.headline_te || '',
-                                summary: a.summary || a.description_en || a.description_te || '',
-                                publishedAt: a.published_at,
-                                image: a.banner_media?.url,
-                                section: a.section,
-                                category: a.category_name,
-                                subCategory: a.sub_category_name,
-                                segment: a.segment_name,
-                                topic: a.topic_name
-                            };
-
-                            if (sec === 'campus-pages') {
-                                resultMap.campusPages.push({
-                                    ...mapped,
-                                    type: 'campusPage',
-                                    url: `/article/campus-pages/${a.slug}`
-                                });
-                            } else if (sec === 'current-affairs') {
-                                // handled by currentAffairs bucket separately
-                            } else {
-                                resultMap.articles.push({
-                                    ...mapped,
+        try {
+            // Search Articles (if type includes 'all' or 'article')
+            if (types.includes('all') || types.includes('article')) {
+                promises.push(
+                    djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES, {
+                        params: {
+                            limit: 200,
+                            q: searchQuery
+                        }
+                    })
+                        .then(res => {
+                            const allArticles = (res.data.results || []);
+                            resultMap.articles = allArticles
+                                .filter(article => {
+                                    const searchTerm = searchQuery.toLowerCase();
+                                    return (
+                                        (article.headline || '').toLowerCase().includes(searchTerm) ||
+                                        (article.title || '').toLowerCase().includes(searchTerm) ||
+                                        (article.summary || '').toLowerCase().includes(searchTerm) ||
+                                        (article.title_en || '').toLowerCase().includes(searchTerm) ||
+                                        (article.title_te || '').toLowerCase().includes(searchTerm) ||
+                                        (article.headline_en || '').toLowerCase().includes(searchTerm) ||
+                                        (article.headline_te || '').toLowerCase().includes(searchTerm) ||
+                                        (article.description_en || '').toLowerCase().includes(searchTerm) ||
+                                        (article.description_te || '').toLowerCase().includes(searchTerm)
+                                    );
+                                })
+                                .map(article => ({
                                     type: 'article',
-                                    url: `/article/${a.section}/${a.slug}`
-                                });
-                            }
-                        });
-
-                        // Trim to reasonable limits
-                        resultMap.articles = resultMap.articles.slice(0, 20);
-                        resultMap.campusPages = resultMap.campusPages.slice(0, 15);
-                    })
-                    .catch(() => {
-                        resultMap.articles = [];
-                        resultMap.campusPages = [];
-                    })
-            );
-        }
-
-        // ── Jobs ──────────────────────────────────────────────────────────────
-        if (types.includes('all') || types.includes('jobs')) {
-            promises.push(
-                djangoApi.get('jobs/', { params: { limit: 200 } })
-                    .then(res => {
-                        const items = res.data?.results || (Array.isArray(res.data) ? res.data : []);
-                        resultMap.jobs = items
-                            .filter(deepMatch)
-                            .slice(0, 15)
-                            .map(j => ({
-                                type: 'job',
-                                id: j.id,
-                                title: j.title || '',
-                                company: j.company || '',
-                                location: j.location || '',
-                                jobType: j.job_type || j.type || '',
-                                qualification: j.qualification || '',
-                                url: `/jobs/${j.slug || j.id}`,
-                                postedAt: j.posted_at || j.created_at
-                            }));
-                    })
-                    .catch(() => { resultMap.jobs = []; })
-            );
-        }
-
-        // ── Question Papers ────────────────────────────────────────────────────
-        if (types.includes('all') || types.includes('papers')) {
-            promises.push(
-                questionPaperService.getPapersByCategory('QUESTIONPAPER', null, 100)
-                    .then(papers => {
-                        resultMap.papers = (papers || [])
-                            .filter(deepMatch)
-                            .slice(0, 15)
-                            .map(p => ({
-                                type: 'paper',
-                                id: p.id,
-                                title: p.title || '',
-                                description: p.description || '',
-                                url: p.presignedUrl,
-                                category: p.category,
-                                createdAt: p.creationDate
-                            }));
-                    })
-                    .catch(() => { resultMap.papers = []; })
-            );
-        }
-
-        // ── Current Affairs ────────────────────────────────────────────────────
-        if (types.includes('all') || types.includes('currentAffairs')) {
-            promises.push(
-                currentAffairsService.getAllAffairs({ limit: 100 })
-                    .then(affairs => {
-                        resultMap.currentAffairs = (affairs || [])
-                            .filter(deepMatch)
-                            .slice(0, 15)
-                            .map(ca => ({
-                                type: 'currentAffair',
-                                id: ca.id,
-                                title: ca.title || '',
-                                summary: ca.summary || '',
-                                url: `/current-affairs/${ca.id}`,
-                                language: ca.language,
-                                createdAt: ca.createdAt
-                            }));
-                    })
-                    .catch(() => { resultMap.currentAffairs = []; })
-            );
-        }
-
-        // ── Academics (Materials + Hierarchy Levels & Subjects) ────────────────
-        if (types.includes('all') || types.includes('academics')) {
-            promises.push(
-                academicsService.getMaterials({ limit: 100 })
-                    .then(materials => {
-                        const matched = (materials || []).filter(deepMatch);
-                        resultMap.academics.push(...matched.slice(0, 15).map(m => ({
-                            type: 'academic',
-                            id: m.id,
-                            title: m.title || m.name || m.headline || '',
-                            summary: m.summary || m.description || '',
-                            url: `/academics/material/${m.slug}`,
-                            section: 'academics'
-                        })));
-                    })
-                    .catch(() => {})
-            );
-
-            promises.push(
-                academicsService.getAcademicsHierarchy()
-                    .then(hierarchy => {
-                        const matched = [];
-                        (hierarchy || []).forEach(level => {
-                            if (deepMatch(level)) {
-                                matched.push({
-                                    type: 'academic',
-                                    id: `level-${level.id}`,
-                                    title: level.name || '',
-                                    summary: `Academic Level: ${level.name}`,
-                                    url: `/academic-exams?level=${level.id}`
-                                });
-                            }
-                            (level.subjects || []).forEach(subject => {
-                                if (deepMatch(subject)) {
-                                    matched.push({
-                                        type: 'academic',
-                                        id: `subject-${subject.id}`,
-                                        title: subject.name || '',
-                                        summary: `Subject: ${subject.name} › ${level.name}`,
-                                        url: `/academics/subject/${subject.slug}`
-                                    });
-                                }
-                            });
-                        });
-                        resultMap.academics.push(...matched);
-                    })
-                    .catch(() => {})
-            );
-        }
-
-        // ── Exams (Chapters from hierarchy — each chapter = a startable exam) ──
-        if (types.includes('all') || types.includes('exams')) {
-            promises.push(
-                academicsService.getAcademicsHierarchy()
-                    .then(hierarchy => {
-                        const matched = [];
-                        (hierarchy || []).forEach(level => {
-                            (level.subjects || []).forEach(subject => {
-                                (subject.chapters || []).forEach(chapter => {
-                                    const chapterObj = {
-                                        ...chapter,
-                                        level_name: level.name,
-                                        subject_name: subject.name
-                                    };
-                                    if (deepMatch(chapterObj)) {
-                                        matched.push({
-                                            type: 'exam',
-                                            id: `chapter-${chapter.id}`,
-                                            title: chapter.name || chapter.title || '',
-                                            summary: `${subject.name} › ${level.name}`,
-                                            url: `/academic-exams`,
-                                            examConfig: {
-                                                type: 'chapter',
-                                                value: String(chapter.id),
-                                                label: chapter.name || chapter.title
-                                            }
-                                        });
-                                    }
-                                });
-                            });
-                        });
-                        resultMap.exams = matched.slice(0, 15);
-                    })
-                    .catch(() => { resultMap.exams = []; })
-            );
-        }
-
-        // ── Taxonomy Tree: Sections → Categories → Sub-cats → Segments → Topics ─
-        if (types.includes('all') || types.includes('taxonomy')) {
-            promises.push(
-                djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_PUBLIC)
-                    .then(async sectionsRes => {
-                        const sections = sectionsRes.data?.results || (Array.isArray(sectionsRes.data) ? sectionsRes.data : []);
-                        const taxResults = [];
-
-                        // Match sections themselves
-                        sections.forEach(section => {
-                            if (deepMatch(section)) {
-                                taxResults.push({
-                                    type: 'taxonomy',
-                                    id: `section-${section.id || section.slug}`,
-                                    title: section.name || section.title || '',
-                                    summary: `Section: ${section.name || section.title}`,
-                                    url: `/${section.slug || section.id}`
-                                });
-                            }
-                        });
-
-                        // Fetch full tree for each section and walk ALL nodes
-                        await Promise.allSettled(
-                            sections.map(section =>
-                                djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_TREE(section.slug || section.id))
-                                    .then(treeRes => {
-                                        const tree = treeRes.data?.results || (Array.isArray(treeRes.data) ? treeRes.data : (treeRes.data ? [treeRes.data] : []));
-
-                                        const walkNode = (node, breadcrumb) => {
-                                            if (!node) return;
-                                            const label = node.name || node.title || '';
-                                            const crumb = breadcrumb ? `${breadcrumb} › ${label}` : label;
-                                            const nodeSlug = node.slug || node.id;
-                                            const sectionSlug = section.slug || section.id;
-
-                                            if (deepMatch(node)) {
-                                                taxResults.push({
-                                                    type: 'taxonomy',
-                                                    id: `tax-${sectionSlug}-${nodeSlug}`,
-                                                    title: label,
-                                                    summary: crumb,
-                                                    url: `/${sectionSlug}/${nodeSlug}`
-                                                });
-                                            }
-
-                                            // Recurse into children at any depth
-                                            const children = node.children || node.categories || node.sub_categories || node.subcategories || node.segments || node.topics || [];
-                                            children.forEach(child => walkNode(child, crumb));
-                                        };
-
-                                        (Array.isArray(tree) ? tree : [tree]).forEach(node => walkNode(node, section.name || section.title));
-                                    })
-                                    .catch(() => {})
-                            )
-                        );
-
-                        resultMap.taxonomy = taxResults.slice(0, 20);
-                    })
-                    .catch(() => { resultMap.taxonomy = []; })
-            );
-        }
-
-        // ── E-Store (local encrypted cache) ───────────────────────────────────
-        if (types.includes('all') || types.includes('estore')) {
-            promises.push(
-                (async () => {
-                    try {
-                        const { default: products } = await import('../modules/_cv_sys_cache/data/loader');
-                        resultMap.estore = (products || [])
-                            .filter(deepMatch)
-                            .slice(0, 5)
-                            .map(p => ({
-                                type: 'product',
-                                id: p.id,
-                                title: p.name || '',
-                                summary: p.description || '',
-                                price: p.price,
-                                image: p.image,
-                                url: `/e-store/product/${p.id}`
-                            }));
-                    } catch (_) {}
-                })()
-            );
-        }
-
-        await Promise.allSettled(promises);
-
-        const allResults = [
-            ...resultMap.articles,
-            ...resultMap.campusPages,
-            ...resultMap.jobs,
-            ...resultMap.papers,
-            ...resultMap.currentAffairs,
-            ...resultMap.academics,
-            ...resultMap.exams,
-            ...resultMap.taxonomy,
-            ...resultMap.estore
-        ];
-
-        return {
-            query: searchQuery,
-            results: allResults,
-            totalResults: allResults.length,
-            resultsByType: {
-                articles: resultMap.articles.length,
-                campusPages: resultMap.campusPages.length,
-                jobs: resultMap.jobs.length,
-                papers: resultMap.papers.length,
-                currentAffairs: resultMap.currentAffairs.length,
-                academics: resultMap.academics.length,
-                exams: resultMap.exams.length,
-                taxonomy: resultMap.taxonomy.length,
-                estore: resultMap.estore.length
+                                    id: article.id,
+                                    title: article.headline || article.title || article.title_en || article.title_te || article.headline_en || article.headline_te,
+                                    summary: article.summary || article.description_en || article.description_te,
+                                    url: `/article/${article.section}/${article.slug}`,
+                                    publishedAt: article.published_at,
+                                    image: article.banner_media?.url,
+                                    section: article.section
+                                }));
+                        })
+                        .catch(err => console.error('Article search error:', err))
+                );
             }
-        };
+
+            // Search Jobs (if type includes 'all' or 'jobs')
+            if (types.includes('all') || types.includes('jobs')) {
+                promises.push(
+                    djangoApi.get('jobs/', {
+                        params: { limit: 150 }
+                    })
+                        .then(res => {
+                            const allJobs = res.data?.results || res.data || [];
+                            resultMap.jobs = allJobs
+                                .filter(job => {
+                                    const searchTerm = searchQuery.toLowerCase();
+                                    return (
+                                        (job.title || '').toLowerCase().includes(searchTerm) ||
+                                        (job.company || '').toLowerCase().includes(searchTerm) ||
+                                        (job.location || '').toLowerCase().includes(searchTerm) ||
+                                        (job.description || '').toLowerCase().includes(searchTerm)
+                                    );
+                                })
+                                .slice(0, 15)
+                                .map(job => ({
+                                    type: 'job',
+                                    id: job.id,
+                                    title: job.title,
+                                    company: job.company,
+                                    location: job.location,
+                                    url: `/jobs/${job.slug || job.id}`,
+                                    postedAt: job.posted_at || job.created_at
+                                }));
+                        })
+                        .catch(err => console.error('Jobs search error:', err))
+                );
+            }
+
+            // Search Papers
+            if (types.includes('all') || types.includes('papers')) {
+                promises.push(
+                    questionPaperService.getPapersByCategory('QUESTIONPAPER', null, 100)
+                        .then(papers => {
+                            resultMap.papers = papers
+                                .filter(p =>
+                                    p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .slice(0, 15)
+                                .map(paper => ({
+                                    type: 'paper',
+                                    id: paper.id,
+                                    title: paper.title,
+                                    description: paper.description,
+                                    url: paper.presignedUrl,
+                                    category: paper.category,
+                                    createdAt: paper.creationDate
+                                }));
+                        })
+                        .catch(err => console.error('Papers search error:', err))
+                );
+            }
+
+            // Search Current Affairs
+            if (types.includes('all') || types.includes('currentAffairs')) {
+                promises.push(
+                    currentAffairsService.getAllAffairs({ limit: 100 })
+                        .then(affairs => {
+                            const results = affairs || [];
+                            resultMap.currentAffairs = results
+                                .filter(ca =>
+                                    ca.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    ca.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .slice(0, 15)
+                                .map(ca => ({
+                                    type: 'currentAffair',
+                                    id: ca.id,
+                                    title: ca.title,
+                                    summary: ca.summary,
+                                    url: `/current-affairs/${ca.id}`,
+                                    language: ca.language,
+                                    createdAt: ca.createdAt
+                                }));
+                        })
+                        .catch(err => console.error('Current affairs search error:', err))
+                );
+            }
+            // Search Academics (Levels, Subjects, Materials)
+            if (types.includes('all') || types.includes('academics')) {
+                // Search Materials
+                promises.push(
+                    academicsService.getMaterials({ search: searchQuery, limit: 30 })
+                        .then(materials => {
+                            resultMap.academics.push(...(materials || []).map(m => ({
+                                type: 'academic',
+                                id: m.id,
+                                title: m.title || m.name,
+                                summary: m.description,
+                                url: `/academics/material/${m.slug}`,
+                                chapter: m.chapter_name,
+                                subject: m.subject_name
+                            })));
+                        })
+                        .catch(err => console.error('Materials search error:', err))
+                );
+
+                // Search Levels (Exams)
+                promises.push(
+                    academicsService.getLevels()
+                        .then(levels => {
+                            const matchedLevels = (levels || [])
+                                .filter(l => (l.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map(l => ({
+                                    type: 'academic',
+                                    id: l.id,
+                                    title: l.name,
+                                    summary: `Academic Level / Exam: ${l.name}`,
+                                    url: `/academic-exams?level=${l.id}`
+                                }));
+                            resultMap.academics.push(...matchedLevels);
+                        })
+                        .catch(err => console.error('Levels search error:', err))
+                );
+            }
+
+            // Search E-Store (Local Cache)
+            if (types.includes('all') || types.includes('estore')) {
+                promises.push(
+                    (async () => {
+                        try {
+                            const { default: products } = await import('../modules/_cv_sys_cache/data/loader');
+                            resultMap.estore = products
+                                .filter(p => 
+                                    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (p.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .slice(0, 5)
+                                .map(p => ({
+                                    type: 'product',
+                                    id: p.id,
+                                    title: p.name,
+                                    summary: p.description,
+                                    price: p.price,
+                                    image: p.image,
+                                    url: `/e-store/product/${p.id}`
+                                }));
+                        } catch (e) {
+                            console.error('E-Store search error:', e);
+                        }
+                    })()
+                );
+            }
+
+            await Promise.all(promises);
+
+            // Combine all results
+            const allResults = [
+                ...resultMap.articles,
+                ...resultMap.jobs,
+                ...resultMap.papers,
+                ...resultMap.currentAffairs,
+                ...resultMap.academics,
+                ...resultMap.estore
+            ];
+
+            return {
+                query: searchQuery,
+                results: allResults,
+                totalResults: allResults.length,
+                resultsByType: {
+                    articles: resultMap.articles.length,
+                    jobs: resultMap.jobs.length,
+                    papers: resultMap.papers.length,
+                    currentAffairs: resultMap.currentAffairs.length,
+                    academics: resultMap.academics.length,
+                    estore: resultMap.estore.length
+                }
+            };
+        } catch (error) {
+            console.error('Global search error:', error);
+            return {
+                query: searchQuery,
+                results: [],
+                totalResults: 0,
+                resultsByType: {}
+            };
+        }
     }
 };
-

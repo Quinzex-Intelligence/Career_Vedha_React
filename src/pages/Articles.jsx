@@ -8,6 +8,8 @@ import { useTrendingArticles } from '../hooks/useHomeContent';
 import API_CONFIG from '../config/api.config';
 import { newsService, taxonomyService } from '../services';
 import TopStoriesHero from '../components/home/TopStoriesHero';
+import TaxonomyTabs from '../components/ui/TaxonomyTabs';
+import ContentHubWidget from '../components/ui/ContentHubWidget';
 import './Articles.css';
 
 const ArticlesPage = () => {
@@ -42,7 +44,9 @@ const ArticlesPage = () => {
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [searchParams] = useSearchParams();
-    const categoryParam = searchParams.get('category');
+    const categoryParam = searchParams.get('category') || searchParams.get('level');
+    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
+    const segmentParam = searchParams.get('segment');
     const sectionParam = searchParams.get('section');
 
     const [activeSection, setActiveSection] = useState(() => (sectionParam || 'all').toLowerCase());
@@ -64,12 +68,47 @@ const ArticlesPage = () => {
         }
     }, [categoryParam]);
 
-    const filters = {
-        lang: activeLanguage,
+    // Resolve State/District/Segment names from cache for UI
+    const hierarchyNames = useMemo(() => {
+        if (!categoryParam) return null;
+        try {
+            const cached = localStorage.getItem('cv_nav_tree_v3');
+            if (!cached) return null;
+            const { data } = JSON.parse(cached);
+            
+            // Try to find in any section that matches activeSection
+            const mapSlugToKey = (slug) => {
+                if (slug === 'campus-pages') return 'campusPages';
+                if (slug === 'current-affairs') return 'currentAffairs';
+                if (slug === 'academic-exams' || slug === 'exams') return 'exams';
+                return slug;
+            };
+
+            const sectionData = data[mapSlugToKey(activeSection)];
+            if (!sectionData) return null;
+
+            const stateNode = sectionData.find(c => c.slug === categoryParam || String(c.id) === String(categoryParam));
+            const districtNode = subParam ? stateNode?.children?.find(s => s.slug === subParam || String(s.id) === String(subParam)) : null;
+            const segmentNode = segmentParam ? districtNode?.children?.find(seg => seg.slug === segmentParam || String(seg.id) === String(segmentParam)) : null;
+
+            return {
+                state: stateNode?.name,
+                district: districtNode?.name,
+                segment: segmentNode?.name
+            };
+        } catch (e) {
+            return null;
+        }
+    }, [activeSection, categoryParam, subParam, segmentParam]);
+
+    const filters = useMemo(() => ({
+        lang: activeLanguage === 'telugu' ? 'te' : 'en',
         section: activeSection !== 'all' ? activeSection : undefined,
-        category: activeCategory || undefined,
+        category: categoryParam || undefined,
+        sub_category: subParam || undefined,
+        segment: segmentParam || undefined,
         q: searchQuery || undefined
-    };
+    }), [activeLanguage, activeSection, categoryParam, subParam, segmentParam, searchQuery]);
 
     const {
         data,
@@ -147,6 +186,32 @@ const ArticlesPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Hierarchical Header for Campus Pages / Regional News */}
+            {hierarchyNames && (hierarchyNames.state || hierarchyNames.district) && (
+                <div className="taxonomy-header-container">
+                    <div className="taxonomy-breadcrumb">
+                        {hierarchyNames.state && <span className="state-name">{hierarchyNames.state}</span>}
+                        {hierarchyNames.district && (
+                            <>
+                                <i className="fas fa-chevron-right separator"></i>
+                                <span className="district-name">{hierarchyNames.district}</span>
+                            </>
+                        )}
+                        {hierarchyNames.segment && (
+                            <>
+                                <i className="fas fa-chevron-right separator"></i>
+                                <span className="segment-name">{hierarchyNames.segment}</span>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Sub-taxonomy Tabs (States/Districts/Segments) */}
+            {['academics', 'news', 'current-affairs', 'jobs', 'campus-pages', 'exams'].includes(activeSection) && (
+                <TaxonomyTabs sectionSlug={activeSection} />
+            )}
 
             <TopStoriesHero 
                 topStories={allArticles.slice(0, 5)}
@@ -260,6 +325,14 @@ const ArticlesPage = () => {
                     </>
                 )}
             </main>
+
+            <div className="container mt-5 mb-5 pt-4">
+                <ContentHubWidget 
+                    searchQuery="Trending" 
+                    title="Discover More"
+                    minimal={false} 
+                />
+            </div>
 
             <Footer />
         </div>

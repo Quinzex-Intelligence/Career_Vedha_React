@@ -115,14 +115,13 @@ const ContentHubWidget = ({ searchQuery, title, minimal = false }) => { // Added
     if (!hasContent) return null;
 
     return (
-        <section className="content-hub-section section-fade-in minimal-mode">
+        <section className={`content-hub-section section-fade-in ${minimal ? 'minimal-mode' : ''}`}>
             {title && (
                 <div className="discovery-header">
                     <h2 className="discovery-title">{title}</h2>
                 </div>
             )}
             
-            {/* Articles Small Cards Grid */}
             <div className="hub-category-block">
                 <div className="articles-small-grid">
                     {data.articles.map(item => (
@@ -147,41 +146,42 @@ const ContentHubWidget = ({ searchQuery, title, minimal = false }) => { // Added
                 </div>
             </div>
 
-            <div className="hub-grid-secondary">
-                {/* Academic Materials */}
-                {data.academics.length > 0 && (
-                    <div className="hub-secondary-column academics-hub">
-                        {/* Removed h3 section-label-small */}
-                        <div className="tiny-cards-list">
-                            {data.academics.map(item => (
-                                <Link to={item.url} key={item.id} className="tiny-hub-card">
-                                    <div className="tiny-icon"><i className="fas fa-file-pdf"></i></div>
-                                    <div className="tiny-info">
-                                        <span className="tiny-title">{item.title}</span>
-                                    </div>
-                                </Link>
-                            ))}
+            {/* Hub secondary columns - suppressed in minimal mode for cleaner article discovery */}
+            {!minimal && (
+                <div className="hub-grid-secondary">
+                    {/* Academic Materials */}
+                    {data.academics.length > 0 && (
+                        <div className="hub-secondary-column academics-hub">
+                            <div className="tiny-cards-list">
+                                {data.academics.map(item => (
+                                    <Link to={item.url} key={item.id} className="tiny-hub-card">
+                                        <div className="tiny-icon"><i className="fas fa-file-pdf"></i></div>
+                                        <div className="tiny-info">
+                                            <span className="tiny-title">{item.title}</span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Job Opportunities */}
-                {data.jobs.length > 0 && (
-                    <div className="hub-secondary-column jobs-hub">
-                        {/* Removed h3 section-label-small */}
-                        <div className="tiny-cards-list">
-                            {data.jobs.map(item => (
-                                <Link to={item.url} key={item.id} className="tiny-hub-card">
-                                    <div className="tiny-icon"><i className="fas fa-building"></i></div>
-                                    <div className="tiny-info">
-                                        <span className="tiny-title">{item.title}</span>
-                                    </div>
-                                </Link>
-                            ))}
+                    {/* Job Opportunities */}
+                    {data.jobs.length > 0 && (
+                        <div className="hub-secondary-column jobs-hub">
+                            <div className="tiny-cards-list">
+                                {data.jobs.map(item => (
+                                    <Link to={item.url} key={item.id} className="tiny-hub-card">
+                                        <div className="tiny-icon"><i className="fas fa-building"></i></div>
+                                        <div className="tiny-info">
+                                            <span className="tiny-title">{item.title}</span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </section>
     );
 };

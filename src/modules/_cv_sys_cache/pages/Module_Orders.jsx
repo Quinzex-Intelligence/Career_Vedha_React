@@ -16,9 +16,11 @@ const Module_Orders = () => {
           id: `#CV-${order.orderId}`,
           rawId: order.orderId,
           date: new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          rawCreatedAt: order.createdAt,
+          expiryTime: order.expiryTime,
           total: order.totalAmount,
           status: order.status,
-          items: 'Multiple' // Items endpoint exists but we'll show count or placeholder
+          items: 'Multiple'
         }));
         setOrders(normalized);
       } catch (e) {
@@ -83,7 +85,11 @@ const Module_Orders = () => {
                     <p style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.1rem' }}>Amount</p>
                     <p style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>₹{order.total}</p>
                   </div>
-                  {order.status === 'FAILED' ? (
+                  {order.status === 'FAILED' && (() => {
+                    const expiry = order.expiryTime ? new Date(order.expiryTime) : 
+                                   (new Date(order.rawCreatedAt).getTime() + 15 * 60000);
+                    return new Date(expiry) > new Date();
+                  })() ? (
                     <div style={{ padding: '0.5rem 1rem', background: 'rgba(212, 168, 67, 0.1)', color: '#D4A843', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800, border: '1px solid rgba(212, 168, 67, 0.3)' }}>
                       RETRY
                     </div>

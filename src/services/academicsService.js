@@ -15,11 +15,13 @@ export const academicsService = {
      */
     getLevels: async (params = {}) => {
         try {
-            const response = await djangoApi.get('academics/levels/', { params });
+            // Using Django hierarchy instead of Spring Boot
+            const response = await djangoApi.get('academics/hierarchy/', { params });
             const data = response.data;
             return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
         } catch (error) {
-            console.error('Error fetching academic levels:', error);
+            console.error('Error fetching academic levels from Django:', error);
+            // Fallback to Spring only if necessary, but user wants "not spring"
             throw error;
         }
     },
@@ -30,11 +32,28 @@ export const academicsService = {
      */
     getSubjects: async (params = {}) => {
         try {
-            const response = await djangoApi.get('academics/subjects/', { params });
-            const data = response.data;
-            return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
+            const hierarchy = await academicsService.getAcademicsHierarchy();
+            let subjects = hierarchy.flatMap(level => 
+                (level.subjects || []).map(sub => ({
+                    ...sub,
+                    level_id: level.id,
+                    level_name: level.name
+                }))
+            );
+            
+            if (params.level) {
+                subjects = subjects.filter(s => String(s.level_id) === String(params.level));
+            }
+            if (params.level__slug) {
+                const level = hierarchy.find(l => l.slug === params.level__slug);
+                if (level) {
+                    subjects = subjects.filter(s => String(s.level_id) === String(level.id));
+                }
+            }
+            
+            return subjects;
         } catch (error) {
-            console.error('Error fetching subjects:', error);
+            console.error('Error fetching subjects from Spring:', error);
             throw error;
         }
     },
@@ -59,11 +78,35 @@ export const academicsService = {
      */
     getChapters: async (params = {}) => {
         try {
-            const response = await djangoApi.get('academics/chapters/', { params });
-            const data = response.data;
-            return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
+            const hierarchy = await academicsService.getAcademicsHierarchy();
+            let chapters = [];
+            hierarchy.forEach(level => {
+                (level.subjects || []).forEach(subject => {
+                    (subject.chapters || []).forEach(chapter => {
+                        chapters.push({
+                            ...chapter,
+                            subject_id: subject.id,
+                            subject_name: subject.name,
+                            level_id: level.id,
+                            level_name: level.name
+                        });
+                    });
+                });
+            });
+            
+            if (params.subject) {
+                chapters = chapters.filter(c => String(c.subject_id) === String(params.subject));
+            }
+            if (params.subject__slug) {
+                const subject = hierarchy.flatMap(l => l.subjects || []).find(s => s.slug === params.subject__slug);
+                if (subject) {
+                    chapters = chapters.filter(c => String(c.subject_id) === String(subject.id));
+                }
+            }
+            
+            return chapters;
         } catch (error) {
-            console.error('Error fetching chapters:', error);
+            console.error('Error fetching chapters from Spring:', error);
             throw error;
         }
     },
@@ -88,12 +131,20 @@ export const academicsService = {
      */
     getMaterials: async (params = {}) => {
         try {
-            const response = await djangoApi.get('academics/materials/', { params });
+            // Map 'search' (Spring) to 'q' (Django)
+            const djangoParams = { ...params };
+            if (params.search && !params.q) djangoParams.q = params.search;
+            
+            // Redirect to Django published articles (academic section)
+            const response = await djangoApi.get('cms/articles/published/', { 
+                params: { ...djangoParams, section: 'academics' }
+            });
             const data = response.data;
-            return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
+            // Django returns { results, ... }
+            return data.results || (Array.isArray(data) ? data : []);
         } catch (error) {
-            console.error('Error fetching materials:', error);
-            throw error;
+            console.error('Error fetching materials from Django:', error);
+            return []; // Return empty to avoid crashing callers like ContentHub
         }
     },
 
@@ -203,13 +254,7 @@ export const academicsService = {
     },
 
     getAdminLevels: async (params = {}) => {
-        try {
-            const response = await djangoApi.get('academics/cms/levels/', { params });
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching admin levels:', error);
-            throw error;
-        }
+        return academicsService.getLevels(params);
     },
 
     // Subject Management
@@ -260,13 +305,7 @@ export const academicsService = {
     },
 
     getAdminSubjects: async (params = {}) => {
-        try {
-            const response = await djangoApi.get('academics/cms/subjects/', { params });
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching admin subjects:', error);
-            throw error;
-        }
+        return academicsService.getSubjects(params);
     },
 
     // Category Management
@@ -366,13 +405,7 @@ export const academicsService = {
     },
 
     getAdminChapters: async (params = {}) => {
-        try {
-            const response = await djangoApi.get('academics/cms/chapters/', { params });
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching admin chapters:', error);
-            throw error;
-        }
+        return academicsService.getChapters(params);
     },
 
     // Material Management
@@ -433,26 +466,17 @@ export const academicsService = {
     },
 
     getAdminMaterials: async (params = {}) => {
-        try {
-            const response = await djangoApi.get('academics/cms/materials/', { params });
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching admin materials:', error);
-            throw error;
-        }
+        return academicsService.getMaterials(params);
     },
 
-    /**
-     * Get the full academics hierarchy (Levels -> Subjects -> Chapters)
-     * Note: This hits the Java backend (8080)
-     */
     getAcademicsHierarchy: async () => {
         try {
-            const response = await api.get(API_CONFIG.ENDPOINTS.ACADEMICS_HIERARCHY);
+            // Using Django hierarchy instead of Spring Boot
+            const response = await djangoApi.get('academics/hierarchy/');
             const data = response.data;
             return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
         } catch (error) {
-            console.error('Error fetching academics hierarchy:', error);
+            console.error('Error fetching academics hierarchy from Django:', error);
             throw error;
         }
     },

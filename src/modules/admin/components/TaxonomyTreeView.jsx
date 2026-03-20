@@ -93,19 +93,26 @@ const TaxonomyTreeView = ({ data, onEdit }) => {
     const treeData = useMemo(() => {
         if (!data || data.length === 0) return null;
 
-        const transform = (node, depth = 0) => ({
-            name: node.name,
-            attributes: {
-                id: node.id,
-                slug: node.slug,
-                section: node.section,
-                parent_id: node.parent_id,
-                rank: node.rank,
-                content: node.content,
-                depth: depth
-            },
-            children: (node.children || []).map(c => transform(c, depth + 1))
-        });
+        const transform = (node, depth = 0) => {
+            // Support both standard 'children' and level-specific keys
+            const childKeys = ['sub_categories', 'segments', 'topics', 'children'];
+            const childKey = childKeys[depth] || 'children';
+            const children = node[childKey] || node.children || [];
+
+            return {
+                name: node.name,
+                attributes: {
+                    id: node.id,
+                    slug: node.slug,
+                    section: node.section,
+                    parent_id: node.parent_id,
+                    rank: node.rank,
+                    content: node.content,
+                    depth: depth
+                },
+                children: children.map(c => transform(c, depth + 1))
+            };
+        };
 
         // If multiple roots, wrap them in a virtual root or just take the first
         // Usually, one section has multiple root categories.

@@ -1,15 +1,19 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import StudentAcademicsExplorer from '../components/home/StudentAcademicsExplorer';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import TopBar from '../components/layout/TopBar';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
 import AcademicsSidebar from '../components/academics/AcademicsSidebar';
 import SectionCategoryBlocks from '../components/home/SectionCategoryBlocks';
+import { useAcademicsHierarchy } from '../hooks/useAcademics';
 import Skeleton from '../components/ui/Skeleton';
-import '../modules/jobs/pages/JobsList.css'; // Reusing jobs styles for hero
+import TaxonomyTabs from '../components/ui/TaxonomyTabs';
+import { useInfiniteArticles } from '../hooks/useArticles';
+import '../modules/news/pages/NewsList.css'; // Reusing news styles for general articles
+import '../styles/Articles.css';
 
 // Lazy load heavier components
 const PreviousPapers = lazy(() => import('../components/home/PreviousPapers'));
@@ -32,28 +36,46 @@ const AcademicExamsPage = () => {
     });
     
     // Derived from URL
-    const [activeLevelId, setActiveLevelId] = useState(() => searchParams.get('level'));
+    const levelIdParam = searchParams.get('category') || searchParams.get('level');
+    const [selectedLevelName, setSelectedLevelName] = useState(null);
 
-    useEffect(() => {
-        const level = searchParams.get('level');
-        if (level) {
-            setActiveLevelId(level);
-        } else if (location.search === "") {
-            setActiveLevelId(null);
-        }
-    }, [searchParams, location.search]);
-
-    const handleLevelChange = (levelId) => {
+    const handleLevelChange = (level) => {
         const newParams = new URLSearchParams(searchParams);
-        if (levelId) {
-            newParams.set('level', levelId);
-            newParams.delete('subject');
-        } else {
+        if (level && level.id) {
+            newParams.set('category', level.id);
+            setSelectedLevelName(level.name);
             newParams.delete('level');
             newParams.delete('subject');
+        } else {
+            newParams.delete('category');
+            newParams.delete('level');
+            newParams.delete('subject');
+            setSelectedLevelName(null);
         }
         setSearchParams(newParams);
     };
+
+    const query = selectedLevelName ? `${selectedLevelName} - AP` : '';
+    
+    // Resolve level name from hierarchy if we have a param but no name
+    const { data: hierarchy } = useAcademicsHierarchy();
+    useEffect(() => {
+        if (levelIdParam && !selectedLevelName && hierarchy) {
+            const level = hierarchy.find(l => l.id.toString() === levelIdParam.toString());
+            if (level) setSelectedLevelName(level.name);
+        }
+    }, [levelIdParam, selectedLevelName, hierarchy]);
+
+    // Using unified infinite articles hook with keyword search
+    const { 
+        data, 
+        fetchNextPage, 
+        hasNextPage, 
+        isLoading, 
+        isError 
+    } = useInfiniteArticles(query ? { q: query, limit: 200 } : {}, { enabled: !!query });
+
+    const articles = data?.pages.flatMap(page => page.results) || [];
 
     const handleLanguageChange = (lang) => {
         setActiveLanguage(lang);
@@ -81,24 +103,72 @@ const AcademicExamsPage = () => {
             />
             <PrimaryNav isOpen={isMobileMenuOpen} />
 
+            <TaxonomyTabs sectionSlug="exams" />
             
             <main className="jobs-main-content">
                 <div className="container">
                     <div className="jobs-layout">
                         <aside className="jobs-sidebar">
                             <AcademicsSidebar 
-                                activeLevelId={activeLevelId} 
+                                activeLevelId={levelIdParam} 
                                 onLevelChange={handleLevelChange} 
                             />
                         </aside>
                         
                         <div className="jobs-content-area">
-                            <StudentAcademicsExplorer 
-                                showHeader={false} 
-                                style={{ padding: '0', background: 'transparent' }} 
-                                activeLevelId={activeLevelId}
-                                activeLanguage={activeLanguage}
-                            />
+                            {levelIdParam ? (
+                                <div className="academics-articles-list">
+                                    <div className="section-header-flex">
+                                        <h2 className="premium-title">{selectedLevelName || 'Academic Materials'}</h2>
+                                        <div className="papers-count">{articles.length} Materials Found</div>
+                                    </div>
+
+                                    {isLoading ? (
+                                        <div className="premium-loader-container">
+                                            <div className="premium-spinner"></div>
+                                            <p>Fetching amazing content for you...</p>
+                                        </div>
+                                    ) : articles.length > 0 ? (
+                                        <div className="papers-grid-large">
+                                            {articles.map(article => (
+                                                <Link 
+                                                    key={article.id} 
+                                                    to={`/articles/${article.slug}`} 
+                                                    className="paper-card-large"
+                                                >
+                                                    <div className="paper-icon">
+                                                        <i className="fas fa-file-pdf"></i>
+                                                    </div>
+                                                    <div className="paper-card-content">
+                                                        <h3 className="paper-title">{article.title}</h3>
+                                                        <p className="paper-description">{article.summary}</p>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="papers-empty">
+                                            <i className="fas fa-search"></i>
+                                            <p>No academic materials found for this level matching "{query}".</p>
+                                        </div>
+                                    )}
+
+                                    {hasNextPage && (
+                                        <div className="load-more-container">
+                                            <button className="load-more-btn" onClick={() => fetchNextPage()}>
+                                                <i className="fas fa-plus"></i> Load More
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <StudentAcademicsExplorer 
+                                    showHeader={false} 
+                                    style={{ padding: '0', background: 'transparent' }} 
+                                    activeLevelId={levelIdParam}
+                                    activeLanguage={activeLanguage}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

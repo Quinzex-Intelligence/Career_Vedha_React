@@ -143,24 +143,14 @@
     text-transform: uppercase;
 }
 
-.badge-article {
-    background: #E3F2FD;
-    color: #1565C0;
+.badge-article, .badge-job, .badge-paper, .badge-currentAffair, .badge-academic, .badge-product {
+    background: #FFFBEB;
+    color: #92400e;
+    border: 1px solid var(--primary-yellow, #FFC107);
 }
 
-.badge-job {
-    background: #E8F5E9;
-    color: #2E7D32;
-}
-
-.badge-paper {
-    background: #FCE4EC;
-    color: #C2185B;
-}
-
-.badge-currentAffair {
-    background: #FFF3E0;
-    color: #E65100;
+.type-badge i {
+    color: var(--primary-yellow, #FFC107);
 }
 
 .result-date {

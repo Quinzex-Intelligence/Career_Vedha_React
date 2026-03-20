@@ -316,6 +316,38 @@
   background: var(--gray-50);
 }
 
+.premium-title {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.premium-subtitle {
+  font-size: 16px;
+  color: var(--gray-600);
+  margin-bottom: 0;
+}
+
+.premium-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  gap: 20px;
+}
+
+.premium-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--gray-200);
+  border-top: 4px solid var(--primary-yellow);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
 
 
 .papers-controls {
@@ -486,56 +518,112 @@
 }
 
 /* Larger Cards for Dedicated Pages */
+/* Premium Document Cards for Dedicated Pages */
 .papers-grid-large {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 24px;
-  margin-top: 32px;
+  margin-top: 24px;
   margin-bottom: 40px;
 }
 
 .paper-card-large {
   width: 100%;
-  min-height: 280px;
   background: var(--white);
   border-radius: 16px;
-  border: 2px solid var(--gray-200);
+  border: 1px solid #f1f5f9;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-decoration: none;
-  transition: all 0.3s ease;
-  padding: 28px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+  gap: 20px;
 }
 
 .paper-card-large:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
   border-color: var(--primary-yellow);
 }
 
 .paper-card-large .paper-icon {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 20px;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  margin-bottom: 0; /* Override previous vertical style */
+}
+
+.paper-card-large:hover .paper-icon {
+  background: var(--primary-yellow);
+  transform: scale(1.1);
+}
+
+.paper-card-large .paper-icon i {
+  font-size: 28px;
+  color: #d97706;
+}
+
+.paper-card-large:hover .paper-icon i {
+  color: var(--gray-900);
+}
+
+.paper-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  flex: 1;
 }
 
 .paper-card-large .paper-title {
-  width: 100%;
   font-size: 16px;
   font-weight: 700;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
+  color: #1e293b;
+  margin-bottom: 4px;
+  text-align: left;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .paper-card-large .paper-description {
   font-size: 13px;
-  margin-top: 10px;
+  color: #64748b;
+  line-height: 1.5;
+  text-align: left;
+  margin-top: 0;
+}
+
+/* Action Indicator for Material Cards */
+.paper-card-large::after {
+  content: '\f105'; /* fa-chevron-right */
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%) translateX(10px);
+  opacity: 0;
+  transition: all 0.3s;
+  color: var(--primary-yellow);
+  font-size: 18px;
+}
+
+.paper-card-large:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
 /* Load More Button */
