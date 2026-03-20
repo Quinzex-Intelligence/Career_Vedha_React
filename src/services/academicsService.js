@@ -15,13 +15,12 @@ export const academicsService = {
      */
     getLevels: async (params = {}) => {
         try {
-            // Using Django hierarchy instead of Spring Boot
-            const response = await djangoApi.get('academics/hierarchy/', { params });
-            const data = response.data;
-            return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
+            // Using Spring hierarchy instead of Django
+            const hierarchy = await academicsService.getAcademicsHierarchy();
+            // Data is already an array of levels
+            return hierarchy;
         } catch (error) {
-            console.error('Error fetching academic levels from Django:', error);
-            // Fallback to Spring only if necessary, but user wants "not spring"
+            console.error('Error fetching academic levels from Spring:', error);
             throw error;
         }
     },
@@ -471,12 +470,12 @@ export const academicsService = {
 
     getAcademicsHierarchy: async () => {
         try {
-            // Using Django hierarchy instead of Spring Boot
-            const response = await djangoApi.get('academics/hierarchy/');
+            // Using Spring Boot hierarchy
+            const response = await api.get(API_CONFIG.ENDPOINTS.ACADEMICS_HIERARCHY);
             const data = response.data;
             return Array.isArray(data) ? data : (data?.results || data?.data || data?.content || []);
         } catch (error) {
-            console.error('Error fetching academics hierarchy from Django:', error);
+            console.error('Error fetching academics hierarchy from Spring:', error);
             throw error;
         }
     },
