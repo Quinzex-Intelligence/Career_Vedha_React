@@ -9,6 +9,7 @@ import {
     useMaterials, useCreateMaterial, useUpdateMaterial,
     useCategories, useAcademicsHierarchy, useAcademicsDjangoHierarchy
 } from '../../../hooks/useAcademics';
+import { useQuizQuestions } from '../../../hooks/useQuiz';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import { getUserContext } from '../../../services/api';
@@ -45,8 +46,9 @@ const FormField = ({ label, children, error }) => (
 );
 
 
-const AcademicsManagement = () => {
-    const [activeTab, setActiveTab] = useState('hierarchy');
+const AcademicsManagement = ({ initialTab = 'hierarchy', hideOtherTabs = false }) => {
+    // States
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
@@ -63,6 +65,13 @@ const AcademicsManagement = () => {
     const { showSnackbar } = useSnackbar();
     const navigate = useNavigate();
     const { role: userRole } = getUserContext() || { role: null };
+
+    const [materialFilters, setMaterialFilters] = useState({
+        category: '',
+        level: '',
+        subject: '',
+        chapter: ''
+    });
 
     // Form States
     const [formData, setFormData] = useState({});
@@ -111,8 +120,15 @@ const AcademicsManagement = () => {
     const { data: chapters, isLoading: chaptersLoading } = useChapters();
     const { data: materials, isLoading: materialsLoading } = useMaterials();
     
-    // NEW: Use Django Hierarchy exclusively for management to support the 4-level structure
-    const { data: djangoHierarchy, isLoading: hierarchyLoading, refetch: refetchHierarchy } = useAcademicsDjangoHierarchy();
+    // Fetch Quiz Questions for the filtered chapter
+    const { data: quizData, isLoading: quizLoading } = useQuizQuestions({
+        chapterId: materialFilters.chapter || undefined,
+        count: 100 // Get a good batch
+    });
+    const quizQuestions = quizData?.content || [];
+    
+    // NEW: Use Spring Boot Hierarchy for management to support the new course materials hierarchy
+    const { data: djangoHierarchy, isLoading: hierarchyLoading, refetch: refetchHierarchy } = useAcademicsHierarchy();
     
     // Derived flattened data for the tabs to ensure consistency with the 4-level structure
     const flattenedData = React.useMemo(() => {
@@ -287,13 +303,14 @@ const AcademicsManagement = () => {
     ];
 
     const getStatusBadge = (status) => {
+        const s = status || 'PUBLISHED';
         const statuses = {
             'PUBLISHED': 'success',
             'DRAFT': 'warning',
             'ARCHIVED': 'secondary'
         };
-        const color = statuses[status] || 'secondary';
-        return <span className={`badge badge-${color}`}>{status}</span>;
+        const color = statuses[s] || 'secondary';
+        return <span className={`badge badge-${color}`}>{s}</span>;
     };
 
     const handleView = (item) => {
@@ -350,258 +367,469 @@ const AcademicsManagement = () => {
     };
 
     return (
-        <CMSLayout sidebarProps={sidebarProps} navbarProps={navbarProps}>
-            <div className="academics-mgmt-container">
-                <div className="mgmt-tabs">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            <span className="tab-icon">{tab.icon}</span>
-                            <span className="tab-label">{tab.label}</span>
+        <CMSLayout sidebarProps={sidebarProps} navbarProps={navbarProps} noPadding={hideOtherTabs}>
+            <div className={`academics-mgmt-container ${hideOtherTabs ? 'isolated' : ''}`}>
+                <div className="admin-header">
+                    <h2>{hideOtherTabs ? 'Course Materials Management' : 'Academics Management'}</h2>
+                    <div className="header-actions">
+                    {!hideOtherTabs && (
+                        <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
+                            <i className="fas fa-arrow-left"></i> Back to Dashboard
                         </button>
-                    ))}
+                    )}
+                        {!hideOtherTabs && (
+                            <button className="btn-primary" onClick={() => window.open('/academics', '_blank')}>
+                                <i className="fas fa-external-link-alt"></i> View Public Page
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="mgmt-content">
-                    {activeTab === 'hierarchy' && (
-                        <div className="mgmt-section">
-                            <div className="section-header">
-                                <h3>Academics Hierarchy</h3>
-                                <button className="refresh-btn" onClick={() => refetchHierarchy()} disabled={hierarchyLoading}>
-                                    <i className={`fas ${hierarchyLoading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} style={{marginRight: '8px'}}></i>
-                                    {hierarchyLoading ? 'Refreshing...' : 'Refresh'}
+                <div className="content-card full-width">
+                    {/* Tabs */}
+                    {!hideOtherTabs && (
+                        <div className="mgmt-tabs">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                >
+                                    <span className="tab-icon">{tab.icon}</span>
+                                    <span className="tab-label">{tab.label}</span>
                                 </button>
-                            </div>
-                            
-                            {hierarchyLoading ? (
-                                <Skeleton count={3} height={100} style={{marginBottom: '20px', borderRadius: '15px'}} />
-                            ) : (
-                                <div className="hierarchy-tree">
-                                    {djangoHierarchy?.length > 0 ? djangoHierarchy.map(category => (
-                                        <div key={category.id} className="hierarchy-category-box">
-                                            <div className="level-header-row category-header">
-                                                <div className="level-main-info">
-                                                    <span className="level-icon">🏛️</span>
-                                                    <div className="level-text">
-                                                        <h4>{category.name}</h4>
-                                                        <span className="depth-badge">Category</span>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="mgmt-content">
+                        {activeTab === 'hierarchy' && (
+                            <div className="mgmt-section">
+                                <div className="section-header">
+                                    <h3>Academics Hierarchy</h3>
+                                    <button className="refresh-btn" onClick={() => refetchHierarchy()} disabled={hierarchyLoading}>
+                                        <i className={`fas ${hierarchyLoading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} style={{marginRight: '8px'}}></i>
+                                        {hierarchyLoading ? 'Refreshing...' : 'Refresh'}
+                                    </button>
+                                </div>
+                                
+                                {hierarchyLoading ? (
+                                    <Skeleton count={3} height={100} style={{marginBottom: '20px', borderRadius: '15px'}} />
+                                ) : (
+                                    <div className="hierarchy-tree">
+                                        {djangoHierarchy?.length > 0 ? djangoHierarchy.map(category => (
+                                            <div key={category.id} className="hierarchy-category-box">
+                                                <div className="level-header-row category-header">
+                                                    <div className="level-main-info">
+                                                        <span className="level-icon">🏛️</span>
+                                                        <div className="level-text">
+                                                            <h4>{category.name}</h4>
+                                                            <span className="depth-badge">Category</span>
+                                                        </div>
                                                     </div>
+                                                </div>
+
+                                                <div className="category-sub-categories">
+                                                    {category.sub_categories?.length > 0 ? category.sub_categories.map(level => (
+                                                        <div key={level.id} className="hierarchy-level-section">
+                                                            <div className="sub-category-header">
+                                                                <div className="sub-cat-info">
+                                                                    <span className="sub-cat-icon">🎓</span>
+                                                                    <h5>{level.name}</h5>
+                                                                    <span className="board-pills-mini">{category.name.split(' - ')[1]}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="level-subjects-container">
+                                                                {level.segments?.length > 0 ? level.segments.map(subject => (
+                                                                    <div key={subject.id} className="hierarchy-subject-card">
+                                                                        <div className="subject-header">
+                                                                            <div className="subj-title">
+                                                                                <i className="fas fa-book"></i>
+                                                                                <h6>{subject.name}</h6>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="subject-chapters-list">
+                                                                            {subject.topics?.length > 0 ? subject.topics.map(topic => (
+                                                                                <div key={topic.id} className="hierarchy-chapter-pill">
+                                                                                    <i className="fas fa-book-open"></i>
+                                                                                    <span>{topic.name}</span>
+                                                                                </div>
+                                                                            )) : <span className="empty-text">No Topics</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                )) : (
+                                                                    <div className="empty-info" style={{padding: '1rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
+                                                                        <p>No subjects assigned to this level yet.</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="empty-info" style={{padding: '2rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
+                                                            <p>No levels assigned to this category yet.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="placeholder-info">
+                                                <i className="fas fa-sitemap"></i>
+                                                <p>No academics hierarchy data found.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'levels' && (
+                            <div className="mgmt-section">
+                                <div className="section-header">
+                                    <h3>Academic Levels</h3>
+                                </div>
+                                <div className="mgmt-table-container">
+                                    {levelsLoading ? (
+                                        <SkeletonTable rows={5} columns={5} />
+                                    ) : (
+                                        <table className="mgmt-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Name</th>
+                                                    <th>Board</th>
+                                                    <th>Rank</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {displayLevels.map(level => (
+                                                    <tr key={level.id}>
+                                                        <td>{level.id}</td>
+                                                        <td className="font-semibold">{level.name}</td>
+                                                        <td><span className="badge">{level.board}</span></td>
+                                                        <td>{level.rank}</td>
+                                                        <td>
+                                                            <span className={`status-dot ${level.is_active ? 'active' : 'inactive'}`}></span>
+                                                            {level.is_active ? 'Active' : 'Disabled'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'subjects' && (
+                            <div className="mgmt-section">
+                                <div className="section-header">
+                                    <h3>Subjects</h3>
+                                </div>
+                                <div className="mgmt-table-container">
+                                    {subjectsLoading ? (
+                                        <SkeletonTable rows={5} columns={5} />
+                                    ) : (
+                                        <table className="mgmt-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Level</th>
+                                                    <th>Name</th>
+                                                    {/* <th>Slug</th> */}
+                                                    <th>Rank</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {displaySubjects.map(subject => (
+                                                    <tr key={subject.id}>
+                                                        <td>{subject.id}</td>
+                                                        <td>
+                                                            <span className="badge">{subject.level_name || (levels?.find(l => l.id === subject.level)?.name)}</span>
+                                                        </td>
+                                                        <td className="font-semibold">{subject.name}</td>
+                                                        <td>{subject.rank}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'chapters' && (
+                            <div className="mgmt-section">
+                                <div className="section-header">
+                                    <h3>Chapters</h3>
+                                </div>
+                                <div className="mgmt-table-container">
+                                    {chaptersLoading ? (
+                                        <SkeletonTable rows={5} columns={4} />
+                                    ) : (
+                                        <table className="mgmt-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Subject</th>
+                                                    <th>Name</th>
+                                                    <th>Rank</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {displayChapters.map(chapter => (
+                                                    <tr key={chapter.id}>
+                                                        <td>{chapter.id}</td>
+                                                        <td>
+                                                            <span className="badge">{chapter.subject_name || (subjects?.find(s => s.id === chapter.subject)?.name)}</span>
+                                                        </td>
+                                                        <td className="font-semibold">{chapter.name}</td>
+                                                        <td>{chapter.rank}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'materials' && (
+                            <div className="mgmt-section">
+                                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3>Materials</h3>
+                                    <button className="add-btn btn-primary" onClick={handleAdd}>
+                                        <i className="fas fa-plus"></i> Add Material
+                                    </button>
+                                </div>
+                                
+                                {/* Drilldown Navigation Taxonomy Style */}
+                                {(() => {
+                                    const selectedCategoryObj = djangoHierarchy?.find(c => c.id === parseInt(materialFilters.category));
+                                    const selectedLevelObj = displayLevels.find(l => l.id === parseInt(materialFilters.level));
+                                    const selectedSubjectObj = displaySubjects.find(s => s.id === parseInt(materialFilters.subject));
+                                    const selectedChapterObj = displayChapters.find(ch => ch.id === parseInt(materialFilters.chapter));
+                                    
+                                    let currentDepthTabs = [];
+                                    let depthLabel = "Categories";
+                                    
+                                    if (!materialFilters.category) {
+                                        currentDepthTabs = djangoHierarchy || [];
+                                        depthLabel = "Categories";
+                                    } else if (!materialFilters.level) {
+                                        currentDepthTabs = selectedCategoryObj?.sub_categories || [];
+                                        depthLabel = "Levels";
+                                    } else if (!materialFilters.subject) {
+                                        currentDepthTabs = displaySubjects.filter(s => (s.level || s.level_id) === parseInt(materialFilters.level));
+                                        depthLabel = "Subjects";
+                                    } else if (!materialFilters.chapter) {
+                                        currentDepthTabs = displayChapters.filter(c => (c.subject || c.subject_id) === parseInt(materialFilters.subject));
+                                        depthLabel = "Chapters";
+                                    }
+
+                                    return (
+                                        <div className="taxonomy-tabs-wrapper" style={{ marginBottom: '25px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                            <div className="taxonomy-nav-header" style={{ marginBottom: '15px' }}>
+                                                <div className="taxonomy-breadcrumbs" style={{ display: 'flex', gap: '8px', fontSize: '0.95rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    <span 
+                                                        style={{ cursor: 'pointer', fontWeight: 600, color: !materialFilters.category ? '#0f172a' : '#3b82f6', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                        onClick={() => setMaterialFilters({ category: '', level: '', subject: '', chapter: '' })}
+                                                        onMouseEnter={(e) => e.target.style.color = '#1d4ed8'}
+                                                        onMouseLeave={(e) => e.target.style.color = !materialFilters.category ? '#0f172a' : '#3b82f6'}
+                                                    >
+                                                        <i className="fas fa-home"></i> All
+                                                    </span>
+                                                    
+                                                    {selectedCategoryObj && (
+                                                        <>
+                                                            <i className="fas fa-chevron-right" style={{ fontSize: '0.7rem', marginTop: '2px', color: '#cbd5e1' }}></i>
+                                                            <span 
+                                                                style={{ cursor: 'pointer', fontWeight: 600, color: !materialFilters.level ? '#0f172a' : '#3b82f6' }}
+                                                                onClick={() => setMaterialFilters({ ...materialFilters, level: '', subject: '', chapter: '' })}
+                                                                onMouseEnter={(e) => e.target.style.color = '#1d4ed8'}
+                                                                onMouseLeave={(e) => e.target.style.color = !materialFilters.level ? '#0f172a' : '#3b82f6'}
+                                                            >
+                                                                {selectedCategoryObj.name}
+                                                            </span>
+                                                        </>
+                                                    )}
+
+                                                    {selectedLevelObj && (
+                                                        <>
+                                                            <i className="fas fa-chevron-right" style={{ fontSize: '0.7rem', marginTop: '2px', color: '#cbd5e1' }}></i>
+                                                            <span 
+                                                                style={{ cursor: 'pointer', fontWeight: 600, color: !materialFilters.subject ? '#0f172a' : '#3b82f6' }}
+                                                                onClick={() => setMaterialFilters({ ...materialFilters, subject: '', chapter: '' })}
+                                                                onMouseEnter={(e) => e.target.style.color = '#1d4ed8'}
+                                                                onMouseLeave={(e) => e.target.style.color = !materialFilters.subject ? '#0f172a' : '#3b82f6'}
+                                                            >
+                                                                {selectedLevelObj.name}
+                                                            </span>
+                                                        </>
+                                                    )}
+
+                                                    {selectedSubjectObj && (
+                                                        <>
+                                                            <i className="fas fa-chevron-right" style={{ fontSize: '0.7rem', marginTop: '2px', color: '#cbd5e1' }}></i>
+                                                            <span 
+                                                                style={{ cursor: 'pointer', fontWeight: 600, color: !materialFilters.chapter ? '#0f172a' : '#3b82f6' }}
+                                                                onClick={() => setMaterialFilters({ ...materialFilters, chapter: '' })}
+                                                                onMouseEnter={(e) => e.target.style.color = '#1d4ed8'}
+                                                                onMouseLeave={(e) => e.target.style.color = !materialFilters.chapter ? '#0f172a' : '#3b82f6'}
+                                                            >
+                                                                {selectedSubjectObj.name}
+                                                            </span>
+                                                        </>
+                                                    )}
+
+                                                    {selectedChapterObj && (
+                                                        <>
+                                                            <i className="fas fa-chevron-right" style={{ fontSize: '0.7rem', marginTop: '2px', color: '#cbd5e1' }}></i>
+                                                            <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                                {selectedChapterObj.name}
+                                                            </span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            <div className="category-sub-categories">
-                                                {category.sub_categories?.length > 0 ? category.sub_categories.map(level => (
-                                                    <div key={level.id} className="hierarchy-level-section">
-                                                        <div className="sub-category-header">
-                                                            <div className="sub-cat-info">
-                                                                <span className="sub-cat-icon">🎓</span>
-                                                                <h5>{level.name}</h5>
-                                                                <span className="board-pills-mini">{category.name.split(' - ')[1]}</span>
-                                                            </div>
-                                                        </div>
+                                            {currentDepthTabs.length > 0 && (
+                                                <div style={{ marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+                                                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px', fontWeight: 600 }}>Select {depthLabel}</p>
+                                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                        {currentDepthTabs.map(tab => (
+                                                            <button 
+                                                                key={tab.id}
+                                                                className="taxonomy-tab"
+                                                                style={{ 
+                                                                    borderRadius: '25px', 
+                                                                    padding: '8px 20px', 
+                                                                    fontSize: '0.9rem', 
+                                                                    backgroundColor: '#f8fafc', 
+                                                                    border: '1px solid #cbd5e1',
+                                                                    color: '#334155',
+                                                                    cursor: 'pointer',
+                                                                    fontWeight: 500,
+                                                                    transition: 'all 0.2s ease'
+                                                                }}
+                                                                onMouseEnter={(e) => { e.target.style.backgroundColor = '#e2e8f0'; e.target.style.borderColor = '#94a3b8'; e.target.style.color = '#0f172a'; }}
+                                                                onMouseLeave={(e) => { e.target.style.backgroundColor = '#f8fafc'; e.target.style.borderColor = '#cbd5e1'; e.target.style.color = '#334155'; }}
+                                                                onClick={() => {
+                                                                    if (!materialFilters.category) setMaterialFilters({ ...materialFilters, category: tab.id.toString() });
+                                                                    else if (!materialFilters.level) setMaterialFilters({ ...materialFilters, level: tab.id.toString() });
+                                                                    else if (!materialFilters.subject) setMaterialFilters({ ...materialFilters, subject: tab.id.toString() });
+                                                                    else if (!materialFilters.chapter) setMaterialFilters({ ...materialFilters, chapter: tab.id.toString() });
+                                                                }}
+                                                            >
+                                                                {tab.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
-                                                        <div className="level-subjects-container">
-                                                            {level.segments?.length > 0 ? level.segments.map(subject => (
-                                                                <div key={subject.id} className="hierarchy-subject-card">
-                                                                    <div className="subject-header">
-                                                                        <div className="subj-title">
-                                                                            <i className="fas fa-book"></i>
-                                                                            <h6>{subject.name}</h6>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="subject-chapters-list">
-                                                                        {subject.topics?.length > 0 ? subject.topics.map(topic => (
-                                                                            <div key={topic.id} className="hierarchy-chapter-pill">
-                                                                                <i className="fas fa-book-open"></i>
-                                                                                <span>{topic.name}</span>
-                                                                            </div>
-                                                                        )) : <span className="empty-text">No Topics</span>}
-                                                                    </div>
+                                <div className="mgmt-table-container">
+                                    {materialsLoading ? (
+                                        <SkeletonTable rows={5} columns={5} />
+                                    ) : (
+                                        <table className="mgmt-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Title</th>
+                                                    <th>Type</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(() => {
+                                                    const rawMaterials = Array.isArray(materials) ? materials : materials?.results || [];
+                                                    
+                                                    // Merge materials and questions
+                                                    const combinedContent = [
+                                                        ...rawMaterials.map(m => ({ ...m, _itemType: 'material' })),
+                                                        ...quizQuestions.map(q => ({ ...q, _itemType: 'question' }))
+                                                    ];
+
+                                                    const filteredMaterials = combinedContent.filter(m => {
+                                                        if (materialFilters.chapter) {
+                                                            const targetId = m._itemType === 'question' ? m.chapterId : m.chapter;
+                                                            return String(targetId) === String(materialFilters.chapter);
+                                                        }
+                                                        
+                                                        // Fallback for material-only filtering at higher levels (no easy quiz level filter yet)
+                                                        if (m._itemType === 'question') return false; 
+
+                                                        if (materialFilters.subject) {
+                                                            const ch = displayChapters.find(c => c.id === m.chapter);
+                                                            return ch && (ch.subject || ch.subject_id) === parseInt(materialFilters.subject);
+                                                        }
+                                                        if (materialFilters.level) {
+                                                            const ch = displayChapters.find(c => c.id === m.chapter);
+                                                            const sub = displaySubjects.find(s => s.id === (ch?.subject || ch?.subject_id));
+                                                            return sub && (sub.level || sub.level_id) === parseInt(materialFilters.level);
+                                                        }
+                                                        if (materialFilters.category) {
+                                                            const ch = displayChapters.find(c => c.id === m.chapter);
+                                                            const sub = displaySubjects.find(s => s.id === (ch?.subject || ch?.subject_id));
+                                                            const lev = displayLevels.find(l => l.id === (sub?.level || sub?.level_id));
+                                                            return lev && lev.category_id === parseInt(materialFilters.category);
+                                                        }
+                                                        return true;
+                                                    });
+
+                                                    if (filteredMaterials.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                                    <i className="fas fa-search" style={{ fontSize: '2rem', marginBottom: '1rem', color: '#cbd5e1' }}></i>
+                                                                    <p>No content (Materials or Questions) found matching this path.</p>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return filteredMaterials.map(item => {
+                                                        const isQuestion = item._itemType === 'question';
+                                                        const itemTitle = isQuestion ? item.question : (
+                                                            item.title ||
+                                                            item.translations?.find(t => t.language === 'en')?.title || 
+                                                            item.translations?.[0]?.title || 
+                                                            'Untitled'
+                                                        );
+                                                        const catName = !isQuestion ? (item.category_name || categories?.find(c => c.id === item.category)?.name) : 'Question Bank';
+                                                        const chapterId = isQuestion ? item.chapterId : item.chapter;
+                                                    
+                                                    return (
+                                                        <tr key={`${item._itemType}-${item.id}`}>
+                                                            <td>{item.id}</td>
+                                                            <td className="font-semibold">
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                    <i className={`fas ${isQuestion ? 'fa-question-circle' : 'fa-file-alt'}`} style={{ color: isQuestion ? '#f59e0b' : '#3b82f6' }}></i>
+                                                                    <span>{itemTitle}</span>
                                                                 </div>
-                                                            )) : (
-                                                                <div className="empty-info" style={{padding: '1rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
-                                                                    <p>No subjects assigned to this level yet.</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )) : (
-                                                    <div className="empty-info" style={{padding: '2rem', textAlign: 'center', width: '100%', color: '#94a3b8'}}>
-                                                        <p>No levels assigned to this category yet.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )) : (
-                                        <div className="placeholder-info">
-                                            <i className="fas fa-sitemap"></i>
-                                            <p>No academics hierarchy data found.</p>
-                                        </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className={`badge ${isQuestion ? 'badge-warning' : 'badge-info'}`}>
+                                                                    {isQuestion ? 'Question' : (catName || 'Material')}
+                                                                </span>
+                                                            </td>
+                                                            <td>{isQuestion ? <span className="badge badge-success">Active</span> : getStatusBadge(item.status)}</td>
+                                                        </tr>
+                                                    );
+                                                });
+                                                })()}
+                                            </tbody>
+                                        </table>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'levels' && (
-                        <div className="mgmt-section">
-                            <div className="section-header">
-                                <h3>Academic Levels</h3>
                             </div>
-                            <div className="mgmt-table-container">
-                                {levelsLoading ? (
-                                    <SkeletonTable rows={5} columns={5} />
-                                ) : (
-                                    <table className="mgmt-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Board</th>
-                                                <th>Rank</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {displayLevels.map(level => (
-                                                <tr key={level.id}>
-                                                    <td>{level.id}</td>
-                                                    <td className="font-semibold">{level.name}</td>
-                                                    <td><span className="badge">{level.board}</span></td>
-                                                    <td>{level.rank}</td>
-                                                    <td>
-                                                        <span className={`status-dot ${level.is_active ? 'active' : 'inactive'}`}></span>
-                                                        {level.is_active ? 'Active' : 'Disabled'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'subjects' && (
-                        <div className="mgmt-section">
-                            <div className="section-header">
-                                <h3>Subjects</h3>
-                            </div>
-                            <div className="mgmt-table-container">
-                                {subjectsLoading ? (
-                                    <SkeletonTable rows={5} columns={5} />
-                                ) : (
-                                    <table className="mgmt-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Level</th>
-                                                <th>Name</th>
-                                                {/* <th>Slug</th> */}
-                                                <th>Rank</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {displaySubjects.map(subject => (
-                                                <tr key={subject.id}>
-                                                    <td>{subject.id}</td>
-                                                    <td>
-                                                        <span className="badge">{subject.level_name || (levels?.find(l => l.id === subject.level)?.name)}</span>
-                                                    </td>
-                                                    <td className="font-semibold">{subject.name}</td>
-                                                    <td>{subject.rank}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'chapters' && (
-                        <div className="mgmt-section">
-                            <div className="section-header">
-                                <h3>Chapters</h3>
-                            </div>
-                            <div className="mgmt-table-container">
-                                {chaptersLoading ? (
-                                    <SkeletonTable rows={5} columns={4} />
-                                ) : (
-                                    <table className="mgmt-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Subject</th>
-                                                <th>Name</th>
-                                                <th>Rank</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {displayChapters.map(chapter => (
-                                                <tr key={chapter.id}>
-                                                    <td>{chapter.id}</td>
-                                                    <td>
-                                                        <span className="badge">{chapter.subject_name || (subjects?.find(s => s.id === chapter.subject)?.name)}</span>
-                                                    </td>
-                                                    <td className="font-semibold">{chapter.name}</td>
-                                                    <td>{chapter.rank}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'materials' && (
-                        <div className="mgmt-section">
-                            <div className="section-header">
-                                <h3>Materials</h3>
-                            </div>
-                            <div className="mgmt-table-container">
-                                {materialsLoading ? (
-                                    <SkeletonTable rows={5} columns={5} />
-                                ) : (
-                                    <table className="mgmt-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Title</th>
-                                                <th>Type</th>
-                                                <th>Chapter</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(Array.isArray(materials) ? materials : materials?.results || []).map(material => {
-                                                const catName = material.category_name || categories?.find(c => c.id === material.category)?.name;
-                                                const chName = material.chapter_name || chapters?.find(ch => ch.id === material.chapter)?.name;
-                                                
-                                                return (
-                                                    <tr key={material.id}>
-                                                        <td>{material.id}</td>
-                                                        <td className="font-semibold">
-                                                            {material.translations?.find(t => t.language === 'en')?.title || 
-                                                             material.translations?.[0]?.title || 
-                                                             'Untitled'}
-                                                        </td>
-                                                        <td><span className="badge">{catName || 'General'}</span></td>
-                                                        <td>{chName || '-'}</td>
-                                                        <td>{getStatusBadge(material.status)}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
             {/* Modal */}

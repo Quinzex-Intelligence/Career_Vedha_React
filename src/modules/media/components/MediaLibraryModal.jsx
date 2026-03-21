@@ -59,6 +59,7 @@ const MediaLibraryModal = ({ isOpen, onClose, onSelect, targetType }) => {
         } catch (error) {
             console.error('Error fetching media library:', error);
             showSnackbar('Failed to load media library', 'error');
+            setHasNext(false); // Stop infinite load-more attempts on error
         } finally {
             setLoading(false);
             setLoadingMore(false);

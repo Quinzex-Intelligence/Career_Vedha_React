@@ -6,7 +6,8 @@ import '../../styles/Dashboard.css';
 const CMSLayout = ({ 
     children,
     sidebarProps,
-    navbarProps
+    navbarProps,
+    noPadding = false
 }) => {
     return (
         <div className="dashboard-wrapper">
@@ -15,7 +16,7 @@ const CMSLayout = ({
             <div className="dashboard-main">
                 <CMSNavbar {...navbarProps} />
                 
-                <div className="content-container section-fade-in">
+                <div className={`content-container section-fade-in ${noPadding ? 'no-padding' : ''}`}>
                     {children}
                 </div>
             </div>

@@ -5,6 +5,12 @@
     min-height: 80vh;
 }
 
+.academics-mgmt-container.isolated {
+    padding: 10px 0 20px 0;
+    background: transparent;
+    border-radius: 0;
+}
+
 .mgmt-tabs {
     display: flex;
     gap: 12px;

@@ -469,6 +469,11 @@ function App() {
                                                 <AcademicsManagement />
                                             </ProtectedRoute>
                                         } />
+                                        <Route path="/cms/course-materials" element={
+                                            <ProtectedRoute module={MODULES.ACADEMICS_MANAGEMENT}>
+                                                <AcademicsManagement initialTab="materials" hideOtherTabs={true} />
+                                            </ProtectedRoute>
+                                        } />
                                         
                                         <Route path="/cms/current-affairs" element={
                                             <ProtectedRoute module={MODULES.CURRENT_AFFAIRS_MANAGEMENT}>

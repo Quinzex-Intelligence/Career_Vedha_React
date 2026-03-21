@@ -143,6 +143,17 @@ const CMSSidebar = ({
                                 <span>Top Stories</span>
                             </button>
                         )}
+                        
+                        {checkAccess(MODULES.ACADEMICS_MANAGEMENT) && (
+                            <button
+                                className={`menu-item ${activeSection === 'course-materials' ? 'active' : ''}`}
+                                onClick={() => navigate('/cms/course-materials')}
+                                style={{ paddingLeft: '40px' }}
+                            >
+                                <i className="fas fa-book-reader"></i>
+                                <span>Course Materials</span>
+                            </button>
+                        )}
 
                         {/* Hide Jobs for Contributors explicitly */}
                         {userRole !== 'CONTRIBUTOR' && checkAccess(MODULES.JOB_MANAGEMENT) && (

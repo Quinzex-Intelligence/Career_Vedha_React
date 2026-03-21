@@ -568,6 +568,11 @@
   margin: 0 auto;
 }
 
+.content-container.no-padding {
+  padding: 1.5rem;
+  max-width: 100%;
+}
+
 .page-header-row {
   display: flex;
   justify-content: space-between;
