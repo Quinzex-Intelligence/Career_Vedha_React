@@ -11,7 +11,9 @@ const DomainGuard = ({ children }) => {
       'www.quinzexintelligence.com',
       'quinzexintelligence.com',
       'careervedha.in',
-      'www.careervedha.in'
+      'https://www.careervedha.in',
+      'careervedha.com',
+      'https://www.careervedha.com'
     ];
 
     const currentDomain = window.location.hostname;
