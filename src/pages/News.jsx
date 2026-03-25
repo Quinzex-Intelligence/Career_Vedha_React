@@ -10,7 +10,6 @@ import { getTranslations } from '../utils/translations';
 import TopStoriesHero from '../components/home/TopStoriesHero';
 import TaxonomyTabs from '../components/ui/TaxonomyTabs';
 import ContentHubWidget from '../components/ui/ContentHubWidget';
-import ArticleCard from '../components/ui/ArticleCard';
 import './Articles.css';
 
 const NewsPage = () => {
@@ -81,16 +80,16 @@ const NewsPage = () => {
     // Client-side filtering because backend published endpoint ignores q/search when section is present
     const filteredArticles = useMemo(() => {
         if (!debouncedSearch) return allArticles;
-        
+
         const query = debouncedSearch.toLowerCase().trim();
         return allArticles.filter(article => {
             const title = (article.title || '').toLowerCase();
             const summary = (article.summary || '').toLowerCase();
             const section = (article.section || '').toLowerCase();
-            
-            return title.includes(query) || 
-                   summary.includes(query) || 
-                   section.includes(query);
+
+            return title.includes(query) ||
+                summary.includes(query) ||
+                section.includes(query);
         });
     }, [allArticles, debouncedSearch]);
 
@@ -104,8 +103,8 @@ const NewsPage = () => {
 
             <TaxonomyTabs sectionSlug="news" />
 
-            
-            <TopStoriesHero 
+
+            <TopStoriesHero
                 topStories={allArticles.slice(0, 5)}
                 loading={isLoading || trendingLoading}
                 activeLanguage={activeLanguage}
@@ -137,7 +136,7 @@ const NewsPage = () => {
                         <i className="fas fa-exclamation-triangle mb-4 text-red-500" style={{ fontSize: '48px' }}></i>
                         <h2>Something went wrong</h2>
                         <p className="mb-6">We couldn't load the news. Please try again later.</p>
-                        <button 
+                        <button
                             onClick={() => refetch()}
                             className="btn-load-more"
                         >
@@ -153,15 +152,47 @@ const NewsPage = () => {
                 ) : (
                     <>
                         <div className="articles-grid">
-                            {filteredArticles.map((article) => (
-                                <ArticleCard 
-                                    key={article.id} 
-                                    article={article} 
-                                    formatDate={formatDate}
-                                    activeLanguage={activeLanguage}
-                                    t={{ readMore: t.readMore }}
-                                />
-                            ))}
+                            {filteredArticles.map((article) => {
+                                // Resolve image URL
+                                let imageUrl = article.featured_media?.url || article.og_image_url;
+                                if (imageUrl && imageUrl.startsWith('/')) {
+                                    imageUrl = `${API_CONFIG.DJANGO_BASE_URL.replace('/api', '')}${imageUrl}`;
+                                }
+                                imageUrl = imageUrl || `https://placehold.co/600x400/FFC107/333333?text=${encodeURIComponent(article.section || 'News')}`;
+
+                                return (
+                                    <article key={article.id} className="article-card">
+                                        <div className="article-card-image">
+                                            <img
+                                                src={imageUrl}
+                                                alt={article.title}
+                                                onError={(e) => {
+                                                    e.target.src = "https://placehold.co/600x400/FFC107/333333?text=News";
+                                                }}
+                                            />
+                                            <div className="article-card-badge">
+                                                {article.section || 'News'}
+                                            </div>
+                                        </div>
+                                        <div className="article-card-content">
+                                            <h3 className="news-title">{article.title}</h3>
+                                            <p className="news-description">{article.summary || article.title}</p>
+                                            <div className="news-card-footer">
+                                                <div className="news-date">
+                                                    <i className="far fa-clock"></i>
+                                                    {formatDate(article.published_at || article.created_at)}
+                                                </div>
+                                                <Link
+                                                    to={`/article/${article.section || 'news'}/${article.slug}`}
+                                                    className="read-more-btn"
+                                                >
+                                                    {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
 
                         {hasNextPage && (
@@ -187,10 +218,10 @@ const NewsPage = () => {
             </main>
 
             <div className="container mt-5 mb-5 pt-4">
-                <ContentHubWidget 
-                    searchQuery="Trending" 
+                <ContentHubWidget
+                    searchQuery="Trending"
                     title="Discover More"
-                    minimal={false} 
+                    minimal={false}
                 />
             </div>
 

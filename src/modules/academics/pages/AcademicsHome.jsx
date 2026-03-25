@@ -8,8 +8,8 @@ import PrimaryNav from '../../../components/layout/PrimaryNav';
 import Footer from '../../../components/layout/Footer';
 import TopStoriesHero from '../../../components/home/TopStoriesHero';
 import { useHomeContent, useTrendingArticles } from '../../../hooks/useHomeContent';
+import ContentHubWidget from '../../../components/ui/ContentHubWidget';
 import TaxonomyTabs from '../../../components/ui/TaxonomyTabs';
-import ArticleCard from '../../../components/ui/ArticleCard';
 import API_CONFIG from '../../../config/api.config';
 import { getTranslations } from '../../../utils/translations';
 import './Academics.css';
@@ -27,7 +27,7 @@ const AcademicsHome = () => {
     const [activeLanguage, setActiveLanguage] = useState(() => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
-    
+
     const t = getTranslations(activeLanguage);
 
     const filters = useMemo(() => ({
@@ -52,9 +52,9 @@ const AcademicsHome = () => {
     const { data: homeContent, isLoading: homeLoading } = useHomeContent(activeLanguage, 10);
     const { data: trendingArticles } = useTrendingArticles(5, activeLanguage);
 
-    const allArticles = useMemo(() => 
-        articlesData?.pages.flatMap(page => page.results) || [], 
-    [articlesData]);
+    const allArticles = useMemo(() =>
+        articlesData?.pages.flatMap(page => page.results) || [],
+        [articlesData]);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Recent';
@@ -87,7 +87,7 @@ const AcademicsHome = () => {
             </div>
 
             {!isFiltered && (
-                <TopStoriesHero 
+                <TopStoriesHero
                     topStories={homeContent?.top_stories?.filter(s => s.section === 'academics') || homeContent?.latest?.results?.filter(s => s.section === 'academics')?.slice(0, 5) || []}
                     loading={homeLoading}
                     activeLanguage={activeLanguage}
@@ -130,21 +130,46 @@ const AcademicsHome = () => {
                     ) : (
                         <>
                             <div className="section-title mb-3">
-                                <h2 className="premium-title" style={{fontSize: '1.5rem'}}>
+                                <h2 className="premium-title" style={{ fontSize: '1.5rem' }}>
                                     {isFiltered ? 'Filtered Content' : 'Latest in Academics'}
                                 </h2>
                             </div>
-                                <div className="articles-grid">
-                                    {allArticles.map((article) => (
-                                        <ArticleCard 
-                                            key={article.id} 
-                                            article={article} 
-                                            formatDate={formatDate}
-                                            activeLanguage={activeLanguage}
-                                            t={{ readMore: t.readMore }}
-                                        />
-                                    ))}
-                                </div>
+                            <div className="articles-grid">
+                                {allArticles.map((article) => {
+                                    let imageUrl = article.featured_media?.url || article.og_image_url;
+                                    if (imageUrl && imageUrl.startsWith('/')) {
+                                        imageUrl = `${API_CONFIG.DJANGO_BASE_URL.replace('/api', '')}${imageUrl}`;
+                                    }
+                                    imageUrl = imageUrl || `https://placehold.co/600x400/6366f1/ffffff?text=${encodeURIComponent(article.section || 'Academic')}`;
+
+                                    return (
+                                        <article key={article.id} className="article-card">
+                                            <div className="article-card-image">
+                                                <img src={imageUrl} alt={article.title} />
+                                                <div className="article-card-badge">
+                                                    {article.section || 'Academic'}
+                                                </div>
+                                            </div>
+                                            <div className="article-card-content">
+                                                <h3 className="news-title">{article.title}</h3>
+                                                <p className="news-description">{article.summary || article.title}</p>
+                                                <div className="news-card-footer">
+                                                    <div className="news-date">
+                                                        <i className="far fa-clock"></i>
+                                                        {formatDate(article.published_at || article.created_at)}
+                                                    </div>
+                                                    <Link
+                                                        to={`/article/${article.section || 'academics'}/${article.slug}`}
+                                                        className="read-more-btn"
+                                                    >
+                                                        {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
 
                             {hasNextPage && (
                                 <div className="load-more-section mt-5 text-center">

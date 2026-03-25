@@ -7,23 +7,6 @@ const Footer = () => {
     const [showContactForm, setShowContactForm] = useState(false);
     const activeLanguage = localStorage.getItem('preferredLanguage') || 'english';
 
-    const socialLinks = {
-        english: {
-            facebook: "https://www.facebook.com/p/Career-Vedha-61560606159654/",
-            twitter: "https://x.com/careervedha",
-            instagram: "https://www.instagram.com/careervedha/",
-            youtube: "https://youtube.com/@careervedha"
-        },
-        telugu: {
-            facebook: "https://www.facebook.com/61563861567361/",
-            twitter: "https://x.com/careervedha", 
-            instagram: "https://www.instagram.com/careervedha/",
-            youtube: "https://youtube.com/@careervedha-telugu"
-        }
-    };
-
-    const links = socialLinks[activeLanguage] || socialLinks.english;
-
     return (
         <>
             <footer className="main-footer">
@@ -88,26 +71,28 @@ const Footer = () => {
                                 <span className="separator">|</span>
                                 <button className="footer-contact-btn" onClick={() => setShowContactForm(true)}>Contact Us</button>
                             </div>
-                            
+
                             <div className="footer-social-premium">
-                                <a href={links.facebook} target="_blank" rel="noopener noreferrer" className="social-icon fb" title="Facebook">
-                                    <i className="fab fa-facebook-f"></i>
-                                </a>
-                                <a href={links.twitter} target="_blank" rel="noopener noreferrer" className="social-icon x-twitter" title="X (Twitter)">
-                                    <i className="fab fa-twitter"></i>
-                                </a>
-                                <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="social-icon insta" title="Instagram">
-                                    <i className="fab fa-instagram"></i>
-                                </a>
-                                <a href={links.youtube} target="_blank" rel="noopener noreferrer" className="social-icon yt" title={`YouTube - ${activeLanguage === 'telugu' ? 'Telugu' : 'English'}`}>
-                                    <i className="fab fa-youtube"></i>
-                                </a>
+                                <a href="https://www.facebook.com/p/Career-Vedha-61560606159654/" target="_blank" rel="noopener noreferrer" className="social-icon fb"><i className="fab fa-facebook-f"></i></a>
+                                <a href="https://x.com/careervedha" target="_blank" rel="noopener noreferrer" className="social-icon x-twitter"><i className="fab fa-twitter"></i></a>
+                                <a href="https://www.instagram.com/careervedha/" target="_blank" rel="noopener noreferrer" className="social-icon insta"><i className="fab fa-instagram"></i></a>
+
+                                {activeLanguage === 'telugu' ? (
+                                    <a href="https://www.youtube.com/@careervedhatelugu" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha Telugu YouTube">
+                                        <i className="fab fa-youtube"></i>
+                                    </a>
+                                ) : (
+                                    <a href="https://youtube.com/@careervedha" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha English YouTube">
+                                        <i className="fab fa-youtube"></i>
+                                    </a>
+                                )}
                             </div>
                         </div>
-                        
+
                         <div className="copyright-bar mt-4">
                             <p>
-                                &copy; {currentYear} Career Vedha. All rights reserved. | Empowering Students Nationwide
+                                &copy; {currentYear} Career Vedha. All rights reserved. | Empowering Students Nationwide |
+                                <span className="dev-credit-inline"> Developed by <a href="https://www.quinzexintelligence.com" target="_blank" rel="noopener noreferrer">Quinzex Intelligence</a></span>
                             </p>
                         </div>
                     </div>
