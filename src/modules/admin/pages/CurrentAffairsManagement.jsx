@@ -36,6 +36,8 @@ const CurrentAffairsManagement = () => {
         language: 'EN',
         file: null
     });
+    const [fileError, setFileError] = useState('');
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 
     const regions = [
         'AP', 'AR', 'AS', 'BR', 'CG', 'GA', 'GJ', 'HR', 'HP', 
@@ -153,12 +155,21 @@ const CurrentAffairsManagement = () => {
                 file: null
             });
         }
+        setFileError('');
         setShowModal(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (formData.file && formData.file.size > MAX_FILE_SIZE) {
+            setFileError(`File size too large. Max limit is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+            showSnackbar('File size exceeds 10MB limit', 'error');
+            return;
+        }
+
         setSubmitting(true);
+        setFileError('');
         try {
             if (isEditing) {
                 await currentAffairsService.updateCurrentAffair(selectedId, formData);
@@ -292,7 +303,7 @@ const CurrentAffairsManagement = () => {
                         <div className="modal-body">
                             <form onSubmit={handleSubmit} className="cms-form">
                                 <div className="form-group">
-                                    <label className="form-label">Title</label>
+                                    <label className="form-label">Title <span style={{color: '#ef4444'}}>*</span></label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -326,7 +337,7 @@ const CurrentAffairsManagement = () => {
 
                                 <div className="form-group" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
                                     <CustomSelect
-                                        label="Region"
+                                        label={<>Region <span style={{color: '#ef4444'}}>*</span></>}
                                         options={regionOptions}
                                         value={formData.region}
                                         onChange={val => setFormData({...formData, region: val})}
@@ -334,7 +345,7 @@ const CurrentAffairsManagement = () => {
                                     />
                                     <div>
                                         <CustomSelect
-                                            label="Language"
+                                            label={<>Language <span style={{color: '#ef4444'}}>*</span></>}
                                             options={languages}
                                             value={formData.language}
                                             onChange={val => setFormData({...formData, language: val})}
@@ -347,18 +358,27 @@ const CurrentAffairsManagement = () => {
 
                                 <div className="form-group">
                                     <label className="form-label">File (Image/PDF/Doc)</label>
-                                    <div className="file-input-wrapper">
+                                    <div className={`file-input-wrapper ${fileError ? 'has-error' : ''}`}>
                                         <label className="file-input-label">
                                             <i className="fas fa-cloud-upload-alt"></i>
                                             <input
                                                 type="file"
-                                                onChange={e => setFormData({...formData, file: e.target.files[0]})}
+                                                onChange={e => {
+                                                    const f = e.target.files[0];
+                                                    if (f && f.size > MAX_FILE_SIZE) {
+                                                        setFileError(`File too large. Max limit is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+                                                    } else {
+                                                        setFileError('');
+                                                    }
+                                                    setFormData({...formData, file: f});
+                                                }}
                                                 accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                                 style={{display: 'none'}}
                                             />
                                             {formData.file ? formData.file.name : 'Click to upload file'}
                                         </label>
                                     </div>
+                                    {fileError && <small style={{color: '#ef4444', fontWeight: '600', marginTop: '8px'}}>{fileError}</small>}
                                 </div>
                             </form>
                         </div>

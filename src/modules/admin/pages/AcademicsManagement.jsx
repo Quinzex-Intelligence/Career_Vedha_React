@@ -97,7 +97,7 @@ const AcademicsManagement = ({ initialTab = 'hierarchy', hideOtherTabs = false }
     };
 
     const sidebarProps = {
-        activeSection: 'academics',
+        activeSection: 'course-materials',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
         onLogout: () => {

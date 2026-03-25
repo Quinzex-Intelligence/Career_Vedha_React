@@ -5,6 +5,25 @@ import MobileTopBar from '../navigation/MobileTopBar';
 import MobileDrawer from '../navigation/MobileDrawer';
 import { isHandheld } from '../../constants/breakpoints';
 
+const AdSenseUnit = ({ slot = "5794503693" }) => {
+  useEffect(() => {
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      console.error("AdSense error", e);
+    }
+  }, []);
+
+  return (
+    <ins className="adsbygoogle"
+         style={{ display: 'block' }}
+         data-ad-client="ca-pub-6974648434148802"
+         data-ad-slot={slot}
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  );
+};
+
 const MobileLayout = ({ children }) => {
   const [isMobileView, setIsMobileView] = useState(isHandheld());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -27,7 +46,8 @@ const MobileLayout = ({ children }) => {
   // Determine if we should show global ads and restricted layout
   const isCmsRoute = location.pathname.startsWith('/admin') || 
                      location.pathname.startsWith('/cms') || 
-                     location.pathname.startsWith('/dashboard');
+                     location.pathname.startsWith('/dashboard') ||
+                     location.pathname.startsWith('/user-management');
                      
   const isStoreRoute = location.pathname.startsWith('/e-store');
 
@@ -45,11 +65,11 @@ const MobileLayout = ({ children }) => {
         <>
           <div className="global-side-ad left">
             <div className="ad-placeholder-text">Advertisement</div>
-            {/* Google AdSense or Custom Ad Script goes here */}
+            <AdSenseUnit />
           </div>
           <div className="global-side-ad right">
             <div className="ad-placeholder-text">Advertisement</div>
-             {/* Google AdSense or Custom Ad Script goes here */}
+            <AdSenseUnit />
           </div>
         </>
       )}

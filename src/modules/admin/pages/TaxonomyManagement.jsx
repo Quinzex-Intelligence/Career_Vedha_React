@@ -867,6 +867,7 @@ const TaxonomyManagement = () => {
                                 <div>
                                     <h2>
                                         {isEditing ? 'Edit' : 'Create New'} {
+                                            modalMode === 'SECTION' ? 'Section (L0)' :
                                             modalMode === 'CATEGORY' ? 'Category (L1)' : 
                                             modalMode === 'SUB_CATEGORY' ? 'Sub-Category (L2)' : 
                                             modalMode === 'SEGMENT' ? 'Segment (L3)' : 
@@ -874,7 +875,8 @@ const TaxonomyManagement = () => {
                                         }
                                     </h2>
                                     <p className="modal-subtitle">
-                                        {modalMode === 'CATEGORY' ? 'Create a top-level classification' :
+                                        {modalMode === 'SECTION' ? 'Create a top-level academic section' :
+                                         modalMode === 'CATEGORY' ? 'Create a primary classification under a Section' :
                                          modalMode === 'SUB_CATEGORY' ? 'Create a secondary grouping under a Category' :
                                          modalMode === 'SEGMENT' ? 'Narrow down subjects within Sub-Categories' :
                                          'Add specific actionable topics with content'}
@@ -1011,18 +1013,17 @@ const TaxonomyManagement = () => {
                                 )}
 
                                 <div className="form-section">
-                                    <h3 className="section-title">
+                                    <h3 className="section-title" style={{ paddingLeft: 0 }}>
                                         {modalMode === 'SECTION' ? 'Section' : 'Category'} Details
                                     </h3>
                                     
                                     <div className="form-grid">
                                         <div className="am-form-group">
                                             <label className="am-label">Name</label>
-                                            <div className="input-with-icon">
+                                                <div className="input-with-icon">
                                                 <i className="fas fa-tag input-icon"></i>
                                                 <input 
                                                     type="text"
-                                                    className="am-input"
                                                     value={modalMode === 'SECTION' ? currentSection.name : currentCategory.name}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
@@ -1035,6 +1036,7 @@ const TaxonomyManagement = () => {
                                                     }}
                                                     required
                                                     placeholder="Enter name"
+                                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', padding: '0.75rem 0', fontWeight: '600' }}
                                                 />
                                             </div>
                                         </div>
@@ -1045,13 +1047,13 @@ const TaxonomyManagement = () => {
                                                 <i className="fas fa-link input-icon"></i>
                                                 <input 
                                                     type="text"
-                                                    className="am-input"
                                                     value={modalMode === 'SECTION' ? currentSection.slug : currentCategory.slug}
                                                     onChange={(e) => {
                                                         if (modalMode === 'SECTION') setCurrentSection({...currentSection, slug: e.target.value});
                                                         else setCurrentCategory({...currentCategory, slug: e.target.value});
                                                     }}
                                                     required
+                                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', padding: '0.75rem 0', fontWeight: '600' }}
                                                 />
                                             </div>
                                         </div>
@@ -1060,17 +1062,17 @@ const TaxonomyManagement = () => {
                                     <div className="am-form-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
                                         <div className="am-form-group">
                                             <label className="am-label">Rank / Order</label>
-                                            <div className="input-with-icon">
+                                                <div className="input-with-icon">
                                                 <i className="fas fa-sort-amount-down input-icon"></i>
                                                 <input 
                                                     type="number"
-                                                    className="am-input"
                                                     value={modalMode === 'SECTION' ? currentSection.rank : currentCategory.rank}
                                                     onChange={(e) => {
                                                         if (modalMode === 'SECTION') setCurrentSection({...currentSection, rank: e.target.value});
                                                         else setCurrentCategory({...currentCategory, rank: e.target.value});
                                                     }}
                                                     placeholder="0"
+                                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', padding: '0.75rem 0', fontWeight: '600' }}
                                                 />
                                             </div>
                                         </div>
@@ -1100,7 +1102,7 @@ const TaxonomyManagement = () => {
                                 {(modalMode === 'TOPIC' || currentCategory.isLevel4) && (
                                     <div className="form-section alternate-bg">
                                         <div className="section-header-row">
-                                            <h3 className="section-title">Topic Content (Level 4/5)</h3>
+                                            <h3 className="section-title" style={{ paddingLeft: 0 }}>Topic Content (Level 4/5)</h3>
                                         </div>
 
                                         <div className="am-level4-fields animated slideDown">

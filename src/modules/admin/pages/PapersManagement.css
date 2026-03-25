@@ -443,7 +443,6 @@
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    overflow: hidden;
     transition: all 0.2s;
 }
 
@@ -529,6 +528,7 @@
 .form-input-inline,
 .form-textarea-inline,
 .form-select-inline {
+    width: 100%;
     padding: 10px 14px;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -549,6 +549,7 @@
 .form-textarea-inline {
     resize: vertical;
     font-family: inherit;
+    min-height: 80px;
 }
 
 .form-select-inline {
@@ -599,39 +600,7 @@
     color: #dc2626;
 }
 
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 20px 32px;
-    border-top: 1px solid #e2e8f0;
-    background: #f8fafc;
-}
-
-.btn-primary {
-    background: #FFC107;
-    color: #1e293b;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: #FFB300;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
-}
-
-.btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+/* Removed duplicate button/footer styles */
 
 .btn-secondary {
     background: white;

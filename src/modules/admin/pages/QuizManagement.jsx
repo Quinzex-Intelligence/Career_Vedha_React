@@ -18,9 +18,10 @@ const QuizManagement = () => {
     const { showSnackbar } = useSnackbar();
 
     // Filter/Search parameters
+    // Filter/Search parameters (Section -> Level -> Subject -> Chapter)
+    const [selectedSectionId, setSelectedSectionId] = useState('');
     const [selectedLevelId, setSelectedLevelId] = useState('');
-    const [selectedSubCategoryId, setSelectedSubCategoryId] = useState('');
-    const [selectedSegmentId, setSelectedSegmentId] = useState('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [selectedTopicId, setSelectedTopicId] = useState('');
     const [fetchCount, setFetchCount] = useState(50);
 
@@ -29,12 +30,13 @@ const QuizManagement = () => {
     const { data: hierarchy, isLoading: hierarchyLoading } = useAcademicsHierarchy();
 
     // Find category name from selected segment if needed
-    const getCategoryName = (levelId, subCatId, segmentId) => {
-        if (!hierarchy || !levelId || !subCatId || !segmentId) return '';
-        const level = hierarchy.find(l => String(l.id) === String(levelId));
-        const subCat = level?.sub_categories?.find(sc => String(sc.id) === String(subCatId));
-        const segment = subCat?.segments?.find(s => String(s.id) === String(segmentId));
-        return segment?.name || '';
+    // Find subject name from hierarchy (formerly segment name)
+    const getSubjectName = (sectionId, levelId, subjectId) => {
+        if (!hierarchy || !sectionId || !levelId || !subjectId) return '';
+        const section = hierarchy.find(s => String(s.id) === String(sectionId));
+        const level = section?.sub_categories?.find(l => String(l.id) === String(levelId));
+        const subject = level?.segments?.find(s => String(s.id) === String(subjectId));
+        return subject?.name || '';
     };
 
     const getTopicName = (chapterId) => {
@@ -50,25 +52,26 @@ const QuizManagement = () => {
         return `CH: ${chapterId}`;
     };
 
-    const selectedCategory = getCategoryName(selectedLevelId, selectedSubCategoryId, selectedSegmentId);
+    const selectedSubjectName = getSubjectName(selectedSectionId, selectedLevelId, selectedSubjectId);
 
     const {
         data: quizData,
         isLoading: isLoadingQuiz,
         error: quizError
     } = useQuizQuestions({
-        category: selectedCategory,
+        category: selectedSubjectName,
         chapterId: selectedTopicId,
         count: fetchCount
     });
     
     // Derived flattened data for modal selections
-    const selectedLevel = hierarchy?.find(l => String(l.id) === String(selectedLevelId));
-    const selectedSubCategory = selectedLevel?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId));
-    const selectedSegment = selectedSubCategory?.segments?.find(s => String(s.id) === String(selectedSegmentId));
-
     const quizQuestions = quizData?.content || [];
     const quizTotalElements = quizData?.totalElements || 0;
+
+    // Find selected objects for drill-down
+    const selectedSection = hierarchy?.find(s => String(s.id) === String(selectedSectionId));
+    const selectedLevel = selectedSection?.sub_categories?.find(l => String(l.id) === String(selectedLevelId));
+    const selectedSubject = selectedLevel?.segments?.find(s => String(s.id) === String(selectedSubjectId));
 
     // Mutations
     const createMutation = useCreateQuizQuestions();
@@ -89,10 +92,10 @@ const QuizManagement = () => {
             correctOption: '',
             category: '',
             chapterId: '',
-            // UI helper state for hierarchical selection in modal
+            // UI helper state for hierarchical selection in modal (Section -> Level -> Subject -> Chapter)
+            _sectionId: '',
             _levelId: '',
-            _subCategoryId: '',
-            _segmentId: ''
+            _subjectId: ''
         }
     ]);
     const [selectedQuizIds, setSelectedQuizIds] = useState([]);
@@ -116,11 +119,11 @@ const QuizManagement = () => {
             ...prev,
             {
                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
-                category: selectedCategory || '',
+                category: selectedSubjectName || '',
                 chapterId: selectedTopicId || '',
+                _sectionId: selectedSectionId || '',
                 _levelId: selectedLevelId || '',
-                _subCategoryId: selectedSubCategoryId || '',
-                _segmentId: selectedSegmentId || ''
+                _subjectId: selectedSubjectId || ''
             }
         ]);
         showSnackbar("New question form added", "info");
@@ -227,8 +230,11 @@ const QuizManagement = () => {
             setShowQuestionModal(false);
             setQuestionList([{
                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
-                category: selectedCategory || '',
-                chapterId: selectedTopicId || ''
+                category: selectedSubjectName || '',
+                chapterId: selectedTopicId || '',
+                _sectionId: selectedSectionId || '',
+                _levelId: selectedLevelId || '',
+                _subjectId: selectedSubjectId || ''
             }]);
             setIsEditingQuestion(false);
             setEditingQuestionId(null);
@@ -243,17 +249,17 @@ const QuizManagement = () => {
         setEditingQuestionId(q.id);
 
         // Try to reverse-engineer Level/Subject from chapterId if possible
+        let foundSectionId = '';
         let foundLevelId = '';
-        let foundSubCategoryId = '';
-        let foundSegmentId = '';
+        let foundSubjectId = '';
         if (hierarchy && q.chapterId) {
-            for (const l of hierarchy) {
-                for (const sc of (l.sub_categories || [])) {
-                    for (const s of (sc.segments || [])) {
-                        if (s.topics?.some(t => String(t.id) === String(q.chapterId))) {
-                            foundLevelId = String(l.id);
-                            foundSubCategoryId = String(sc.id);
-                            foundSegmentId = String(s.id);
+            for (const section of hierarchy) {
+                for (const level of (section.sub_categories || [])) {
+                    for (const subject of (level.segments || [])) {
+                        if (subject.topics?.some(t => String(t.id) === String(q.chapterId))) {
+                            foundSectionId = String(section.id);
+                            foundLevelId = String(level.id);
+                            foundSubjectId = String(subject.id);
                             break;
                         }
                     }
@@ -270,9 +276,9 @@ const QuizManagement = () => {
             correctOption: q.correctOption || '',
             category: q.category || '',
             chapterId: q.chapterId || '',
+            _sectionId: foundSectionId,
             _levelId: foundLevelId,
-            _subCategoryId: foundSubCategoryId,
-            _segmentId: foundSegmentId
+            _subjectId: foundSubjectId
         }]);
         setShowQuestionModal(true);
     };
@@ -329,11 +335,11 @@ const QuizManagement = () => {
                             setEditingQuestionId(null);
                             setQuestionList([{
                                 question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
-                                category: selectedCategory || '',
+                                category: selectedSubjectName || '',
                                 chapterId: selectedTopicId || '',
+                                _sectionId: selectedSectionId || '',
                                 _levelId: selectedLevelId || '',
-                                _subCategoryId: selectedSubCategoryId || '',
-                                _segmentId: selectedSegmentId || ''
+                                _subjectId: selectedSubjectId || ''
                             }]);
                             setShowBulkModal(true);
                         }}
@@ -345,11 +351,11 @@ const QuizManagement = () => {
                         setEditingQuestionId(null);
                         setQuestionList([{
                             question: '', option1: '', option2: '', option3: '', option4: '', correctOption: '',
-                            category: selectedCategory || '',
+                            category: selectedSubjectName || '',
                             chapterId: selectedTopicId || '',
+                            _sectionId: selectedSectionId || '',
                             _levelId: selectedLevelId || '',
-                            _subCategoryId: selectedSubCategoryId || '',
-                            _segmentId: selectedSegmentId || ''
+                            _subjectId: selectedSubjectId || ''
                         }]);
                         setShowQuestionModal(true);
                     }}>
@@ -360,65 +366,62 @@ const QuizManagement = () => {
 
             {/* Filters Row */}
             <div className="dashboard-section filters-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'end' }}>
+            <div className="filter-row">
                 <CustomSelect
-                    label="Level"
-                    value={selectedLevelId}
+                    label="Section"
+                    value={selectedSectionId}
                     onChange={(val) => {
-                        setSelectedLevelId(val);
-                        setSelectedSubCategoryId('');
-                        setSelectedSegmentId('');
+                        setSelectedSectionId(val);
+                        setSelectedLevelId('');
+                        setSelectedSubjectId('');
                         setSelectedTopicId('');
                     }}
                     options={[
-                        { value: '', label: '-- All Levels --' },
-                        ...(hierarchy?.map(level => ({ value: level.id, label: level.name })) || [])
+                        { value: '', label: '-- All Sections --' },
+                        ...(hierarchy?.map(section => ({ value: section.id, label: section.name })) || [])
                     ]}
                 />
                 <CustomSelect
-                    label="Sub-category"
-                    disabled={!selectedLevelId}
-                    value={selectedSubCategoryId}
+                    label="Level"
+                    disabled={!selectedSectionId}
+                    value={selectedLevelId}
                     onChange={(val) => {
-                        setSelectedSubCategoryId(val);
-                        setSelectedSegmentId('');
+                        setSelectedLevelId(val);
+                        setSelectedSubjectId('');
                         setSelectedTopicId('');
                     }}
-                    placeholder={selectedLevelId ? '-- All Sections --' : 'Select Level First'}
+                    placeholder={selectedSectionId ? '-- All Levels --' : 'Select Section First'}
                     options={[
-                        { value: '', label: selectedLevelId ? '-- All Sections --' : 'Select Level First' },
-                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))?.sub_categories?.map(sc => ({ value: sc.id, label: sc.name })) || [])
+                        { value: '', label: selectedSectionId ? '-- All Levels --' : 'Select Section First' },
+                        ...(selectedSection?.sub_categories?.map(l => ({ value: l.id, label: l.name })) || [])
                     ]}
                 />
                 <CustomSelect
                     label="Subject"
-                    disabled={!selectedSubCategoryId}
-                    value={selectedSegmentId}
+                    disabled={!selectedLevelId}
+                    value={selectedSubjectId}
                     onChange={(val) => {
-                        setSelectedSegmentId(val);
+                        setSelectedSubjectId(val);
                         setSelectedTopicId('');
                     }}
-                    placeholder={selectedSubCategoryId ? '-- All Subjects --' : 'Select Section First'}
+                    placeholder={selectedLevelId ? '-- All Subjects --' : 'Select Level First'}
                     options={[
-                        { value: '', label: selectedSubCategoryId ? '-- All Subjects --' : 'Select Section First' },
-                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))
-                            ?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId))
-                            ?.segments?.map(seg => ({ value: seg.id, label: seg.name })) || [])
+                        { value: '', label: selectedLevelId ? '-- All Subjects --' : 'Select Level First' },
+                        ...(selectedLevel?.segments?.map(s => ({ value: s.id, label: s.name })) || [])
                     ]}
                 />
                 <CustomSelect
                     label="Chapter"
-                    disabled={!selectedSegmentId}
+                    disabled={!selectedSubjectId}
                     value={selectedTopicId}
                     onChange={(val) => setSelectedTopicId(val)}
-                    placeholder={selectedSegmentId ? '-- All Chapters --' : 'Select Subject First'}
+                    placeholder={selectedSubjectId ? '-- All Chapters --' : 'Select Subject First'}
                     options={[
-                        { value: '', label: selectedSegmentId ? '-- All Chapters --' : 'Select Subject First' },
-                        ...(hierarchy?.find(l => String(l.id) === String(selectedLevelId))
-                            ?.sub_categories?.find(sc => String(sc.id) === String(selectedSubCategoryId))
-                            ?.segments?.find(seg => String(seg.id) === String(selectedSegmentId))
-                            ?.topics?.map(topic => ({ value: topic.id, label: topic.name })) || [])
+                        { value: '', label: selectedSubjectId ? '-- All Chapters --' : 'Select Subject First' },
+                        ...(selectedSubject?.topics?.map(t => ({ value: t.id, label: t.name })) || [])
                     ]}
                 />
+            </div>
                 <CustomSelect
                     label="Show count"
                     value={fetchCount}
@@ -444,7 +447,7 @@ const QuizManagement = () => {
             <div className="dashboard-section table-container-modern">
                 {isLoadingQuiz || hierarchyLoading ? (
                     <SkeletonTable columns={6} rows={10} />
-                ) : !selectedCategory && !selectedTopicId ? (
+                ) : !selectedSubjectName && !selectedTopicId ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">
                             <i className="fas fa-filter"></i>
@@ -588,51 +591,52 @@ const QuizManagement = () => {
                                     </div>
                                     <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                                         <CustomSelect
+                                            label="Section"
+                                            value={q._sectionId}
+                                            onChange={val => {
+                                                setQuestionList(prev => {
+                                                    const newList = [...prev];
+                                                    newList[idx] = { ...newList[idx], _sectionId: val, _levelId: '', _subjectId: '', chapterId: '', category: '' };
+                                                    return newList;
+                                                });
+                                            }}
+                                            options={[
+                                                { value: '', label: 'Select Section' },
+                                                ...(hierarchy?.map(s => ({ value: s.id, label: s.name })) || [])
+                                            ]}
+                                        />
+                                        <CustomSelect
                                             label="Level"
+                                            disabled={!q._sectionId}
                                             value={q._levelId}
                                             onChange={val => {
                                                 setQuestionList(prev => {
                                                     const newList = [...prev];
-                                                    newList[idx] = { ...newList[idx], _levelId: val, _subCategoryId: '', _segmentId: '', chapterId: '', category: '' };
+                                                    newList[idx] = { ...newList[idx], _levelId: val, _subjectId: '', category: '', chapterId: '' };
                                                     return newList;
                                                 });
                                             }}
+                                            placeholder="Select Level"
                                             options={[
                                                 { value: '', label: 'Select Level' },
-                                                ...(hierarchy?.map(l => ({ value: l.id, label: l.name })) || [])
-                                            ]}
-                                        />
-                                        <CustomSelect
-                                            label="Section"
-                                            disabled={!q._levelId}
-                                            value={q._subCategoryId}
-                                            onChange={val => {
-                                                setQuestionList(prev => {
-                                                    const newList = [...prev];
-                                                    newList[idx] = { ...newList[idx], _subCategoryId: val, _segmentId: '', category: '', chapterId: '' };
-                                                    return newList;
-                                                });
-                                            }}
-                                            placeholder="Select Section"
-                                            options={[
-                                                { value: '', label: 'Select Section' },
-                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))?.sub_categories?.map(sc => ({ value: sc.id, label: sc.name })) || [])
+                                                ...(hierarchy?.find(s => String(s.id) === String(q._sectionId))?.sub_categories?.map(l => ({ value: l.id, label: l.name })) || [])
                                             ]}
                                         />
                                         <CustomSelect
                                             label="Subject"
-                                            disabled={!q._subCategoryId}
-                                            value={q._segmentId}
+                                            disabled={!q._levelId}
+                                            value={q._subjectId}
                                             onChange={val => {
-                                                const seg = hierarchy.find(l => String(l.id) === String(q._levelId))
-                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
-                                                    ?.segments?.find(s => String(s.id) === String(val));
+                                                const section = hierarchy?.find(s => String(s.id) === String(q._sectionId));
+                                                const level = section?.sub_categories?.find(l => String(l.id) === String(q._levelId));
+                                                const subject = level?.segments?.find(s => String(s.id) === String(val));
+                                                
                                                 setQuestionList(prev => {
                                                     const newList = [...prev];
                                                     newList[idx] = {
                                                         ...newList[idx],
-                                                        _segmentId: val,
-                                                        category: seg?.name || '',
+                                                        _subjectId: val,
+                                                        category: subject?.name || '',
                                                         chapterId: ''
                                                     };
                                                     return newList;
@@ -641,14 +645,14 @@ const QuizManagement = () => {
                                             placeholder="Select Subject"
                                             options={[
                                                 { value: '', label: 'Select Subject' },
-                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))
-                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
+                                                ...(hierarchy?.find(s => String(s.id) === String(q._sectionId))
+                                                    ?.sub_categories?.find(l => String(l.id) === String(q._levelId))
                                                     ?.segments?.map(s => ({ value: s.id, label: s.name })) || [])
                                             ]}
                                         />
                                         <CustomSelect
                                             label="Chapter (Topic)"
-                                            disabled={!q._segmentId}
+                                            disabled={!q._subjectId}
                                             value={q.chapterId}
                                             onChange={val => {
                                                 setQuestionList(prev => {
@@ -660,9 +664,9 @@ const QuizManagement = () => {
                                             placeholder="-- Optional Topic --"
                                             options={[
                                                 { value: '', label: '-- Optional Topic --' },
-                                                ...(hierarchy?.find(l => String(l.id) === String(q._levelId))
-                                                    ?.sub_categories?.find(sc => String(sc.id) === String(q._subCategoryId))
-                                                    ?.segments?.find(s => String(s.id) === String(q._segmentId))
+                                                ...(hierarchy?.find(s => String(s.id) === String(q._sectionId))
+                                                    ?.sub_categories?.find(l => String(l.id) === String(q._levelId))
+                                                    ?.segments?.find(s => String(s.id) === String(q._subjectId))
                                                     ?.topics?.map(t => ({ value: t.id, label: t.name })) || [])
                                             ]}
                                         />

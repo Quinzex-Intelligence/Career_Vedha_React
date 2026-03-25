@@ -4095,6 +4095,7 @@
 }
 
 .input-with-icon i {
+  position: static;
   color: var(--slate-400);
   margin-right: 0.75rem;
 }

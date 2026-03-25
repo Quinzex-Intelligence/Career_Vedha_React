@@ -20,10 +20,13 @@ const PapersManagement = () => {
     const [uploadProgress, setUploadProgress] = useState(false);
     const [selectedPapers, setSelectedPapers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file limit
 
     // Modal state with file details
     const [showModal, setShowModal] = useState(false);
     const [fileDetails, setFileDetails] = useState([]);
+    const [viewingPaper, setViewingPaper] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         fetchPapers();
@@ -48,7 +51,8 @@ const PapersManagement = () => {
             file: file,
             title: file.name.replace(/\.[^/.]+$/, ''), // Auto-extract but editable
             description: '',
-            category: activeTab
+            category: activeTab,
+            error: file.size > MAX_FILE_SIZE ? `File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Max limit is 10MB.` : null
         }));
         setFileDetails(details);
     };
@@ -75,6 +79,12 @@ const PapersManagement = () => {
         const missingTitles = fileDetails.some(f => !f.title.trim());
         if (missingTitles) {
             showSnackbar('All files must have a title', 'error');
+            return;
+        }
+
+        const oversizedFiles = fileDetails.some(f => f.error);
+        if (oversizedFiles) {
+            showSnackbar('Please remove files that exceed the 10MB limit', 'error');
             return;
         }
 
@@ -272,14 +282,13 @@ const PapersManagement = () => {
                                         </td>
                                         <td className="actions-cell">
                                             <LuxuryTooltip content="View PDF">
-                                                <a
-                                                    href={paper.presignedUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                <button
+                                                    onClick={() => setViewingPaper({ url: paper.presignedUrl, title: paper.title })}
                                                     className="icon-btn view"
+                                                    style={{ cursor: 'pointer' }}
                                                 >
                                                     <i className="fas fa-eye"></i>
-                                                </a>
+                                                </button>
                                             </LuxuryTooltip>
                                             <LuxuryTooltip content="Delete">
                                                 <button
@@ -325,7 +334,7 @@ const PapersManagement = () => {
                                 />
                                 <label htmlFor="fileInputModal" className="file-upload-label">
                                     <i className="fas fa-cloud-upload-alt"></i>
-                                    <span>Choose PDF Files</span>
+                                    <span>Choose PDF Files <small style={{color: '#64748b', fontSize: '0.8rem', fontWeight: '400'}}>(Max 10MB per file)</small></span>
                                     <small>Click to select multiple files</small>
                                 </label>
                             </div>
@@ -338,12 +347,12 @@ const PapersManagement = () => {
                                     </h3>
                                     <div className="files-list">
                                         {fileDetails.map((detail, index) => (
-                                            <div key={index} className="file-detail-card">
+                                            <div key={index} className={`file-detail-card ${detail.error ? 'has-error' : ''}`} style={detail.error ? {borderColor: '#ef4444', backgroundColor: '#fef2f2'} : {}}>
                                                 <div className="file-card-header">
                                                     <div className="file-info">
                                                         <i className="fas fa-file-pdf"></i>
                                                         <span className="file-name">{detail.file.name}</span>
-                                                        <span className="file-size">
+                                                        <span className="file-size" style={detail.error ? {color: '#ef4444', fontWeight: '700'} : {}}>
                                                             {(detail.file.size / 1024 / 1024).toFixed(2)} MB
                                                         </span>
                                                     </div>
@@ -356,6 +365,12 @@ const PapersManagement = () => {
                                                         <i className="fas fa-times"></i>
                                                     </button>
                                                 </div>
+                                                {detail.error && (
+                                                    <div style={{padding: '0 16px 8px', color: '#ef4444', fontSize: '0.8rem', fontWeight: '600'}}>
+                                                        <i className="fas fa-exclamation-triangle" style={{marginRight: '6px'}}></i>
+                                                        {detail.error}
+                                                    </div>
+                                                )}
                                                 <div className="file-card-body">
                                                     <div className="form-group-inline">
                                                         <label className="form-label-inline">
@@ -407,6 +422,32 @@ const PapersManagement = () => {
                             >
                                 {uploadProgress ? <div className="btn-spinner"></div> : <><i className="fas fa-upload"></i> Upload {fileDetails.length} File{fileDetails.length !== 1 ? 's' : ''}</>}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PDF Viewer Modal */}
+            {viewingPaper && (
+                <div className="modal-overlay" onClick={() => setViewingPaper(null)}>
+                    <div className="modal-content modal-large pdf-viewer-modal" onClick={e => e.stopPropagation()} style={{ width: '95vw', maxWidth: '1200px', height: '90vh' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <i className="fas fa-file-pdf" style={{ color: '#ef4444', fontSize: '1.25rem' }}></i>
+                                <h2 style={{ fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '600px' }}>{viewingPaper.title}</h2>
+                            </div>
+                            <button className="close-btn" onClick={() => setViewingPaper(null)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ padding: 0, overflow: 'hidden' }}>
+                            <iframe 
+                                src={`${viewingPaper.url}#toolbar=1`} 
+                                title={viewingPaper.title}
+                                width="100%"
+                                height="100%"
+                                style={{ border: 'none' }}
+                            ></iframe>
                         </div>
                     </div>
                 </div>

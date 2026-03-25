@@ -46,12 +46,19 @@ const Module_Process = () => {
     if (activeId) {
       setOrderId(Number(activeId));
       if (!storedOrderId) sessionStorage.setItem("currentOrderId", activeId);
-      // Skip to Review & Pay for retry/resumed checkout
-      setStep(2);
+      
+      // Only auto-jump to step 2 if we are explicitly retrying an old order.
+      // For normal cart checkouts, we want the user to land on Step 1 to acknowledge the current flow.
+      if (urlOrderId || searchParams.get('isRetry') === 'true') {
+        setStep(2);
+      }
     }
   }, [searchParams]);
 
-  const isRetryFlow = searchParams.get('isRetry') === 'true' || !!sessionStorage.getItem("currentOrderId");
+  // isRetryFlow is ONLY for intentional retries from Order History.
+  // Resuming a cart-based checkout should NOT be treated as a retry flow, 
+  // as it must verify the current cart state.
+  const isRetryFlow = searchParams.get('isRetry') === 'true';
   const finalTotal = retryTotal || grandTotal;
 
   // Poll by attempting /payment/create/{id}

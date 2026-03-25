@@ -102,7 +102,7 @@ const PermissionManagement = () => {
                 </div>
             </div>
 
-            <div className="dashboard-section">
+            <div className="dashboard-section" style={{ position: 'relative', zIndex: 10 }}>
                 <div className="management-grid-refined">
                     {/* Create Policy Card */}
                     <div className="m-card">

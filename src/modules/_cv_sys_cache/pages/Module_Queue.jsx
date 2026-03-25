@@ -6,6 +6,13 @@ import { useCache } from '../context/Cache_Context';
 
 const Module_Queue = () => {
   const { items, remove, update, count, summary } = useCache();
+
+  // Reset any pending checkout session when landing on the cart.
+  // This ensures that clicking "Proceed to Checkout" always starts a fresh order.
+  React.useEffect(() => {
+    sessionStorage.removeItem("currentOrderId");
+    sessionStorage.removeItem("retryTotal");
+  }, []);
   
   // Dynamic values from backend
   const subTotal = summary.subTotal || 0;

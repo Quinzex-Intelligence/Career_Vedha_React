@@ -48,7 +48,12 @@ export const CacheProvider = ({ children }) => {
     }
   }, []);
 
-  const WHATSAPP_NUMBER = '918790699260';
+  const WHATSAPP_NUMBER = '919100852311';
+  
+  const invalidatePendingOrder = () => {
+    sessionStorage.removeItem("currentOrderId");
+    sessionStorage.removeItem("retryTotal");
+  };
 
   const add = async (payload, qty = 1) => {
     const { isAuthenticated } = getUserContext();
@@ -75,6 +80,7 @@ export const CacheProvider = ({ children }) => {
       setLoading(true);
       // Backend expects bookId in path
       await inventoryApi.post(`/cart/${payload.id || payload.bookId}`);
+      invalidatePendingOrder();
       await fetchCart();
       showSnackbar('Added to cart', 'success');
     } catch (e) {
@@ -90,6 +96,7 @@ export const CacheProvider = ({ children }) => {
     if (!item?.cartItemId) return;
     try {
       await inventoryApi.delete(`/cart/${item.cartItemId}`);
+      invalidatePendingOrder();
       await fetchCart();
     } catch (e) {
       console.error("Error removing from cart", e);
@@ -107,6 +114,7 @@ export const CacheProvider = ({ children }) => {
       } else if (diff < 0) {
         for(let i=0; i<Math.abs(diff); i++) await inventoryApi.put(`/cart/decrease/${item.cartItemId}`);
       }
+      invalidatePendingOrder();
       await fetchCart();
     } catch (e) {
       console.error("Error updating qty", e);

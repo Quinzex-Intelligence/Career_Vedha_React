@@ -438,7 +438,7 @@ const TopStoriesManagement = () => {
     };
 
     const sidebarProps = {
-        activeSection: 'articles',
+        activeSection: 'top-stories',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
         onLogout: () => navigate('/admin-login'),

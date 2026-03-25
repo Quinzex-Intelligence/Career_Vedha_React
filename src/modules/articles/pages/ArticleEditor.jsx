@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import CustomSelect from '../../../components/ui/CustomSelect';
@@ -21,6 +21,7 @@ const ArticleEditor = () => {
     const navigate = useNavigate();
     const { showSnackbar } = useSnackbar();
     const isEditMode = !!id;
+    const prefillDoneRef = useRef(false);
 
     // UI State
     const [isCmsOpen, setIsCmsOpen] = useState(true);
@@ -102,97 +103,88 @@ const ArticleEditor = () => {
     const isTaxonomyError = !!(activeLevelQuery?.isError || activeTreeQuery?.isError);
     
     // Derived lists for cascading dropdowns
+    // 1. Flatten the new `levels/` structure properly to help with pre-filling chips on Edit
     const hierarchy = useMemo(() => {
         const flat = [];
-        
-        const flattenTree = (nodes) => {
-            if (!Array.isArray(nodes)) return;
-            nodes.forEach(node => {
-                flat.push({ id: node.id, name: node.name, parent_id: node.parent_id || node.parent, level: node.level });
-                if (node.children) flattenTree(node.children);
-            });
-        };
-
         const currentLevels = activeLevelQuery?.data;
-        const currentTree = activeTreeQuery?.data;
 
-        // 1. Flatten current section levelsData
-        if (currentLevels && typeof currentLevels === 'object' && !Array.isArray(currentLevels)) {
-            // Collect all arrays found in the object
-            Object.keys(currentLevels).forEach(k => {
-                if (Array.isArray(currentLevels[k])) {
-                    currentLevels[k].forEach(item => flat.push(item));
+        if (Array.isArray(currentLevels)) {
+            currentLevels.forEach(l2 => {
+                if (l2 && l2.id) flat.push({ id: l2.id, name: l2.name, level: 2 });
+                if (Array.isArray(l2.sub_categories)) {
+                    l2.sub_categories.forEach(l3 => {
+                        if (l3 && l3.id) flat.push({ id: l3.id, name: l3.name, level: 3, parent_id: l2.id });
+                        if (Array.isArray(l3.segments)) {
+                            l3.segments.forEach(l4 => {
+                                if (l4 && l4.id) flat.push({ id: l4.id, name: l4.name, level: 4, parent_id: l3.id });
+                                if (Array.isArray(l4.topics)) {
+                                    l4.topics.forEach(l5 => {
+                                        if (l5 && l5.id) flat.push({ id: l5.id, name: l5.name, level: 5, parent_id: l4.id });
+                                    });
+                                }
+                            });
+                        }
+                    });
                 }
             });
         }
         
-        // 2. Flatten current section treeData
-        if (currentTree && Array.isArray(currentTree)) {
-            flattenTree(currentTree);
-        }
-
-        // 3. Fallback for raw arrays
-        if (Array.isArray(currentLevels)) {
-            currentLevels.forEach(item => flat.push(item));
-        }
-
-        // Deduplicate records by ID
-        const seen = new Set();
-        const result = flat.filter(item => {
-            if (!item?.id && !item?.category_id) return false;
-            const id = (item.id || item.category_id).toString();
-            if (seen.has(id)) return false;
-            seen.add(id);
-            return true;
-        });
-
-        if (result.length > 0) {
-            console.log(`[Taxonomy] ${level1}: Found ${result.length} total categories.`);
-            console.log(`[Taxonomy] Sample items:`, result.slice(0, 3).map(i => ({ id: i.id, name: i.name, parent: i.parent_id, level: i.level })));
-        }
-        return result;
-    }, [activeLevelQuery?.data, activeTreeQuery?.data, level1]);
+        return flat;
+    }, [activeLevelQuery?.data, level1]);
     
+    // 2. Generate Dropdown Options natively from the nested Tree
     const level2List = useMemo(() => {
-        const list = (hierarchy || [])
-            .filter(cat => !cat.parent_id || cat.parent_id === '0' || cat.parent_id === 0 || cat.level === 2 || cat.level === 1)
-            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }));
+        const currentLevels = activeLevelQuery?.data;
+        if (!Array.isArray(currentLevels)) return [];
+        return currentLevels.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeLevelQuery?.data, level1]);
+
+    const level3List = useMemo(() => {
+        if (!level2) return [];
+        const currentLevels = activeLevelQuery?.data;
+        if (!Array.isArray(currentLevels)) return [];
         
-        if (hierarchy?.length > 0 && list.length === 0) {
-            console.warn(`[Taxonomy] ${level1}: No root categories found in ${hierarchy.length} items. Falling back to all items.`);
-            return hierarchy.slice(0, 50).map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }));
-        }
-        return list;
-    }, [hierarchy, level1]);
+        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
+        return l2Node.sub_categories.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeLevelQuery?.data, level2]);
 
-    const level3List = useMemo(() => level2 
-        ? (hierarchy || [])
-            .filter(cat => cat.parent_id?.toString() === level2?.toString())
-            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
-        : [], [hierarchy, level2]);
+    const level4List = useMemo(() => {
+        if (!level3) return [];
+        const currentLevels = activeLevelQuery?.data;
+        if (!Array.isArray(currentLevels)) return [];
+        
+        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
+        
+        const l3Node = l2Node.sub_categories.find(c => c.id?.toString() === level3?.toString());
+        if (!l3Node || !Array.isArray(l3Node.segments)) return [];
+        return l3Node.segments.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeLevelQuery?.data, level2, level3]);
 
-    const level4List = useMemo(() => level3 
-        ? (hierarchy || [])
-            .filter(cat => cat.parent_id?.toString() === level3?.toString())
-            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
-        : [], [hierarchy, level3]);
-
-    const level5List = useMemo(() => level4 
-        ? (hierarchy || [])
-            .filter(cat => cat.parent_id?.toString() === level4?.toString())
-            .map(c => ({ value: (c.id || c.category_id)?.toString(), label: c.name }))
-        : [], [hierarchy, level4]);
+    const level5List = useMemo(() => {
+        if (!level4) return [];
+        const currentLevels = activeLevelQuery?.data;
+        if (!Array.isArray(currentLevels)) return [];
+        
+        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
+        
+        const l3Node = l2Node.sub_categories.find(c => c.id?.toString() === level3?.toString());
+        if (!l3Node || !Array.isArray(l3Node.segments)) return [];
+        
+        const l4Node = l3Node.segments.find(c => c.id?.toString() === level4?.toString());
+        if (!l4Node || !Array.isArray(l4Node.topics)) return [];
+        return l4Node.topics.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeLevelQuery?.data, level2, level3, level4]);
     
     const createArticleMutation = useCreateArticle();
     const updateArticleMutation = useUpdateArticle();
     const publishArticleMutation = usePublishArticle();
     const assignCategoriesMutation = useAssignCategories();
     
-    // Mutation loading state
-    const isSaving = createArticleMutation.isPending || 
-                     updateArticleMutation.isPending || 
-                     publishArticleMutation.isPending || 
-                     assignCategoriesMutation.isPending;
+    // Mutation loading state (Manual overrides for multipart form submittals)
+    const [isSaving, setIsSaving] = useState(false);
 
     const { data: articleData, isLoading: loadingArticle } = useArticle(id, { enabled: isEditMode });
 
@@ -283,19 +275,56 @@ const ArticleEditor = () => {
         }
     }, [articleData, isEditMode, sectionParam]);
 
+    // Prefill selected categories when hierarchy is loaded in edit mode
+    useEffect(() => {
+        if (isEditMode && hierarchy?.length > 0 && articleData && !prefillDoneRef.current) {
+            const ids = articleData.article_categories 
+                ? articleData.article_categories.map(c => parseInt(c.category_id, 10)) 
+                : (articleData.categories ? articleData.categories.map(c => parseInt(c.id, 10)) : []);
+            
+            if (ids.length > 0) {
+                const matched = hierarchy.filter(h => ids.includes(parseInt(h.id || h.category_id, 10)));
+                if (matched.length > 0) {
+                    setSelectedCategories(matched.map(m => ({ id: m.id || m.category_id, name: m.name, level: m.level })));
+                    
+                    // Trace deepest path and set dropdowns automatically!
+                    const maxLevelItem = matched.reduce((max, item) => (item.level || 0) > (max.level || 0) ? item : max, { level: 0 });
+                    if (maxLevelItem && maxLevelItem.level > 0) {
+                        let curr = maxLevelItem;
+                        let l5 = '', l4 = '', l3 = '', l2 = '';
+                        
+                        while (curr) {
+                            if (curr.level === 5) l5 = curr.id.toString();
+                            if (curr.level === 4) l4 = curr.id.toString();
+                            if (curr.level === 3) l3 = curr.id.toString();
+                            if (curr.level === 2) l2 = curr.id.toString();
+                            
+                            curr = hierarchy.find(h => h.id?.toString() === curr.parent_id?.toString());
+                        }
+
+                        if (l2) setLevel2(l2);
+                        if (l3) setLevel3(l3);
+                        if (l4) setLevel4(l4);
+                        if (l5) setLevel5(l5);
+                    }
+                    prefillDoneRef.current = true;
+                }
+            }
+        }
+    }, [isEditMode, hierarchy, articleData]);
+
     // Sync level1 to formData.section
     useEffect(() => {
         if (level1) {
-            setFormData(prev => ({ ...prev, section: level1 }));
-            setSelectedCategories([]); // Clear selection when section changes
+            setFormData(prev => {
+                if (prev.section === level1) return prev;
+                return { ...prev, section: level1 };
+            });
         }
     }, [level1]);
 
-    // Reset children when parent changes
-    useEffect(() => { setLevel2(''); setLevel3(''); setLevel4(''); setLevel5(''); }, [level1]);
-    useEffect(() => { setLevel3(''); setLevel4(''); setLevel5(''); }, [level2]);
-    useEffect(() => { setLevel4(''); setLevel5(''); }, [level3]);
-    useEffect(() => { setLevel5(''); }, [level4]);
+    // Removed cascading array resets from effect logic safely.
+    // They are now handled explicitly inline during UI onChange actions.
 
     // Help keep selected categories in sync with formData
     useEffect(() => {
@@ -555,9 +584,11 @@ const ArticleEditor = () => {
 
     const handleDirectPublish = async (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
-        if (publishArticleMutation.isPending || createArticleMutation.isPending) return;
+        if (isSaving || publishArticleMutation.isPending || createArticleMutation.isPending) return;
         if (!validateForm()) return;
 
+        setIsSaving(true);
+        let hasError = false;
         try {
             const formDataToSubmit = new FormData();
             
@@ -623,18 +654,41 @@ const ArticleEditor = () => {
 
             navigate('/dashboard?tab=articles');
         } catch (error) {
+            hasError = true;
             console.error('Publish error:', error);
-            showSnackbar(error.response?.data?.error || 'Failed to publish article', 'error');
+            let errorMessage = 'Failed to publish article';
+            if (error.response?.data) {
+                const data = error.response.data;
+                if (typeof data === 'string') {
+                    errorMessage = data;
+                } else if (data.error) {
+                    errorMessage = data.error;
+                } else if (typeof data === 'object') {
+                    const fieldErrors = Object.entries(data)
+                        .filter(([k]) => k !== 'statusCode' && k !== 'status')
+                        .map(([field, msgs]) => {
+                            const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
+                            const errStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+                            return `${formattedField}: ${errStr}`;
+                        });
+                    if (fieldErrors.length > 0) errorMessage = fieldErrors.join(' | ');
+                }
+            }
+            showSnackbar(errorMessage, 'error');
         } finally {
-            setShowPublishModal(false);
+            setIsSaving(false);
+            if (!hasError) {
+                setShowPublishModal(false);
+            }
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (createArticleMutation.isPending || updateArticleMutation.isPending) return;
+        if (isSaving || createArticleMutation.isPending || updateArticleMutation.isPending) return;
         if (!validateForm()) return;
 
+        setIsSaving(true);
         try {
             const formDataToSubmit = new FormData();
             
@@ -698,7 +752,27 @@ const ArticleEditor = () => {
             navigate('/dashboard?tab=articles');
         } catch (error) {
             console.error('Save error:', error);
-            showSnackbar(error.response?.data?.error || 'Failed to save article', 'error');
+            let errorMessage = 'Failed to save article';
+            if (error.response?.data) {
+                const data = error.response.data;
+                if (typeof data === 'string') {
+                    errorMessage = data;
+                } else if (data.error) {
+                    errorMessage = data.error;
+                } else if (typeof data === 'object') {
+                    const fieldErrors = Object.entries(data)
+                        .filter(([k]) => k !== 'statusCode' && k !== 'status')
+                        .map(([field, msgs]) => {
+                            const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
+                            const errStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+                            return `${formattedField}: ${errStr}`;
+                        });
+                    if (fieldErrors.length > 0) errorMessage = fieldErrors.join(' | ');
+                }
+            }
+            showSnackbar(errorMessage, 'error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -891,7 +965,13 @@ const ArticleEditor = () => {
                                 </label>
                                 <CustomSelect
                                     value={level1}
-                                    onChange={(val) => setLevel1(val)}
+                                    onChange={(val) => {
+                                        if (val !== level1) {
+                                            setLevel1(val);
+                                            setSelectedCategories([]);
+                                            setLevel2(''); setLevel3(''); setLevel4(''); setLevel5('');
+                                        }
+                                    }}
                                     options={sections.map(s => ({ value: s.slug || s.name, label: s.name }))}
                                     placeholder="Select Section"
                                     isInvalid={!!errors.level1}
@@ -906,9 +986,12 @@ const ArticleEditor = () => {
                                 <CustomSelect
                                     value={level2}
                                     onChange={(val) => {
-                                        setLevel2(val);
-                                        const cat = (level2List || []).find(o => o.value === val);
-                                        if (cat) addCategory(val, cat.label, 2);
+                                        if (val !== level2) {
+                                            setLevel2(val);
+                                            setLevel3(''); setLevel4(''); setLevel5('');
+                                            const cat = (level2List || []).find(o => o.value === val);
+                                            if (cat) addCategory(val, cat.label, 2);
+                                        }
                                     }}
                                     options={level2List}
                                     placeholder={loadingTaxonomy ? "Loading categories..." : "Select Root Category"}
@@ -925,9 +1008,12 @@ const ArticleEditor = () => {
                                 <CustomSelect
                                     value={level3}
                                     onChange={(val) => {
-                                        setLevel3(val);
-                                        const cat = (level3List || []).find(o => o.value === val);
-                                        if (cat) addCategory(val, cat.label, 3);
+                                        if (val !== level3) {
+                                            setLevel3(val);
+                                            setLevel4(''); setLevel5('');
+                                            const cat = (level3List || []).find(o => o.value === val);
+                                            if (cat) addCategory(val, cat.label, 3);
+                                        }
                                     }}
                                     options={level3List}
                                     placeholder={loadingTaxonomy ? "Loading..." : (level2 ? "Select Sub-Category" : "Select Category first")}
@@ -944,9 +1030,12 @@ const ArticleEditor = () => {
                                 <CustomSelect
                                     value={level4}
                                     onChange={(val) => {
-                                        setLevel4(val);
-                                        const cat = (level4List || []).find(o => o.value === val);
-                                        if (cat) addCategory(val, cat.label, 4);
+                                        if (val !== level4) {
+                                            setLevel4(val);
+                                            setLevel5('');
+                                            const cat = (level4List || []).find(o => o.value === val);
+                                            if (cat) addCategory(val, cat.label, 4);
+                                        }
                                     }}
                                     options={level4List}
                                     placeholder={level3 ? "Select Segment" : "Select Sub Category first"}
