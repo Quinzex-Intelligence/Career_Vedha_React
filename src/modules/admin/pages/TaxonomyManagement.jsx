@@ -257,11 +257,18 @@ const TaxonomyManagement = () => {
 
             if (data) {
                 setIsEditing(true);
+                
+                // Robustly resolve section ID from either section_id or section slug
+                const sectionObj = Array.isArray(sections) 
+                    ? sections.find(s => String(s.id) === String(data.section_id || data.section) || String(s.slug) === String(data.section_id || data.section))
+                    : null;
+                const resolvedSectionId = sectionObj ? parseInt(sectionObj.id, 10) : (data.section_id || data.section);
+
                 setCurrentCategory({
                     id: data.id,
                     name: data.name,
                     slug: data.slug,
-                    section: data.section_id || data.section,
+                    section: resolvedSectionId,
                     parent_id: data.parent_id || '',
                     rank: data.rank || 0,
                     content: data.content || '',
@@ -900,7 +907,7 @@ const TaxonomyManagement = () => {
                                                 <div className="select-wrapper">
                                                     <select 
                                                         className="am-input"
-                                                        value={currentCategory.section || activeSection}
+                                                        value={currentCategory.section || (Array.isArray(sections) ? sections.find(s => String(s.slug) === String(activeSection) || String(s.id) === String(activeSection))?.id : activeSection)}
                                                         disabled={isEditing}
                                                         onChange={(e) => {
                                                             setCurrentCategory({...currentCategory, section: e.target.value});

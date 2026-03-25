@@ -3,12 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { getTranslations } from '../../utils/translations';
 import { newsService } from '../../services';
 
-const NAV_CACHE_KEY = 'cv_nav_tree_v3';
+const NAV_CACHE_KEY = 'cv_nav_tree_v4';
 const NAV_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours caching to avoid 7s load
 
 // ─── Slugs that use tree (multi-level) vs levels (flat) ───────────────────────
 const TREE_SECTIONS = ['academics', 'news', 'current-affairs', 'jobs', 'campus-pages', 'exams'];
-const LEVEL_SECTIONS = ['exams'];
+const LEVEL_SECTIONS = [];
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const slugKey = (slug) =>
@@ -93,13 +93,14 @@ const PrimaryNav = ({ isOpen }) => {
     const t = getTranslations(activeLanguage);
 
     const [navData, setNavData] = useState({
-        academics: [],   // full tree (array of depth-0 categories)
+        academics: [],
         news: [],
         currentAffairs: [],
         jobs: [],
         campusPages: [],
         exams: []
     });
+    const [allSections, setAllSections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const leaveTimer = useRef(null);
@@ -107,7 +108,7 @@ const PrimaryNav = ({ isOpen }) => {
     // ── Fetch ──────────────────────────────────────────────────────────────────
     useEffect(() => {
         const fetchNavData = async () => {
-            // 1. Try localStorage cache to completely skip the initial load delay
+            // 1. Try localStorage cache
             try {
                 const cached = localStorage.getItem(NAV_CACHE_KEY);
                 if (cached) {
@@ -115,8 +116,6 @@ const PrimaryNav = ({ isOpen }) => {
                     if (Date.now() - timestamp < NAV_CACHE_TTL) {
                         setNavData(data);
                         setIsLoading(false);
-                        // don't return here, let it fetch silently in the background
-                        // but only if the cache is older than 5 minutes to limit API calls
                         if (Date.now() - timestamp < 5 * 60 * 1000) return;
                     }
                 }
@@ -124,21 +123,20 @@ const PrimaryNav = ({ isOpen }) => {
 
             // 2. Fetch from API
             try {
-                const [treeResults, levelResults] = await Promise.all([
-                    // Tree fetch for academic-style sections (multi-level)
+                const [treeResults, levelResults, sectionsData] = await Promise.all([
                     Promise.all(
                         TREE_SECTIONS.map(async (slug) => {
                             const data = await newsService.getTaxonomyTree(slug);
                             return { slug, data: Array.isArray(data) ? data : [] };
                         })
                     ),
-                    // Levels fetch for flat sections
                     Promise.all(
                         LEVEL_SECTIONS.map(async (slug) => {
                             const data = await newsService.getTaxonomyLevels(slug);
                             return { slug, data: Array.isArray(data) ? data : [] };
                         })
-                    )
+                    ),
+                    newsService.getSections()
                 ]);
 
                 const newData = {};
@@ -147,8 +145,12 @@ const PrimaryNav = ({ isOpen }) => {
                 });
 
                 setNavData(prev => ({ ...prev, ...newData }));
+                setAllSections(sectionsData || []);
+                
+                // Dispatch event so components like TaxonomyTabs can refresh from cache
+                window.dispatchEvent(new CustomEvent('cv-nav-updated', { detail: newData }));
 
-                // 3. Cache it (in localStorage so it persists across sessions)
+                // 3. Cache it
                 try {
                     localStorage.setItem(NAV_CACHE_KEY, JSON.stringify({
                         data: newData,
@@ -244,7 +246,14 @@ const PrimaryNav = ({ isOpen }) => {
             dropdownItems: [
                 { name: t.navCurriculum || "Course Materials", path: '/curriculum' },
                 { name: t.navVideos, path: '/videos' },
-                { name: t.navPreviousPapers, path: '/question-papers' }
+                { name: t.navPreviousPapers, path: '/question-papers' },
+                // Dynamic sections from admin (if not already in tree sections)
+                ...(allSections || [])
+                    .filter(s => !TREE_SECTIONS.includes(s.slug))
+                    .map(s => ({
+                        name: s.name,
+                        path: `/articles?section=${s.slug}`
+                    }))
             ]
         }
     ];

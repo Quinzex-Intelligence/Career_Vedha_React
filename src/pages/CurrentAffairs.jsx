@@ -249,7 +249,15 @@ const CurrentAffairs = () => {
                         <div className="news-grid">
                             {news.length > 0 ? (
                                 news.map((item, index) => (
-                                    <div key={item.id || index} className="news-card-premium">
+                                    <div 
+                                        key={item.id || index} 
+                                        className="news-card-premium"
+                                        onClick={() => {
+                                            if (item.isDjango) navigate(`/article/${item.section}/${item.slug}`);
+                                            else setSelectedDoc(item);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                     {(() => {
                                         const imageUrl = getBestImageUrl(item);
                                         return imageUrl ? (
@@ -258,7 +266,6 @@ const CurrentAffairs = () => {
                                                     src={imageUrl} 
                                                     alt={item.title} 
                                                     onError={(e) => {
-                                                        // Fallback for PDF icons or broken images
                                                         if (imageUrl.toLowerCase().endsWith('.pdf')) {
                                                             e.target.src = 'https://cdn-icons-png.flaticon.com/512/337/337946.png';
                                                         } else {
@@ -281,23 +288,9 @@ const CurrentAffairs = () => {
                                                 <span className="news-date">
                                                     {item.creationorupdationDate ? new Date(item.creationorupdationDate).toLocaleDateString() : ''}
                                                 </span>
-                                                {item.isDjango ? (
-                                                    <Link 
-                                                        to={`/article/${item.section}/${item.slug}`}
-                                                        className="read-more-link"
-                                                        style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}
-                                                    >
-                                                        {t.readFull} <i className="fas fa-arrow-right"></i>
-                                                    </Link>
-                                                ) : (
-                                                    <button 
-                                                        onClick={() => setSelectedDoc(item)} 
-                                                        className="read-more-link"
-                                                        style={{background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}
-                                                    >
-                                                        {t.readFull} <i className="fas fa-arrow-right"></i>
-                                                    </button>
-                                                )}
+                                                <span className="read-more-link" style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', fontWeight: '700', fontSize: '0.9rem'}}>
+                                                    {t.readFull} <i className="fas fa-arrow-right"></i>
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

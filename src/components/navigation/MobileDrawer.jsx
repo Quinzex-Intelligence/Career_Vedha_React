@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { X, GraduationCap, FileText, User, HelpCircle, Info, LayoutDashboard, Users, Brain, Shield, Key, Bell, Briefcase, Tags, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { newsService } from '../../services';
+import { getTranslations } from '../../utils/translations';
 import { getUserContext } from '../../services/api';
 import { checkAccess, MODULES } from '../../config/accessControl.config';
 
@@ -9,7 +11,17 @@ const MobileDrawer = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const userContext = getUserContext();
   const { role: userRole, isAuthenticated } = userContext;
+  const activeLanguage = localStorage.getItem('preferredLanguage') || 'english';
+  const t = getTranslations(activeLanguage);
   const [isAdminOpen, setIsAdminOpen] = useState(true);
+  const [navSections, setNavSections] = useState([]);
+
+  // Fetch sections for mobile nav
+  React.useEffect(() => {
+    if (isOpen) {
+      newsService.getSections().then(setNavSections).catch(console.error);
+    }
+  }, [isOpen]);
 
   // Helper for admin navigation that also closes the drawer
   const handleAdminNav = (path) => {
@@ -48,18 +60,41 @@ const MobileDrawer = ({ isOpen, onClose }) => {
             </div>
 
             <div className="drawer-nav">
-              {/* Public/Standard Links */}
-              <NavLink to="/exams" className="drawer-link" onClick={onClose}>
-                <FileText size={20} />
-                <span>Exams</span>
+              {/* Home */}
+              <NavLink to="/" className="drawer-link" onClick={onClose}>
+                <LayoutDashboard size={20} />
+                <span>{t.navHome}</span>
               </NavLink>
+
+              {/* Dynamic Categories */}
+              {navSections.length > 0 ? (
+                navSections.map(section => (
+                  <NavLink 
+                    key={section.id} 
+                    to={section.slug === 'exams' ? '/academic-exams' : `/articles?section=${section.slug}`} 
+                    className="drawer-link" 
+                    onClick={onClose}
+                  >
+                    <FileText size={20} />
+                    <span>{section.name}</span>
+                  </NavLink>
+                ))
+              ) : (
+                <>
+                  <NavLink to="/academic-exams" className="drawer-link" onClick={onClose}>
+                    <FileText size={20} />
+                    <span>Exams</span>
+                  </NavLink>
+                </>
+              )}
+
               <NavLink to="/about" className="drawer-link" onClick={onClose}>
                 <Info size={20} />
-                <span>About Us</span>
+                <span>{t.navAbout || "About Us"}</span>
               </NavLink>
               <NavLink to="/contact" className="drawer-link" onClick={onClose}>
                 <User size={20} />
-                <span>Contact Us</span>
+                <span>{t.navContact || "Contact Us"}</span>
               </NavLink>
 
               {/* Admin Section */}

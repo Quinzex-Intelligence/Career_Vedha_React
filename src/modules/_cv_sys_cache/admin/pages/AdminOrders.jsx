@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import inventoryApi from '../../api/inventoryApi';
 
@@ -10,30 +10,85 @@ const AdminOrders = () => {
     const [loadingItems, setLoadingItems] = useState(false);
     const [statusFilter, setStatusFilter] = useState(''); // '' means All
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Pagination States
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     // Invoice States
     const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
     const [invoiceData, setInvoiceData] = useState(null);
     const [loadingInvoice, setLoadingInvoice] = useState(false);
+    
+    // Sentinel Ref for Infinite Scroll
+    const loaderRef = useRef(null);
+    const ordersRef = useRef([]);
 
-    const fetchOrders = async () => {
-        setLoading(true);
+    // Sync ordersRef with orders state
+    useEffect(() => {
+        ordersRef.current = orders;
+    }, [orders]);
+
+    const fetchOrders = useCallback(async (isInitial = true) => {
+        if (isInitial) {
+            setLoading(true);
+            setHasMore(true);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
             const params = {};
             if (statusFilter) params.status = statusFilter;
             
+            // If loading more, send the last orderId as cursor
+            if (!isInitial && ordersRef.current.length > 0) {
+                params.cursor = ordersRef.current[ordersRef.current.length - 1].orderId;
+            }
+            
             const res = await inventoryApi.get('admin/orders/get/all/orders/admin', { params });
-            setOrders(res.data || []);
+            const newOrders = res.data || [];
+            
+            if (isInitial) {
+                setOrders(newOrders);
+            } else {
+                setOrders(prev => [...prev, ...newOrders]);
+            }
+
+            // If we got fewer than 10 items (backend limit), there's no more
+            if (newOrders.length < 10) {
+                setHasMore(false);
+            }
         } catch (err) {
             console.error("Failed to fetch orders", err);
+            setHasMore(false);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+        }
+    }, [statusFilter]); // stable!
+
+    const handleLoadMore = () => {
+        if (!loadingMore && hasMore) {
+            fetchOrders(false);
         }
     };
 
     useEffect(() => {
-        fetchOrders();
-    }, [statusFilter]);
+        fetchOrders(true);
+    }, [statusFilter, fetchOrders]);
+
+    // Intersection Observer for Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+                fetchOrders(false);
+            }
+        }, { threshold: 0.1, rootMargin: '100px' });
+
+        if (loaderRef.current) observer.observe(loaderRef.current);
+        return () => observer.disconnect();
+    }, [hasMore, loadingMore, loading, fetchOrders]);
 
     // Client-side filtering for search
     const filteredOrders = orders.filter(order => {
@@ -242,6 +297,21 @@ const AdminOrders = () => {
                             )}
                         </tbody>
                     </table>
+
+                    {/* Scroll Sentinel & Loading Hook */}
+                    <div ref={loaderRef} className="um-load-more-section no-print">
+                        {loadingMore && (
+                            <div className="um-infinite-loader">
+                                <i className="fas fa-spinner fa-spin"></i>
+                                Loading more orders...
+                            </div>
+                        )}
+                        {!hasMore && orders.length > 0 && (
+                            <div className="um-no-more">
+                                <p>You've reached the end of the list</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 

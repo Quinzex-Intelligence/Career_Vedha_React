@@ -132,6 +132,13 @@
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 
+.article-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
+}
+
 .article-card {
     background: white;
     border-radius: 16px;

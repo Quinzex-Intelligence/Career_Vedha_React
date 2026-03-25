@@ -177,36 +177,39 @@ const AcademicExamsPage = () => {
                                 imageUrl = imageUrl || "https://placehold.co/600x400/FFC107/333333?text=Exam";
 
                                 return (
-                                    <article key={article.id} className="article-card">
-                                        <div className="article-card-image">
-                                            <img
-                                                src={imageUrl}
-                                                alt={article.title}
-                                                onError={(e) => {
-                                                    e.target.src = "https://placehold.co/600x400/FFC107/333333?text=Exam";
-                                                }}
-                                            />
-                                            <div className="article-card-badge">
-                                                Exams
-                                            </div>
-                                        </div>
-                                        <div className="article-card-content">
-                                            <h3 className="news-title">{article.title}</h3>
-                                            <p className="news-description">{article.summary || article.title}</p>
-                                            <div className="news-card-footer">
-                                                <div className="news-date">
-                                                    <i className="far fa-clock"></i>
-                                                    {formatDate(article.published_at || article.created_at)}
+                                    <Link 
+                                        key={article.id} 
+                                        to={`/article/exams/${article.slug}`} 
+                                        className="article-card-link"
+                                    >
+                                        <article className="article-card">
+                                            <div className="article-card-image">
+                                                <img
+                                                    src={imageUrl}
+                                                    alt={article.title}
+                                                    onError={(e) => {
+                                                        e.target.src = "https://placehold.co/600x400/FFC107/333333?text=Exam";
+                                                    }}
+                                                />
+                                                <div className="article-card-badge">
+                                                    Exams
                                                 </div>
-                                                <Link
-                                                    to={`/article/exams/${article.slug}`}
-                                                    className="read-more-btn"
-                                                >
-                                                    Read Full Story <i className="fas fa-arrow-right"></i>
-                                                </Link>
                                             </div>
-                                        </div>
-                                    </article>
+                                            <div className="article-card-content">
+                                                <h3 className="news-title">{article.title}</h3>
+                                                <p className="news-description">{article.summary || article.title}</p>
+                                                <div className="news-card-footer">
+                                                    <div className="news-date">
+                                                        <i className="far fa-clock"></i>
+                                                        {formatDate(article.published_at || article.created_at)}
+                                                    </div>
+                                                    <span className="read-more-btn">
+                                                        Read Full Story <i className="fas fa-arrow-right"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    </Link>
                                 );
                             })}
                         </div>

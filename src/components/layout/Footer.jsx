@@ -73,18 +73,28 @@ const Footer = () => {
                             </div>
 
                             <div className="footer-social-premium">
-                                <a href="https://www.facebook.com/p/Career-Vedha-61560606159654/" target="_blank" rel="noopener noreferrer" className="social-icon fb"><i className="fab fa-facebook-f"></i></a>
-                                <a href="https://x.com/careervedha" target="_blank" rel="noopener noreferrer" className="social-icon x-twitter"><i className="fab fa-twitter"></i></a>
-                                <a href="https://www.instagram.com/careervedha/" target="_blank" rel="noopener noreferrer" className="social-icon insta"><i className="fab fa-instagram"></i></a>
-
                                 {activeLanguage === 'telugu' ? (
-                                    <a href="https://www.youtube.com/@careervedhatelugu" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha Telugu YouTube">
-                                        <i className="fab fa-youtube"></i>
-                                    </a>
+                                    <>
+                                        <a href="https://www.facebook.com/61563861567361/" target="_blank" rel="noopener noreferrer" className="social-icon fb" title="Career Vedha Telugu Facebook">
+                                            <i className="fab fa-facebook-f"></i>
+                                        </a>
+                                        <a href="https://x.com/careervedha" target="_blank" rel="noopener noreferrer" className="social-icon x-twitter"><i className="fab fa-twitter"></i></a>
+                                        <a href="https://www.instagram.com/careervedha/" target="_blank" rel="noopener noreferrer" className="social-icon insta"><i className="fab fa-instagram"></i></a>
+                                        <a href="https://youtube.com/@careervedha-telugu" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha Telugu YouTube">
+                                            <i className="fab fa-youtube"></i>
+                                        </a>
+                                    </>
                                 ) : (
-                                    <a href="https://youtube.com/@careervedha" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha English YouTube">
-                                        <i className="fab fa-youtube"></i>
-                                    </a>
+                                    <>
+                                        <a href="https://www.facebook.com/p/Career-Vedha-61560606159654/" target="_blank" rel="noopener noreferrer" className="social-icon fb" title="Career Vedha English Facebook">
+                                            <i className="fab fa-facebook-f"></i>
+                                        </a>
+                                        <a href="https://x.com/careervedha" target="_blank" rel="noopener noreferrer" className="social-icon x-twitter"><i className="fab fa-twitter"></i></a>
+                                        <a href="https://www.instagram.com/careervedha/" target="_blank" rel="noopener noreferrer" className="social-icon insta"><i className="fab fa-instagram"></i></a>
+                                        <a href="https://youtube.com/@careervedha" target="_blank" rel="noopener noreferrer" className="social-icon yt" title="Career Vedha English YouTube">
+                                            <i className="fab fa-youtube"></i>
+                                        </a>
+                                    </>
                                 )}
                             </div>
                         </div>
