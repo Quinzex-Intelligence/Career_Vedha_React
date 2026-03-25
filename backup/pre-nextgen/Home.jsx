@@ -91,7 +91,7 @@ const Home = () => {
                 </div>
             </main>
 
-            <SectionCategoryBlocks section="academics" title="Academic Excellence" />
+            {/* <SectionCategoryBlocks section="academics" title="Academic Excellence" /> */}
             <SectionCategoryBlocks section="jobs" title="Career Opportunities" />
 
             <ExploreMore />

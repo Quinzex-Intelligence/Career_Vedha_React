@@ -9,7 +9,9 @@ const DomainGuard = ({ children }) => {
       'localhost',
       '127.0.0.1',
       'www.quinzexintelligence.com',
-      'quinzexintelligence.com'
+      'quinzexintelligence.com',
+      'careervedha.in',
+      'www.careervedha.in'
     ];
 
     const currentDomain = window.location.hostname;
