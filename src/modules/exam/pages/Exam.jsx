@@ -541,7 +541,11 @@ const Exam = () => {
 
                 <header className="exam-portal-header glass-header">
                     <div className="portal-brand">
-                        <div className="logo-icon"><i className="fas fa-graduation-cap"></i></div>
+                        <img 
+                            src="/Career Vedha logo.png" 
+                            alt="Career Vedha" 
+                            style={{ height: '80px', width: 'auto', marginRight: '20px' }}
+                        />
                         <span>Exam Portal</span>
                     </div>
                     <div className="portal-user">
@@ -598,7 +602,11 @@ const Exam = () => {
             <div className="exam-portal-wrapper">
                 <header className="exam-portal-header">
                     <div className="portal-brand">
-                        <div className="logo-icon"><i className="fas fa-graduation-cap"></i></div>
+                        <img 
+                            src="/Career Vedha logo.png" 
+                            alt="Career Vedha" 
+                            style={{ height: '80px', width: 'auto', marginRight: '20px' }}
+                        />
                         <span>Exam Portal</span>
                     </div>
                 </header>
@@ -713,9 +721,11 @@ const Exam = () => {
                     <button className="mobile-menu-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                         <i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
                     </button>
-                    <div className="logo-icon">
-                        <i className="fas fa-graduation-cap"></i>
-                    </div>
+                    <img 
+                        src="/Career Vedha logo.png" 
+                        alt="Career Vedha" 
+                        style={{ height: '80px', width: 'auto', marginRight: '20px' }}
+                    />
                     <span>CAREER VEDHA</span>
                 </div>
                 <div className="portal-timer">

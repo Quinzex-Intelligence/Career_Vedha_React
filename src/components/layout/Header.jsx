@@ -44,15 +44,13 @@ const Header = ({ onToggleMenu, isMenuOpen, activeLanguage, onLanguageChange }) 
         <header className="main-header">
             <div className="header-container">
                 <div className="header-content">
-                    <div className="logo-box">
-                        <div className="logo-icon">
-                            <i className="fas fa-graduation-cap"></i>
-                        </div>
-                        <div className="logo-text">
-                            <h1>Career Vedha</h1>
-                            <p>EDUCATION</p>
-                        </div>
-                    </div>
+                    <Link to="/" className="logo-box">
+                        <img 
+                            src="/Career Vedha logo.png" 
+                            alt="Career Vedha Logo" 
+                            className="site-logo"
+                        />
+                    </Link>
                     <form className="search-bar" onSubmit={handleSearch} style={{ position: 'relative' }}>
                         <input
                             type="text"

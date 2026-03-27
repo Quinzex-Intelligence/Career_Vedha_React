@@ -101,6 +101,13 @@ import Skeleton from './components/ui/Skeleton';
 const PageLoader = () => (
     <div className="premium-splash-screen">
         <div className="splash-content">
+            <div className="splash-loading-logo">
+                <img 
+                    src="/Career Vedha logo.png" 
+                    alt="Career Vedha" 
+                    style={{ height: '250px', width: 'auto', marginBottom: '40px' }}
+                />
+            </div>
             <div className="splash-loader">
                 <div className="loader-track">
                     <div className="loader-fill"></div>
@@ -338,12 +345,15 @@ function App() {
             <div className="premium-splash-screen">
                 <div className="splash-content">
                     <div className="splash-logo">
-                        <div className="logo-icon-container">
-                            <i className="fas fa-graduation-cap"></i>
+                        <div style={{ overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                            <img 
+                                src="/Career Vedha logo.png" 
+                                alt="Career Vedha" 
+                                style={{ height: '400px', width: 'auto', display: 'block' }}
+                            />
                         </div>
                         <div className="logo-text-container">
-                            <h1>CAREER VEDHA</h1>
-                            <p>ADVANCED LEARNING PORTAL</p>
+                            <p style={{ letterSpacing: '4px', fontSize: '12px', fontWeight: 700, color: 'var(--primary-yellow)', marginTop: '0', marginBottom: '16px' }}>ADVANCED LEARNING PORTAL</p>
                         </div>
                     </div>
                     <div className="splash-loader">

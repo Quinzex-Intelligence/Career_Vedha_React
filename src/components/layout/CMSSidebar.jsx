@@ -34,9 +34,12 @@ const CMSSidebar = ({
 
     return (
         <aside className="dashboard-sidebar desktop-only">
-            <div className="sidebar-brand">
-                <div className="brand-logo-circle"><i className="fas fa-graduation-cap"></i></div>
-                <span>Career Vedha</span>
+            <div className="sidebar-brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+                <img 
+                    src="/Career Vedha logo.png" 
+                    alt="Career Vedha" 
+                    style={{ height: '80px', width: 'auto', marginBottom: '15px' }}
+                />
             </div>
 
             <nav className="sidebar-menu">

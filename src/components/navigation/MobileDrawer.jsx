@@ -51,7 +51,11 @@ const MobileDrawer = ({ isOpen, onClose }) => {
           >
             <div className="drawer-header">
               <div className="drawer-logo">
-                <GraduationCap size={28} color="var(--primary-yellow)" />
+                <img 
+                  src="/Career Vedha logo.png" 
+                  alt="Career Vedha" 
+                  style={{ height: '60px', width: 'auto', marginRight: '15px' }}
+                />
                 <span>CAREER VEDHA</span>
               </div>
               <button onClick={onClose} className="close-btn">

@@ -60,7 +60,11 @@ const Footer = () => {
                     <div className="footer-bottom">
                         <div className="footer-bottom-flex">
                             <div className="footer-brand-mini">
-                                <h3>Career Vedha</h3>
+                                <img 
+                                    src="/Career Vedha logo.png" 
+                                    alt="Career Vedha" 
+                                    style={{ height: '60px', width: 'auto', marginBottom: '10px' }}
+                                />
                                 <p>Trusted Educational Partner</p>
                             </div>
 

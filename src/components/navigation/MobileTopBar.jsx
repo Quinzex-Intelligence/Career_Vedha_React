@@ -6,11 +6,11 @@ const MobileTopBar = () => {
   return (
     <div className="mobile-top-bar">
       <NavLink to="/" className="mobile-logo">
-        <GraduationCap size={24} color="var(--primary-yellow)" />
-        <div className="logo-text">
-          <h1>CAREER VEDHA</h1>
-          <p>LEARNING PORTAL</p>
-        </div>
+        <img 
+          src="/Career Vedha logo.png" 
+          alt="Career Vedha" 
+          style={{ height: '70px', width: 'auto' }}
+        />
       </NavLink>
 
       <div className="top-bar-actions">
