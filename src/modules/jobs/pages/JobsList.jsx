@@ -9,7 +9,9 @@ import Footer from '../../../components/layout/Footer';
 import JobCard from '../components/JobCard';
 import JobFilters from '../components/JobFilters';
 import TopStoriesHero from '../../../components/home/TopStoriesHero';
-import { useTrendingArticles } from '../../../hooks/useHomeContent';
+import { useTrendingArticles as useTrendingArticlesHook } from '../../../hooks/useHomeContent';
+import { useInfiniteArticles } from '../../../hooks/useArticles';
+import LatestArticles from '../../../components/home/LatestArticles';
 import './JobsList.css';
 
 const JobsList = () => {
@@ -38,7 +40,19 @@ const JobsList = () => {
         return localStorage.getItem('preferredLanguage') || 'english';
     });
 
-    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticles(5, activeLanguage);
+    const langCode = activeLanguage === 'telugu' ? 'te' : 'en';
+
+    // Fetch Job Articles (News)
+    const { data: jobArticlesData, isLoading: articlesLoading } = useInfiniteArticles({
+        section: 'jobs',
+        lang: langCode
+    });
+
+    const jobArticles = React.useMemo(() => 
+        (jobArticlesData?.pages || []).flatMap(page => page.results || []),
+    [jobArticlesData]);
+
+    const { data: trendingArticles, isLoading: trendingLoading } = useTrendingArticlesHook(5, activeLanguage);
 
     const userContext = getUserContext();
     const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'PUBLISHER'].includes(userContext?.role);
@@ -104,20 +118,20 @@ const JobsList = () => {
             <PrimaryNav isOpen={isMobileMenuOpen} />
 
             <TopStoriesHero 
-                topStories={jobs.slice(0, 5).map(j => ({
-                    ...j,
-                    image_url: j.featured_image || j.organization_logo || "https://placehold.co/800x450/FFC107/333333?text=Job",
+                topStories={jobArticles.slice(0, 5).map(a => ({
+                    ...a,
+                    image_url: a.featured_media?.url || a.og_image_url || "https://placehold.co/800x450/FFC107/333333?text=Job+News",
                     section: 'jobs',
-                    slug: j.slug
+                    slug: a.slug
                 }))}
-                loading={loading || trendingLoading}
+                loading={loading || trendingLoading || articlesLoading}
                 activeLanguage={activeLanguage}
-                title="Featured Jobs"
-                viewAllLink="/jobs"
+                title="Job News & Updates"
+                viewAllLink="/articles?section=jobs"
                 sidebarBlocks={[
                     {
-                        title: "More Openings",
-                        items: jobs.slice(5, 8).map(j => ({ ...j, section: 'jobs' })),
+                        title: "Trending Jobs",
+                        items: jobs.slice(0, 3).map(j => ({ ...j, section: 'jobs', title: j.title })),
                         viewAllLink: "/jobs"
                     },
                     {
@@ -127,6 +141,18 @@ const JobsList = () => {
                     }
                 ]}
             />
+
+            <div className="container" style={{ marginTop: '2rem' }}>
+                <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '4px', height: '24px', background: 'var(--primary-color, #fbbf24)', borderRadius: '2px' }}></div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Recent Job Articles</h2>
+                </div>
+                <LatestArticles 
+                    latest={{ results: jobArticles.slice(5, 11), count: jobArticles.length }}
+                    loading={articlesLoading}
+                    activeLanguage={activeLanguage}
+                />
+            </div>
 
             <main className="jobs-main-content">
                 <div className="container mobile-container">

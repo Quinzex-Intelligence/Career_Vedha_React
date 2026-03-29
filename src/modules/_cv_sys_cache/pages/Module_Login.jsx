@@ -49,7 +49,7 @@ const Module_Login = () => {
         }
 
         try {
-            await api.post('/login/send-otp', null, {
+            await api.post('/login/send-otp', {}, {
                 params: { email }
             });
 
