@@ -279,7 +279,18 @@ const ArticleEditor = () => {
 
     // Prefill selected categories when hierarchy is loaded in edit mode
     useEffect(() => {
+        // Guard: Wait for all pieces to be ready, and ensure hierarchy belongs to the article's section
         if (isEditMode && hierarchy?.length > 0 && articleData && !prefillDoneRef.current) {
+            const articleSection = articleData.section?.toLowerCase();
+            const hierarchySection = level1?.toLowerCase();
+
+            // IMPORTANT: Only proceed if the loaded hierarchy matches the article's section
+            if (articleSection && hierarchySection && articleSection !== hierarchySection) {
+                // If they don't match, we set level1 to trigger the correct tree query
+                setLevel1(articleData.section);
+                return; // Wait for next tick when hierarchy updates
+            }
+
             const rawIds = articleData.article_categories 
                 ? articleData.article_categories.map(c => c.category_id) 
                 : (articleData.categories ? articleData.categories.map(c => c.id) : []);
@@ -314,9 +325,12 @@ const ArticleEditor = () => {
                     }
                     prefillDoneRef.current = true;
                 }
+            } else {
+                // If there are no IDs in the article, we are technically done prefilling
+                prefillDoneRef.current = true;
             }
         }
-    }, [isEditMode, hierarchy, articleData]);
+    }, [isEditMode, hierarchy, articleData, level1]);
 
     // Sync level1 to formData.section
     useEffect(() => {
