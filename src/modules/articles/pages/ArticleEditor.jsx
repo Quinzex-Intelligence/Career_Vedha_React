@@ -630,8 +630,10 @@ const ArticleEditor = () => {
             (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections[]', sec));
 
             // Tags and Keywords
-            formDataToSubmit.append('tags', formData.tags || '');
-            formDataToSubmit.append('keywords', formData.keywords || '');
+            const tagsArray = String(formData.tags || '').split(',').map(t => t.trim()).filter(t => t);
+            const keywordsArray = String(formData.keywords || '').split(',').map(t => t.trim()).filter(t => t);
+            formDataToSubmit.append('tags', JSON.stringify(tagsArray));
+            formDataToSubmit.append('keywords', JSON.stringify(keywordsArray));
 
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
@@ -730,8 +732,10 @@ const ArticleEditor = () => {
             (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections[]', sec));
 
             // Tags and Keywords
-            formDataToSubmit.append('tags', formData.tags || '');
-            formDataToSubmit.append('keywords', formData.keywords || '');
+            const tagsArray = String(formData.tags || '').split(',').map(t => t.trim()).filter(t => t);
+            const keywordsArray = String(formData.keywords || '').split(',').map(t => t.trim()).filter(t => t);
+            formDataToSubmit.append('tags', JSON.stringify(tagsArray));
+            formDataToSubmit.append('keywords', JSON.stringify(keywordsArray));
 
             // Media
             if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
