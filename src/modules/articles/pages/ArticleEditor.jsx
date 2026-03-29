@@ -71,15 +71,6 @@ const ArticleEditor = () => {
     const { data: dynamicSections } = useSections(isAdminUser);
     const sections = useMemo(() => Array.isArray(dynamicSections) ? dynamicSections : (dynamicSections?.results || []), [dynamicSections]);
 
-    // Pre-fetch taxonomy for ALL sections at mount
-    const levelsQueries = useQueries({
-        queries: sections.map(s => ({
-            queryKey: ['taxonomy', 'admin', 'categories', 'levels', s.slug || s.name],
-            queryFn: () => newsService.getTaxonomyLevels(s.slug || s.name),
-            staleTime: 5 * 60 * 1000,
-        }))
-    });
-
     const treeQueries = useQueries({
         queries: sections.map(s => ({
             queryKey: ['taxonomy', 'admin', 'categories', 'tree', s.slug || s.name],
@@ -96,87 +87,86 @@ const ArticleEditor = () => {
     });
     
     // Background loading status for UI feedback (localized)
-    const activeLevelQuery = (currentLevelsIdx !== -1) ? levelsQueries[currentLevelsIdx] : null;
     const activeTreeQuery = (currentLevelsIdx !== -1) ? treeQueries[currentLevelsIdx] : null;
     
-    const loadingTaxonomy = !!(activeLevelQuery?.isLoading || activeTreeQuery?.isLoading);
-    const isTaxonomyError = !!(activeLevelQuery?.isError || activeTreeQuery?.isError);
+    const loadingTaxonomy = !!(activeTreeQuery?.isLoading);
+    const isTaxonomyError = !!(activeTreeQuery?.isError);
     
     // Derived lists for cascading dropdowns
     // 1. Flatten the new `levels/` structure properly to help with pre-filling chips on Edit
     const hierarchy = useMemo(() => {
         const flat = [];
-        const currentLevels = activeLevelQuery?.data;
+        const treeData = activeTreeQuery?.data;
 
-        if (Array.isArray(currentLevels)) {
-            currentLevels.forEach(l2 => {
-                if (l2 && l2.id) flat.push({ id: l2.id, name: l2.name, level: 2 });
-                if (Array.isArray(l2.sub_categories)) {
-                    l2.sub_categories.forEach(l3 => {
-                        if (l3 && l3.id) flat.push({ id: l3.id, name: l3.name, level: 3, parent_id: l2.id });
-                        if (Array.isArray(l3.segments)) {
-                            l3.segments.forEach(l4 => {
-                                if (l4 && l4.id) flat.push({ id: l4.id, name: l4.name, level: 4, parent_id: l3.id });
-                                if (Array.isArray(l4.topics)) {
-                                    l4.topics.forEach(l5 => {
-                                        if (l5 && l5.id) flat.push({ id: l5.id, name: l5.name, level: 5, parent_id: l4.id });
-                                    });
-                                }
-                            });
+        if (Array.isArray(treeData)) {
+            const flatten = (nodes, level = 2, parentId = null) => {
+                nodes.forEach(node => {
+                    if (node && node.id) {
+                        flat.push({ 
+                            id: node.id, 
+                            name: node.name, 
+                            level, 
+                            parent_id: parentId 
+                        });
+                        
+                        // Recursive traversal for all levels
+                        if (Array.isArray(node.children) && level < 5) {
+                            flatten(node.children, level + 1, node.id);
                         }
-                    });
-                }
-            });
+                    }
+                });
+            };
+            flatten(treeData);
         }
         
         return flat;
-    }, [activeLevelQuery?.data, level1]);
+    }, [activeTreeQuery?.data, level1]);
     
     // 2. Generate Dropdown Options natively from the nested Tree
     const level2List = useMemo(() => {
-        const currentLevels = activeLevelQuery?.data;
-        if (!Array.isArray(currentLevels)) return [];
-        return currentLevels.map(c => ({ value: c.id?.toString(), label: c.name }));
-    }, [activeLevelQuery?.data, level1]);
+        const treeData = activeTreeQuery?.data;
+        if (!Array.isArray(treeData)) return [];
+        return treeData.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeTreeQuery?.data, level1]);
 
     const level3List = useMemo(() => {
         if (!level2) return [];
-        const currentLevels = activeLevelQuery?.data;
-        if (!Array.isArray(currentLevels)) return [];
+        const treeData = activeTreeQuery?.data;
+        if (!Array.isArray(treeData)) return [];
         
-        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
-        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
-        return l2Node.sub_categories.map(c => ({ value: c.id?.toString(), label: c.name }));
-    }, [activeLevelQuery?.data, level2]);
+        const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.children)) return [];
+        return l2Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeTreeQuery?.data, level2]);
 
     const level4List = useMemo(() => {
         if (!level3) return [];
-        const currentLevels = activeLevelQuery?.data;
-        if (!Array.isArray(currentLevels)) return [];
+        const treeData = activeTreeQuery?.data;
+        if (!Array.isArray(treeData)) return [];
         
-        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
-        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
+        const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.children)) return [];
         
-        const l3Node = l2Node.sub_categories.find(c => c.id?.toString() === level3?.toString());
-        if (!l3Node || !Array.isArray(l3Node.segments)) return [];
-        return l3Node.segments.map(c => ({ value: c.id?.toString(), label: c.name }));
-    }, [activeLevelQuery?.data, level2, level3]);
+        const l3Node = l2Node.children.find(c => c.id?.toString() === level3?.toString());
+        if (!l3Node || !Array.isArray(l3Node.children)) return [];
+        return l3Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeTreeQuery?.data, level2, level3]);
 
     const level5List = useMemo(() => {
         if (!level4) return [];
-        const currentLevels = activeLevelQuery?.data;
-        if (!Array.isArray(currentLevels)) return [];
+        const treeData = activeTreeQuery?.data;
+        if (!Array.isArray(treeData)) return [];
         
-        const l2Node = currentLevels.find(c => c.id?.toString() === level2?.toString());
-        if (!l2Node || !Array.isArray(l2Node.sub_categories)) return [];
+        const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
+        if (!l2Node || !Array.isArray(l2Node.children)) return [];
         
-        const l3Node = l2Node.sub_categories.find(c => c.id?.toString() === level3?.toString());
-        if (!l3Node || !Array.isArray(l3Node.segments)) return [];
+        const l3Node = l2Node.children.find(c => c.id?.toString() === level3?.toString());
+        if (!l3Node || !Array.isArray(l3Node.children)) return [];
         
-        const l4Node = l3Node.segments.find(c => c.id?.toString() === level4?.toString());
-        if (!l4Node || !Array.isArray(l4Node.topics)) return [];
-        return l4Node.topics.map(c => ({ value: c.id?.toString(), label: c.name }));
-    }, [activeLevelQuery?.data, level2, level3, level4]);
+        const l4Node = l3Node.children.find(c => c.id?.toString() === level4?.toString());
+        if (!l4Node || !Array.isArray(l4Node.children)) return [];
+        return l4Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
+    }, [activeTreeQuery?.data, level2, level3, level4]);
     
     const createArticleMutation = useCreateArticle();
     const updateArticleMutation = useUpdateArticle();
@@ -278,12 +268,23 @@ const ArticleEditor = () => {
         }
     }, [articleData, isEditMode, sectionParam]);
 
+    // Reset prefill state when ID changes (important for navigation between articles)
+    useEffect(() => {
+        if (id && isEditMode) {
+            prefillDoneRef.current = false;
+            setSelectedCategories([]);
+            setLevel2(''); setLevel3(''); setLevel4(''); setLevel5('');
+        }
+    }, [id, isEditMode]);
+
     // Prefill selected categories when hierarchy is loaded in edit mode
     useEffect(() => {
         if (isEditMode && hierarchy?.length > 0 && articleData && !prefillDoneRef.current) {
-            const ids = articleData.article_categories 
-                ? articleData.article_categories.map(c => parseInt(c.category_id, 10)) 
-                : (articleData.categories ? articleData.categories.map(c => parseInt(c.id, 10)) : []);
+            const rawIds = articleData.article_categories 
+                ? articleData.article_categories.map(c => c.category_id) 
+                : (articleData.categories ? articleData.categories.map(c => c.id) : []);
+            
+            const ids = rawIds.map(rid => parseInt(rid, 10)).filter(rid => !isNaN(rid));
             
             if (ids.length > 0) {
                 const matched = hierarchy.filter(h => ids.includes(parseInt(h.id || h.category_id, 10)));
@@ -292,16 +293,17 @@ const ArticleEditor = () => {
                     
                     // Trace deepest path and set dropdowns automatically!
                     const maxLevelItem = matched.reduce((max, item) => (item.level || 0) > (max.level || 0) ? item : max, { level: 0 });
-                    if (maxLevelItem && maxLevelItem.level > 0) {
+                    if (maxLevelItem && maxLevelItem.level > 1) {
                         let curr = maxLevelItem;
                         let l5 = '', l4 = '', l3 = '', l2 = '';
                         
                         while (curr) {
-                            if (curr.level === 5) l5 = curr.id.toString();
-                            if (curr.level === 4) l4 = curr.id.toString();
-                            if (curr.level === 3) l3 = curr.id.toString();
-                            if (curr.level === 2) l2 = curr.id.toString();
+                            if (curr.level === 5) l5 = curr.id?.toString();
+                            if (curr.level === 4) l4 = curr.id?.toString();
+                            if (curr.level === 3) l3 = curr.id?.toString();
+                            if (curr.level === 2) l2 = curr.id?.toString();
                             
+                            // Use loose equality or string conversion for finding parent
                             curr = hierarchy.find(h => h.id?.toString() === curr.parent_id?.toString());
                         }
 
@@ -331,11 +333,17 @@ const ArticleEditor = () => {
 
     // Help keep selected categories in sync with formData
     useEffect(() => {
+        // Skip sync if we are in Edit mode but pre-filling hasn't happened yet
+        // to avoid wiping out the initial category_ids before they are matched
+        if (isEditMode && !prefillDoneRef.current && selectedCategories.length === 0) {
+            return;
+        }
+
         setFormData(prev => ({ 
             ...prev, 
             category_ids: selectedCategories.map(cat => cat.id)
         }));
-    }, [selectedCategories]);
+    }, [selectedCategories, isEditMode]);
 
     // Helper to add a category to the list
     const addCategory = useCallback((id, name, level) => {
