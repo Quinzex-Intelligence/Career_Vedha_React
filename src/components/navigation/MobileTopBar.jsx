@@ -7,9 +7,9 @@ const MobileTopBar = () => {
     <div className="mobile-top-bar">
       <NavLink to="/" className="mobile-logo">
         <img 
-          src="/Career Vedha logo.png" 
+          src="/Career Vedha logo1.png" 
           alt="Career Vedha" 
-          style={{ height: '70px', width: 'auto' }}
+          style={{ width: '150px', height: 'auto', objectFit: 'contain', margin: '-10px 0' }}
         />
       </NavLink>
 

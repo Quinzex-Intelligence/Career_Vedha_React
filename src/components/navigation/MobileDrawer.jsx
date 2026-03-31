@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { X, GraduationCap, FileText, User, HelpCircle, Info, LayoutDashboard, Users, Brain, Shield, Key, Bell, Briefcase, Tags, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -6,6 +6,16 @@ import { newsService } from '../../services';
 import { getTranslations } from '../../utils/translations';
 import { getUserContext } from '../../services/api';
 import { checkAccess, MODULES } from '../../config/accessControl.config';
+import MobileNavAccordion from './mobile/MobileNavAccordion';
+
+const NAV_CACHE_BASE = 'cv_nav_tree_v4';
+const NAV_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+const TREE_SECTIONS = ['academics', 'news', 'current-affairs', 'jobs', 'campus-pages', 'exams'];
+const LEVEL_SECTIONS = [];
+
+const slugKey = (slug) => {
+    return slug.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+};
 
 const MobileDrawer = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -14,14 +24,96 @@ const MobileDrawer = ({ isOpen, onClose }) => {
   const activeLanguage = localStorage.getItem('preferredLanguage') || 'english';
   const t = getTranslations(activeLanguage);
   const [isAdminOpen, setIsAdminOpen] = useState(true);
-  const [navSections, setNavSections] = useState([]);
+  
+  // States for NavTree
+  const [navData, setNavData] = useState({
+      news: [],
+      currentAffairs: [],
+      academics: [],
+      jobs: [],
+      campusPages: [],
+      exams: []
+  });
+  const [allSections, setAllSections] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch sections for mobile nav
-  React.useEffect(() => {
-    if (isOpen) {
-      newsService.getSections().then(setNavSections).catch(console.error);
-    }
-  }, [isOpen]);
+  // Fetch sections & nav tree for mobile nav
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const langCode = activeLanguage === 'telugu' ? 'te' : 'en';
+    const NAV_CACHE_KEY = `${NAV_CACHE_BASE}_${langCode}`;
+
+    const fetchNavData = async () => {
+        setIsLoading(true);
+        // 1. Try localStorage cache
+        try {
+            const cached = localStorage.getItem(NAV_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp, allSects } = JSON.parse(cached);
+                if (Date.now() - timestamp < NAV_CACHE_TTL) {
+                    setNavData(data);
+                    if (allSects) setAllSections(allSects);
+                    setIsLoading(false);
+                    if (Date.now() - timestamp < 5 * 60 * 1000) return;
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        // 2. Fetch from API
+        try {
+            const [treeResults, levelResults, sectionsData] = await Promise.all([
+                Promise.all(
+                    TREE_SECTIONS.map(async (slug) => {
+                        try {
+                            const data = await newsService.getTaxonomyTree(slug, activeLanguage);
+                            return { slug, data: Array.isArray(data) ? data : [] };
+                        } catch (err) {
+                            console.warn(`Failed to fetch taxonomy tree for ${slug}:`, err);
+                            return { slug, data: [] };
+                        }
+                    })
+                ),
+                Promise.all(
+                    LEVEL_SECTIONS.map(async (slug) => {
+                        try {
+                            const data = await newsService.getTaxonomyLevels(slug, activeLanguage);
+                            return { slug, data: Array.isArray(data) ? data : [] };
+                        } catch (err) {
+                            console.warn(`Failed to fetch taxonomy levels for ${slug}:`, err);
+                            return { slug, data: [] };
+                        }
+                    })
+                ),
+                newsService.getSections().catch(() => [])
+            ]);
+
+            const newData = {};
+            [...treeResults, ...levelResults].forEach(({ slug, data }) => {
+                newData[slugKey(slug)] = data;
+            });
+
+            setNavData(prev => ({ ...prev, ...newData }));
+            setAllSections(sectionsData || []);
+
+            // 3. Cache it
+            try {
+                localStorage.setItem(NAV_CACHE_KEY, JSON.stringify({
+                    data: newData,
+                    timestamp: Date.now(),
+                    allSects: sectionsData || []
+                }));
+            } catch (_) { /* storage full */ }
+
+        } catch (error) {
+            console.error('[MobileDrawer] Error fetching nav data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchNavData();
+  }, [isOpen, activeLanguage]);
 
   // Helper for admin navigation that also closes the drawer
   const handleAdminNav = (path) => {
@@ -30,6 +122,89 @@ const MobileDrawer = ({ isOpen, onClose }) => {
   };
 
   const isAdmin = userRole && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'EDITOR' || userRole === 'CONTRIBUTOR' || userRole === 'PUBLISHER');
+
+  // Definitions for root level elements exactly matching PrimaryNav
+  const navItems = [
+      { name: t.navHome || "Home", icon: 'fas fa-home', path: '/', hasDropdown: false },
+      {
+          name: t.navAcademics || "Academics",
+          icon: 'fas fa-graduation-cap',
+          path: '/academics',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/academics?category=${item.slug}&sub_category=${sub.slug}` 
+              : `/academics?category=${item.slug}`,
+          dropdownItems: navData.academics
+      },
+      {
+          name: t.navNews || "News",
+          icon: 'fas fa-bullhorn',
+          path: '/news',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/news?category=${item.slug}&sub_category=${sub.slug}` 
+              : `/news?category=${item.slug || item.id}`,
+          dropdownItems: navData.news
+      },
+      {
+          name: t.navCurrentAffairs || "Current Affairs",
+          icon: 'fas fa-globe-americas',
+          path: '/current-affairs',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/current-affairs?category=${item.slug}&sub_category=${sub.slug}` 
+              : `/current-affairs?category=${item.slug || item.id}`,
+          dropdownItems: navData.currentAffairs
+      },
+      {
+          name: t.navJobs || "Jobs",
+          icon: 'fas fa-briefcase',
+          path: '/jobs',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/jobs?category=${item.slug}&sub_category=${sub.slug}` 
+              : `/jobs?category=${item.slug || item.id}`,
+          dropdownItems: navData.jobs
+      },
+      {
+          name: t.navCampusPages || "Campus Pages",
+          icon: 'fas fa-university',
+          path: '/articles?section=campus-pages',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/articles?section=campus-pages&category=${item.slug}&sub_category=${sub.slug}` 
+              : `/articles?section=campus-pages&category=${item.slug || item.id}`,
+          dropdownItems: navData.campusPages
+      },
+      {
+          name: t.navExams || "Exams",
+          icon: 'fas fa-pen-nib',
+          path: '/academic-exams',
+          hasDropdown: true,
+          buildUrl: (item, sub) => sub 
+              ? `/academic-exams?category=${item.slug}&sub_category=${sub.slug}` 
+              : `/academic-exams?category=${item.slug || item.id}`,
+          dropdownItems: navData.exams
+      },
+      { name: t.navEStore || "E-Store", icon: 'fas fa-shopping-cart', path: '/e-store', hasDropdown: false },
+      {
+          name: t.navMore || "More",
+          icon: 'fas fa-ellipsis-h',
+          path: '#',
+          hasDropdown: true,
+          dropdownItems: [
+              { name: t.navCurriculum || "Course Materials", path: '/curriculum' },
+              { name: t.navVideos || "Videos", path: '/videos' },
+              { name: t.navPreviousPapers || "Previous Papers", path: '/question-papers' },
+              ...(allSections || [])
+                  .filter(s => !TREE_SECTIONS.includes(s.slug))
+                  .map(s => ({
+                      name: s.name,
+                      path: `/articles?section=${s.slug}`
+                  }))
+          ]
+      }
+  ];
 
   return (
     <AnimatePresence>
@@ -49,47 +224,38 @@ const MobileDrawer = ({ isOpen, onClose }) => {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="drawer-content"
           >
-            <div className="drawer-header">
-              <div className="drawer-logo">
+            <div className="drawer-header" style={{ padding: '16px 20px', maxHeight: '70px', overflow: 'hidden' }}>
+              <NavLink to="/" className="drawer-logo" onClick={onClose} style={{ display: 'flex', alignItems: 'center' }}>
                 <img 
-                  src="/Career Vedha logo.png" 
+                  src="/Career Vedha logo1.png" 
                   alt="Career Vedha" 
-                  style={{ height: '60px', width: 'auto', marginRight: '15px' }}
+                  style={{ width: '140px', height: 'auto', objectFit: 'cover', margin: '-30px 0' }}
                 />
-                <span>CAREER VEDHA</span>
-              </div>
-              <button onClick={onClose} className="close-btn">
+              </NavLink>
+              <button 
+                onClick={onClose} 
+                className="close-btn" 
+                style={{ position: 'relative', top: '-5px' }}
+              >
                 <X size={24} />
               </button>
             </div>
 
             <div className="drawer-nav">
-              {/* Home */}
-              <NavLink to="/" className="drawer-link" onClick={onClose}>
-                <LayoutDashboard size={20} />
-                <span>{t.navHome}</span>
-              </NavLink>
-
-              {/* Dynamic Categories */}
-              {navSections.length > 0 ? (
-                navSections.map(section => (
-                  <NavLink 
-                    key={section.id} 
-                    to={section.slug === 'exams' ? '/academic-exams' : `/articles?section=${section.slug}`} 
-                    className="drawer-link" 
-                    onClick={onClose}
-                  >
-                    <FileText size={20} />
-                    <span>{section.name}</span>
-                  </NavLink>
-                ))
+              {/* Dynamic Categories using Accordion for deeper nesting */}
+              {isLoading ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--gray-400)' }}>
+                      Loading Navigation...
+                  </div>
               ) : (
-                <>
-                  <NavLink to="/academic-exams" className="drawer-link" onClick={onClose}>
-                    <FileText size={20} />
-                    <span>Exams</span>
-                  </NavLink>
-                </>
+                  navItems.map((item, idx) => (
+                      <MobileNavAccordion 
+                          key={idx} 
+                          item={item} 
+                          level={0} 
+                          onClose={onClose} 
+                      />
+                  ))
               )}
 
               <NavLink to="/about" className="drawer-link" onClick={onClose}>
@@ -185,11 +351,6 @@ const MobileDrawer = ({ isOpen, onClose }) => {
                 </>
               )}
 
-              <div className="divider" />
-              <NavLink to="/help" className="drawer-link" onClick={onClose}>
-                <HelpCircle size={20} />
-                <span>Help & Support</span>
-              </NavLink>
             </div>
 
             <div className="drawer-footer">
