@@ -4,7 +4,7 @@ import { X, GraduationCap, FileText, User, HelpCircle, Info, LayoutDashboard, Us
 import { AnimatePresence, motion } from 'framer-motion';
 import { newsService } from '../../services';
 import { getTranslations } from '../../utils/translations';
-import { getUserContext } from '../../services/api';
+import { getUserContext, subscribeToAuthChanges } from '../../services/api';
 import { checkAccess, MODULES } from '../../config/accessControl.config';
 import MobileNavAccordion from './mobile/MobileNavAccordion';
 
@@ -19,11 +19,19 @@ const slugKey = (slug) => {
 
 const MobileDrawer = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const userContext = getUserContext();
+  const [userContext, setUserContextState] = useState(getUserContext());
   const { role: userRole, isAuthenticated } = userContext;
+  
   const activeLanguage = localStorage.getItem('preferredLanguage') || 'english';
   const t = getTranslations(activeLanguage);
-  const [isAdminOpen, setIsAdminOpen] = useState(true);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Subscribe to auth changes to ensure reactive UI
+  useEffect(() => {
+    return subscribeToAuthChanges((newContext) => {
+      setUserContextState(newContext);
+    });
+  }, []);
   
   // States for NavTree
   const [navData, setNavData] = useState({
@@ -354,7 +362,7 @@ const MobileDrawer = ({ isOpen, onClose }) => {
             </div>
 
             <div className="drawer-footer">
-              <p>Version 1.1.0 (Admin Enabled)</p>
+              <p>Version 1.1.0 {isAdmin && '(Admin Enabled)'}</p>
               <p>&copy; 2026 Career Vedha</p>
             </div>
           </motion.div>
