@@ -43,6 +43,24 @@ export const filterPublishedArticles = (articles) => {
 };
 
 /**
+ * Filter an array of articles based on available translations.
+ * Required because the backend may return Top Stories that omit the requested language.
+ */
+export const filterByLanguage = (articles, langCode) => {
+    if (!Array.isArray(articles)) return [];
+    
+    return articles.filter(article => {
+        // Fallback for legacy articles without explicit translations
+        if (!article.translations || article.translations.length === 0) {
+            return true;
+        }
+        
+        // Return true only if a translation exists for the requested language
+        return article.translations.some(t => t.language === langCode);
+    });
+};
+
+/**
  * Check if an article is scheduled for future publication
  */
 export const isArticleScheduled = (article) => {

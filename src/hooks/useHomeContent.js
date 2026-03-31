@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { newsService } from '../services';
-import { filterPublishedArticles } from '../utils/articleUtils';
+import { filterPublishedArticles, filterByLanguage } from '../utils/articleUtils';
 
 export const homeKeys = {
     all: ['home-content'],
@@ -17,15 +17,15 @@ export const useHomeContent = (lang = 'english', limit = 20, offset = 0) => {
             
             // Apply filtering logic here so components get clean data
             return {
-                hero: filterPublishedArticles(data.hero || []),
-                breaking: filterPublishedArticles(data.breaking || []),
-                top_stories: filterPublishedArticles(data.top_stories || []),
-                featured: filterPublishedArticles(data.featured || []),
-                trending: filterPublishedArticles(data.trending || []),
-                must_read: filterPublishedArticles(data.must_read || []),
+                hero: filterByLanguage(filterPublishedArticles(data.hero || []), langCode),
+                breaking: filterByLanguage(filterPublishedArticles(data.breaking || []), langCode),
+                top_stories: filterByLanguage(filterPublishedArticles(data.top_stories || []), langCode),
+                featured: filterByLanguage(filterPublishedArticles(data.featured || []), langCode),
+                trending: filterByLanguage(filterPublishedArticles(data.trending || []), langCode),
+                must_read: filterByLanguage(filterPublishedArticles(data.must_read || []), langCode),
                 latest: {
                     ...data.latest,
-                    results: filterPublishedArticles(data.latest?.results || [])
+                    results: filterByLanguage(filterPublishedArticles(data.latest?.results || []), langCode)
                 }
             };
         },
@@ -44,7 +44,7 @@ export const useCategoryBlocks = (section, lang = 'english') => {
             // Filter scheduled articles from each block
             return (data.blocks || []).map(block => ({
                 ...block,
-                results: filterPublishedArticles(block.results || [])
+                results: filterByLanguage(filterPublishedArticles(block.results || []), langCode)
             })).filter(block => block.results.length > 0); // Remove empty blocks
         },
         staleTime: 5 * 60 * 1000,
@@ -57,8 +57,8 @@ export const useTrendingArticles = (limit = 5, lang = 'english') => {
     return useQuery({
         queryKey: ['trending-articles', langCode, limit],
         queryFn: async () => {
-            const data = await newsService.getTrendingArticles({ limit, lang: langCode });
-            return data.results || [];
+            const data = await newsService.getTrendingArticles({ limit: limit * 2, lang: langCode });
+            return filterByLanguage(data.results || [], langCode).slice(0, limit);
         },
         staleTime: 10 * 60 * 1000, // 10 minutes
     });
