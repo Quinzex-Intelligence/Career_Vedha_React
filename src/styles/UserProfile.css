@@ -46,8 +46,8 @@
 .profile-avatar-large {
     width: 100px;
     height: 100px;
-    background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
-    color: var(--primary-yellow);
+    background: linear-gradient(135deg, var(--cv-primary) 0%, var(--cv-primary-dark) 100%);
+    color: #ffffff;
     border-radius: 20px;
     display: flex;
     align-items: center;
@@ -202,8 +202,8 @@
 }
 
 .save-profile-btn {
-    background: var(--primary-yellow);
-    color: var(--slate-900);
+    background: var(--cv-primary);
+    color: #ffffff;
     border: none;
     padding: 0.875rem 2rem;
     border-radius: 10px;
@@ -217,8 +217,9 @@
 }
 
 .save-profile-btn:hover {
+    background: var(--cv-primary-dark);
     transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(250, 204, 21, 0.2);
+    box-shadow: 0 4px 12px rgba(98, 38, 158, 0.3);
 }
 
 .save-profile-btn:disabled {

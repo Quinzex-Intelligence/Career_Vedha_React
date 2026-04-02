@@ -7,10 +7,17 @@
 }
 
 :root {
-    /* Yellow Theme - Refined Palette for Fresh Look */
-    --primary-yellow: #FFC107; /* Brighter, more standard accessible yellow */
-    --dark-yellow: #F59E0B;
-    --light-yellow: #FFFBEB;
+    /* CV Theme - Purple Migration (#62269e) */
+    --cv-primary: #62269e;
+    --cv-primary-dark: #4b1d7d;
+    --cv-primary-light: #fefaff;
+    --cv-primary-text: #ffffff; /* Contrast text for primary blocks */
+    --cv-accent-gold: #ffb300;
+    
+    /* Legacy compatibility (Mapping old names to new semantic ones) */
+    --primary-yellow: var(--cv-primary);
+    --dark-yellow: var(--cv-primary-dark);
+    --light-yellow: var(--cv-primary-light);
     --accent-orange: #F97316;
 
     /* Neutrals - Cleaner */
@@ -166,9 +173,9 @@ a:hover {
 }
 
 .social-icon-sm:hover {
-    background: var(--primary-yellow);
-    border-color: var(--primary-yellow);
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    border-color: var(--cv-primary);
+    color: var(--cv-primary-text); /* Ensure white icon on purple */
     transform: translateY(-3px) scale(1.1);
 }
 
@@ -293,8 +300,8 @@ a:hover {
 }
 
 .search-bar button:hover {
-    background-color: var(--dark-yellow);
-    color: var(--white);
+    background-color: var(--cv-primary-dark);
+    color: var(--cv-primary-text); /* Ensure white text/icon */
     transform: scale(1.05);
 }
 
@@ -510,7 +517,7 @@ a:hover {
 /* Pipe Separator - only show when not active */
 .nav-menu li:not(:last-child)::after {
     content: "|";
-    color: rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.2); /* Lightened for dark bg */
     margin: 0 2px;
     font-size: 14px;
     font-weight: normal;
@@ -536,7 +543,7 @@ a:hover {
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
-    color: var(--gray-900);
+    color: var(--cv-primary-text); /* Changed from gray-900 for visibility */
     text-decoration: none;
     font-weight: 700;
     font-size: 12px;
@@ -565,8 +572,8 @@ a:hover {
 }
 
 .nav-menu li.special-item a {
-    background-color: var(--gray-900);
-    color: var(--primary-yellow);
+    background-color: var(--cv-primary-dark);
+    color: var(--cv-primary-text);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
@@ -1467,15 +1474,16 @@ section {
 }
 
 .article-card {
-    background: var(--white);
-    border-radius: 16px;
+    background-color: var(--white);
+    border-radius: 12px;
     overflow: hidden;
     box-shadow: var(--shadow);
     transition: all 0.3s ease;
-    border: 1px solid var(--gray-100);
     display: flex;
     flex-direction: column;
-    min-width: 0; /* Prevent flex/grid item overflow */
+    height: 100%;
+    position: relative;
+    border: 1px solid var(--gray-200);
 }
 
 .article-card:hover {
@@ -1505,8 +1513,8 @@ section {
     position: absolute;
     top: 0;
     left: 0;
-    background: var(--primary-yellow);
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     padding: 6px 14px;
     border-radius: 0 0 12px 0; /* Sharp top-left to flush with card corner, rounded bottom-right */
     font-size: 10px;
@@ -1568,15 +1576,20 @@ section {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--dark-yellow);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     font-weight: 700;
     font-size: 14px;
     text-decoration: none;
     margin-top: auto;
-    transition: gap 0.2s;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
 .read-link:hover {
+    background: var(--cv-primary-dark);
+    color: var(--cv-primary-text);
     gap: 10px;
 }
 
@@ -1587,23 +1600,23 @@ section {
     justify-content: center;
     gap: 6px;
     padding: 6px 12px; 
-    background: var(--primary-yellow);
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     font-size: 12px; 
     font-weight: 800;
     text-decoration: none;
     border-radius: 8px;
     white-space: nowrap;
-    flex-shrink: 0; /* Never allow this button to squish or cut off */
+    flex-shrink: 0;
     transition: all 0.2s;
-    box-shadow: 0 4px 10px rgba(255, 193, 7, 0.2);
+    box-shadow: 0 4px 10px rgba(98, 38, 158, 0.2);
 }
 
 .read-more-btn:hover {
     gap: 8px;
-    background: var(--dark-yellow);
+    background: var(--cv-primary-dark);
     transform: translateX(2px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    box-shadow: 0 4px 12px rgba(98, 38, 158, 0.4);
 }
 
 .read-more-btn i {
@@ -1985,11 +1998,11 @@ section {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-    padding-right: 12px; /* Reduced padding from 20px */
-    border-right: 1px solid var(--gray-200);
+    padding: 0 12px; /* Balanced padding */
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
     z-index: 2;
-    background: var(--white);
+    background: var(--cv-primary); /* Changed from white to primary */
     height: 100%;
 }
 
@@ -2003,7 +2016,7 @@ section {
 .must-read-brand-label h3 {
     font-size: 16px;
     font-weight: 800;
-    color: var(--gray-900);
+    color: var(--cv-primary-text);
     margin: 0;
     white-space: nowrap;
 }
@@ -2049,10 +2062,11 @@ section {
 }
 
 .must-read-brand-label h3 {
-    margin: 0;
     font-size: 14px;
     font-weight: 800;
-    color: var(--gray-900);
+    color: var(--cv-primary-text); /* Ensure white text on purple */
+    margin: 0;
+    white-space: nowrap;
 }
 
 .must-read-icon {
@@ -2090,8 +2104,8 @@ section {
 }
 
 .ticket-tag {
-    background: var(--primary-yellow);
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     font-size: 10px;
     font-weight: 800;
     padding: 2px 8px;
@@ -2736,16 +2750,19 @@ section {
     gap: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--primary-yellow);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     text-decoration: none;
     transition: all 0.2s;
     margin-top: auto;
-    padding-top: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
 }
 
 .read-link:hover {
+    background: var(--cv-primary-dark);
+    color: var(--cv-primary-text);
     gap: 12px;
-    color: var(--dark-yellow);
 }
 
 .read-link i {
@@ -4943,8 +4960,8 @@ section {
     position: absolute;
     top: 0;
     left: 0;
-    background: var(--primary-yellow);
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     padding: 6px 14px;
     border-radius: 0 0 12px 0; /* Sharp top-left to flush with card corner, rounded bottom-right */
     font-size: 10px;
@@ -5008,19 +5025,24 @@ section {
 
 .read-link {
     margin-top: auto;
-    color: var(--gray-900);
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
+    padding: 8px 18px;
+    border-radius: 10px;
     font-weight: 700;
     text-decoration: none;
-    font-size: 14px;
+    font-size: 13px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     transition: all 0.2s ease;
+    box-shadow: 0 4px 12px var(--ae-primary-glow);
 }
 
 .article-card:hover .read-link {
-    color: var(--dark-yellow);
-    gap: 12px;
+    background: var(--cv-primary-dark);
+    color: var(--cv-primary-text);
+    transform: translateY(-2px);
 }
 
 /* Skeleton Loading */

@@ -93,34 +93,45 @@ const ArticleEditor = () => {
     const isTaxonomyError = !!(activeTreeQuery?.isError);
     
     // Derived lists for cascading dropdowns
-    // 1. Flatten the new `levels/` structure properly to help with pre-filling chips on Edit
-    const hierarchy = useMemo(() => {
+    // 1. Flatten the ALL taxonomy structures from ALL sections to help with pre-filling and cross-section support
+    const fullHierarchy = useMemo(() => {
         const flat = [];
-        const treeData = activeTreeQuery?.data;
+        
+        // Iterate through all tree queries from all sections
+        treeQueries.forEach((query, idx) => {
+            const sectionSlug = sections[idx]?.slug || sections[idx]?.name;
+            const treeData = query.data;
 
-        if (Array.isArray(treeData)) {
-            const flatten = (nodes, level = 2, parentId = null) => {
-                nodes.forEach(node => {
-                    if (node && node.id) {
-                        flat.push({ 
-                            id: node.id, 
-                            name: node.name, 
-                            level, 
-                            parent_id: parentId 
-                        });
-                        
-                        // Recursive traversal for all levels
-                        if (Array.isArray(node.children) && level < 5) {
-                            flatten(node.children, level + 1, node.id);
+            if (Array.isArray(treeData)) {
+                const flatten = (nodes, level = 2, parentId = null) => {
+                    nodes.forEach(node => {
+                        if (node && node.id) {
+                            flat.push({ 
+                                id: node.id, 
+                                name: node.name, 
+                                level, 
+                                parent_id: parentId,
+                                section: sectionSlug
+                            });
+                            
+                            // Recursive traversal for all levels
+                            if (Array.isArray(node.children) && level < 5) {
+                                flatten(node.children, level + 1, node.id);
+                            }
                         }
-                    }
-                });
-            };
-            flatten(treeData);
-        }
+                    });
+                };
+                flatten(treeData);
+            }
+        });
         
         return flat;
-    }, [activeTreeQuery?.data, level1]);
+    }, [treeQueries.map(q => q.data), sections]);
+
+    // Legacy heirarchy for current section (used for path tracing in step 2)
+    const hierarchy = useMemo(() => {
+        return fullHierarchy.filter(h => h.section === currentSectionSlug);
+    }, [fullHierarchy, currentSectionSlug]);
     
     // 2. Generate Dropdown Options natively from the nested Tree
     const level2List = useMemo(() => {
@@ -279,19 +290,8 @@ const ArticleEditor = () => {
 
     // Prefill selected categories when hierarchy is loaded in edit mode
     useEffect(() => {
-        // Guard: Wait for all pieces to be ready, and ensure hierarchy belongs to the article's section
-        if (isEditMode && hierarchy?.length > 0 && articleData && !prefillDoneRef.current) {
-            const articleSection = articleData.section?.toLowerCase();
-            const hierarchySection = level1?.toLowerCase();
-
-            // IMPORTANT: Only proceed if the loaded hierarchy matches the article's section
-            if (articleSection && hierarchySection && articleSection !== hierarchySection) {
-                // Trigger a sync of level1 to match the article's section to fetch the right tree
-                console.log(`[Prefill] Section mismatch: ${articleSection} vs ${hierarchySection}. Triggering tree fetch...`);
-                setLevel1(articleData.section);
-                return; // Wait for next hierarchy calculation
-            }
-
+        // Guard: Wait for all pieces to be ready
+        if (isEditMode && fullHierarchy?.length > 0 && articleData && !prefillDoneRef.current) {
             console.log(`[Prefill] Starting match for IDs:`, articleData.category_ids || articleData.categories);
             
             const rawIds = articleData.article_categories 
@@ -301,12 +301,19 @@ const ArticleEditor = () => {
             const ids = rawIds.map(rid => Number(rid)).filter(rid => !isNaN(rid));
             
             if (ids.length > 0) {
-                const matched = hierarchy.filter(h => ids.includes(Number(h.id)));
+                const matched = fullHierarchy.filter(h => ids.includes(Number(h.id)));
                 if (matched.length > 0) {
-                    setSelectedCategories(matched.map(m => ({ id: m.id || m.category_id, name: m.name, level: m.level })));
+                    setSelectedCategories(matched.map(m => ({ 
+                        id: m.id, 
+                        name: m.name, 
+                        level: m.level,
+                        section: m.section 
+                    })));
                     
-                    // Trace deepest path and set dropdowns automatically!
-                    const maxLevelItem = matched.reduce((max, item) => (item.level || 0) > (max.level || 0) ? item : max, { level: 0 });
+                    // Trace deepest path in CURRENT section if available
+                    const currentSectionItems = matched.filter(m => m.section === level1);
+                    const maxLevelItem = currentSectionItems.reduce((max, item) => (item.level || 0) > (max.level || 0) ? item : max, { level: 0 });
+                    
                     if (maxLevelItem && maxLevelItem.level > 1) {
                         let curr = maxLevelItem;
                         let l5 = '', l4 = '', l3 = '', l2 = '';
@@ -317,9 +324,9 @@ const ArticleEditor = () => {
                             if (curr.level === 3) l3 = String(curr.id);
                             if (curr.level === 2) l2 = String(curr.id);
                             
-                            // Move up to the parent using Number safe comparison
+                            // Move up to the parent using Number safe comparison within the SAME section
                             const parentId = curr.parent_id;
-                            curr = parentId ? hierarchy.find(h => Number(h.id) === Number(parentId)) : null;
+                            curr = parentId ? fullHierarchy.find(h => Number(h.id) === Number(parentId) && h.section === curr.section) : null;
                         }
 
                         if (l2) setLevel2(l2);
@@ -330,11 +337,10 @@ const ArticleEditor = () => {
                     prefillDoneRef.current = true;
                 }
             } else {
-                // If there are no IDs in the article, we are technically done prefilling
                 prefillDoneRef.current = true;
             }
         }
-    }, [isEditMode, hierarchy, articleData, level1]);
+    }, [isEditMode, fullHierarchy, articleData, level1]);
 
     // Sync level1 to formData.section
     useEffect(() => {
@@ -352,24 +358,38 @@ const ArticleEditor = () => {
     // Help keep selected categories in sync with formData
     useEffect(() => {
         // Skip sync if we are in Edit mode but pre-filling hasn't happened yet
-        // to avoid wiping out the initial category_ids before they are matched
         if (isEditMode && !prefillDoneRef.current && selectedCategories.length === 0) {
             return;
         }
 
+        const categoryIds = selectedCategories.map(cat => cat.id);
+        
+        // Automatically derive additional sections from selected categories
+        const primarySection = level1;
+        const otherSections = [...new Set(
+            selectedCategories
+                .map(cat => cat.section)
+                .filter(sec => sec && sec !== primarySection)
+        )];
+
         setFormData(prev => ({ 
             ...prev, 
-            category_ids: selectedCategories.map(cat => cat.id)
+            category_ids: categoryIds,
+            additional_sections: [...new Set([...(prev.additional_sections || []), ...otherSections])]
         }));
-    }, [selectedCategories, isEditMode]);
+    }, [selectedCategories, isEditMode, level1]);
 
     // Helper to add a category to the list
     const addCategory = useCallback((id, name, level) => {
         if (!id) return;
         setSelectedCategories(prev => {
-            if (prev.find(c => c.id === id)) return prev;
-            return [...prev, { id, name, level }];
+            if (prev.find(c => String(c.id) === String(id))) return prev;
+            return [...prev, { id, name, level, section: level1 }];
         });
+    }, [level1]);
+
+    const removeCategory = useCallback((id) => {
+        setSelectedCategories(prev => prev.filter(c => String(c.id) !== String(id)));
     }, []);
 
     // Toggle an additional secondary section
@@ -1014,7 +1034,7 @@ const ArticleEditor = () => {
                                     onChange={(val) => {
                                         if (val !== level1) {
                                             setLevel1(val);
-                                            setSelectedCategories([]);
+                                            // DO NOT clear selectedCategories anymore to support multi-section
                                             setLevel2(''); setLevel3(''); setLevel4(''); setLevel5('');
                                         }
                                     }}
@@ -1117,12 +1137,15 @@ const ArticleEditor = () => {
                                 <div className="ae-chips-container">
                                     {selectedCategories.map(cat => (
                                         <div key={cat.id} className="ae-category-chip">
-                                            <span className="ae-chip-path">L{cat.level}:</span>
-                                            {cat.name}
+                                            <span className="ae-chip-path">
+                                                {cat.section?.toUpperCase()} › L{cat.level}:
+                                            </span>
+                                            <span className="ae-chip-name">{cat.name}</span>
                                             <button 
                                                 className="ae-chip-remove" 
                                                 onClick={() => removeCategory(cat.id)}
                                                 type="button"
+                                                title="Remove Category"
                                             >
                                                 <i className="fas fa-times"></i>
                                             </button>

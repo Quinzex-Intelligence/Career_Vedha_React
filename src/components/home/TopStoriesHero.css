@@ -34,13 +34,13 @@
 }
 
 .block-header h2 {
-    color: #1e3a8a;
+    color: var(--cv-primary);
     font-size: 1.25rem;
     font-weight: 600;
     margin: 0;
     padding-bottom: 0.5rem;
     position: relative;
-    border-bottom: 2px solid #1e3a8a;
+    border-bottom: 2px solid var(--cv-primary);
     margin-bottom: -1px;
 }
 
@@ -75,8 +75,8 @@
 }
 
 .carousel-control:hover {
-    background: #fff;
-    color: #1e3a8a;
+    background: var(--cv-primary);
+    color: var(--cv-primary-text);
     transform: translateY(-50%) scale(1.15);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
@@ -141,7 +141,7 @@
 }
 
 .story-link:hover h3 {
-    color: #f59e0b; /* Golden hover */
+    color: var(--cv-primary); /* Purple hover */
 }
 
 .carousel-indicators {
@@ -161,7 +161,7 @@
 }
 
 .indicator.active {
-    background: #1e3a8a;
+    background: var(--cv-primary);
     width: 20px;
     border-radius: 4px;
 }
@@ -200,7 +200,7 @@
 }
 
 .update-item a:hover {
-    color: #f59e0b;
+    color: var(--cv-primary);
     transform: translateX(4px);
     text-decoration: none !important;
 }
@@ -210,7 +210,7 @@
 }
 
 .view-all-link {
-    color: #f59e0b;
+    color: var(--cv-primary);
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
@@ -301,8 +301,8 @@
 /* Category badge */
 .story-category-badge {
     display: inline-block;
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--cv-primary-light);
+    color: var(--cv-primary);
     font-size: 11px;
     font-weight: 700;
     padding: 2px 10px;

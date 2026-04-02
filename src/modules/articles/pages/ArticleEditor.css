@@ -4,9 +4,9 @@
    CSS Custom Properties
    ═══════════════════════════════════════ */
 :root {
-    --ae-primary: #6366f1;
-    --ae-primary-light: rgba(99, 102, 241, 0.08);
-    --ae-primary-glow: rgba(99, 102, 241, 0.25);
+    --ae-primary: #62269e;
+    --ae-primary-light: rgba(98, 38, 158, 0.08);
+    --ae-primary-glow: rgba(98, 38, 158, 0.25);
     --ae-success: #10b981;
     --ae-success-light: rgba(16, 185, 129, 0.1);
     --ae-danger: #ef4444;

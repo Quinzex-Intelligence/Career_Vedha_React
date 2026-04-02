@@ -1,8 +1,9 @@
 :root {
-  --primary-yellow: #facc15;
-  --primary-yellow-hover: #eab308;
-  --primary-yellow-light: rgba(250, 204, 21, 0.1);
-  --primary-yellow-glow: rgba(250, 204, 21, 0.3);
+  /* Mapped to global purple cv variables */
+  --primary-yellow: var(--cv-primary);
+  --primary-yellow-hover: var(--cv-primary-dark);
+  --primary-yellow-light: var(--cv-primary-light);
+  --primary-yellow-glow: rgba(98, 38, 158, 0.3);
   
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;
@@ -160,14 +161,14 @@
 }
 
 .menu-item.active {
-  background: linear-gradient(135deg, var(--primary-yellow) 0%, var(--primary-yellow-hover) 100%);
-  color: var(--slate-900);
+  background: linear-gradient(135deg, var(--cv-primary) 0%, var(--cv-primary-dark) 100%);
+  color: var(--cv-primary-text);
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(250, 204, 21, 0.25);
+  box-shadow: 0 8px 20px rgba(98, 38, 158, 0.25);
 }
 
 .menu-item.active i {
-  color: var(--slate-900);
+  color: var(--cv-primary-text);
 }
 
 .menu-item::after {
@@ -206,14 +207,14 @@
 .avatar {
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, var(--slate-700) 0%, var(--slate-800) 100%);
+  background: linear-gradient(135deg, var(--cv-primary) 0%, var(--cv-primary-dark) 100%);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  color: var(--primary-yellow);
-  border: 1px solid rgba(250, 204, 21, 0.3);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
@@ -230,8 +231,8 @@
 
 .user-role-badge {
   font-size: 0.7rem;
-  background-color: var(--primary-yellow);
-  color: var(--slate-900);
+  background-color: var(--cv-primary);
+  color: var(--cv-primary-text);
   padding: 1px 6px;
   border-radius: 4px;
   width: fit-content;
@@ -527,8 +528,8 @@
 .top-avatar {
   width: 38px;
   height: 38px;
-  background: var(--slate-900);
-  color: var(--primary-yellow);
+  background: linear-gradient(135deg, var(--cv-primary) 0%, var(--cv-primary-dark) 100%);
+  color: #ffffff;
   border-radius: 10px;
   display: flex;
   align-items: center;

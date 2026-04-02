@@ -76,10 +76,26 @@ const SearchResults = () => {
         }
     };
 
-    const filteredResults = activeFilter === 'all' 
-        ? results 
-        : results.filter(r => r.type === activeFilter || 
-            (activeFilter === 'currentAffairs' && r.type === 'currentAffair'));
+    // Map filter tab keys (plural) → result type values (singular)
+    const filterTypeMap = {
+        all: null,
+        article: 'article',
+        articles: 'article',
+        jobs: 'job',
+        job: 'job',
+        papers: 'paper',
+        paper: 'paper',
+        currentAffairs: 'currentAffair',
+        currentAffair: 'currentAffair',
+        academics: 'academic',
+        academic: 'academic',
+        estore: 'product',
+        product: 'product',
+    };
+
+    const filteredResults = activeFilter === 'all'
+        ? results
+        : results.filter(r => r.type === (filterTypeMap[activeFilter] || activeFilter));
 
     return (
         <div className="page-wrapper">

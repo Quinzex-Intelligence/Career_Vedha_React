@@ -64,7 +64,7 @@ const Footer = () => {
                                 <img 
                                     src="/Career Vedha logo.png" 
                                     alt="Career Vedha" 
-                                    style={{ height: '60px', width: 'auto', marginBottom: '10px' }}
+                                    style={{ height: '140px', width: 'auto', marginBottom: '10px' }}
                                 />
                                 <p>Trusted Educational Partner</p>
                             </div>

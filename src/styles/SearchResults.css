@@ -32,7 +32,7 @@
 }
 
 .search-header h1 i {
-    color: #FFC107;
+    color: var(--cv-primary);
 }
 
 .search-query {
@@ -87,14 +87,14 @@
 }
 
 .filter-btn.active {
-    background: linear-gradient(135deg, #FFC107 0%, #FFB300 100%);
-    border-color: #FFC107;
-    color: #1e293b;
+    background: linear-gradient(135deg, var(--cv-primary) 0%, var(--cv-primary-dark) 100%);
+    border-color: var(--cv-primary);
+    color: var(--cv-primary-text);
 }
 
 .filter-btn.active .count {
-    background: rgba(0, 0, 0, 0.1);
-    color: #1e293b;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--cv-primary-text);
 }
 
 /* Results Grid */
@@ -121,7 +121,7 @@
 .result-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    border-color: #FFC107;
+    border-color: var(--cv-primary);
 }
 
 .result-header {
@@ -144,13 +144,13 @@
 }
 
 .badge-article, .badge-job, .badge-paper, .badge-currentAffair, .badge-academic, .badge-product {
-    background: #FFFBEB;
-    color: #92400e;
-    border: 1px solid var(--primary-yellow, #FFC107);
+    background: var(--cv-primary-light);
+    color: var(--cv-primary);
+    border: 1px solid var(--cv-primary);
 }
 
 .type-badge i {
-    color: var(--primary-yellow, #FFC107);
+    color: var(--cv-primary);
 }
 
 .result-date {
@@ -226,7 +226,7 @@
 }
 
 .view-link {
-    color: #FFC107;
+    color: var(--cv-primary);
     font-weight: 600;
     font-size: 0.9rem;
     display: flex;
@@ -249,7 +249,7 @@
     width: 50px;
     height: 50px;
     border: 4px solid #f1f5f9;
-    border-top-color: #FFC107;
+    border-top-color: var(--cv-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
