@@ -29,7 +29,7 @@ const ArticleEditor = () => {
     const [formData, setFormData] = useState({
         section: '',
         slug: '',
-        language: 'te', // Default Telugu
+        language: 'en', // Default English
         eng_title: '',
         eng_content: '',
         eng_summary: '',
@@ -227,7 +227,7 @@ const ArticleEditor = () => {
                     ? article.tags.join(', ') 
                     : (article.tags || ''),
                 section: article.section || sectionParam || '',
-                language: telTrans ? 'te' : 'en',
+                language: (engTrans && (engTrans.content || engTrans.summary)) ? 'en' : (telTrans ? 'te' : 'en'),
                 eng_title: article.eng_title || engTrans?.title || (article.language === 'en' ? article.title : ''),
                 eng_content: article.eng_content || engTrans?.content || (article.language === 'en' ? article.content : ''),
                 eng_summary: article.eng_summary || engTrans?.summary || (article.language === 'en' ? article.summary : ''),
