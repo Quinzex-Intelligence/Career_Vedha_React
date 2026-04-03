@@ -1,10 +1,10 @@
-###Deploy.yml
 name: Build and Deploy Frontend
 
 on:
   push:
     branches:
       - main
+
 permissions:
   contents: write
 
@@ -20,6 +20,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      #  Force clean workspace
+      - name: Clean workspace
+        run: |
+          rm -rf node_modules
+          rm -rf ~/.npm
+          rm -rf ~/.cache
+
       - name: Create .env file
         run: echo "${{ secrets.REACT_ENV_FILE }}" > .env
 
@@ -28,8 +35,12 @@ jobs:
         with:
           node-version: 18
 
+      #  Clean install (recommended)
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
+        
+      - name: Cache Verify
+        run: npm cache verify
 
       - name: Build React App
         run: npm run build
@@ -38,7 +49,6 @@ jobs:
         run: |
           tar -czf frontend.tar.gz -C dist .
 
-      # 🏷 Create Release Tag
       - name: Set release tag
         run: echo "RELEASE_TAG=cvedha-${GITHUB_SHA}" >> $GITHUB_ENV
 
@@ -66,8 +76,10 @@ jobs:
             --comment "Deploy frontend via GitHub release" \
             --parameters commands="
               RELEASE_URL=https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/frontend.tar.gz,
+              rm -rf /tmp/frontend,
               mkdir -p /tmp/frontend,
               curl -L \$RELEASE_URL -o /tmp/frontend/frontend.tar.gz,
+              rm -rf $EC2_TARGET_DIR/*,
               mkdir -p $EC2_TARGET_DIR,
               tar -xzf /tmp/frontend/frontend.tar.gz -C $EC2_TARGET_DIR,
               rm -rf /tmp/frontend,
