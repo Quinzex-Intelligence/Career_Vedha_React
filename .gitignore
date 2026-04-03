@@ -5,8 +5,4 @@ dist-ssr
 .env
 .DS_Store
 
-<<<<<<< HEAD
 .github/*
-=======
-.github/*
->>>>>>> 85de68c845f3eddd80a79fee4f00eb8713a768ed
