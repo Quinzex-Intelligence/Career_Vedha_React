@@ -21,25 +21,8 @@ const ArticleManagement = ({ activeLanguage }) => {
     const navigate = useNavigate();
     const { role: userRole } = getUserContext();
 
-    // Sync tab with URL safely via React Router
-    const getInitialTab = () => {
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('tab') || 'PUBLISHED';
-        }
-        return 'PUBLISHED';
-    };
-
-    const [activeTab, setActiveTab] = useState(getInitialTab());
-
-    const handleTabChange = (status) => {
-        setActiveTab(status);
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            params.set('tab', status);
-            navigate({ search: params.toString() }, { replace: true, preventScrollReset: true });
-        }
-    };
+    // Use React Query hook for articles
+    const [activeTab, setActiveTab] = useState('PUBLISHED');
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDate, setFilterDate] = useState('');
 
@@ -487,7 +470,7 @@ const ArticleManagement = ({ activeLanguage }) => {
                         <button
                             key={status}
                             className={`am-tab ${activeTab === status ? 'active' : ''} ${status === 'FEATURED' ? 'featured' : ''} ${status === 'SCHEDULED' ? 'scheduled' : ''}`}
-                            onClick={() => handleTabChange(status)}
+                            onClick={() => setActiveTab(status)}
                         >
                             {status === 'DRAFT' && <i className="fas fa-file-alt"></i>}
                             {status === 'REVIEW' && <i className="fas fa-search-plus"></i>}
