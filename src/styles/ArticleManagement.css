@@ -853,12 +853,14 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     background: var(--slate-50);
     border-radius: 12px;
-    overflow: hidden;
+    overflow-y: auto; /* Moved scroll handling here */
+    overflow-x: hidden;
     position: relative;
     border: 1px solid var(--slate-200);
+    height: 100%;
 }
 
 .col-label {
@@ -870,35 +872,37 @@
     width: 100%;
     text-align: center;
     border-bottom: 1px solid var(--slate-200);
-    z-index: 2;
+    z-index: 10; /* Keep high so it overlaps time options */
     position: sticky;
     top: 0;
 }
 
 .scroll-options {
     flex: 1;
-    overflow-y: auto;
     width: 100%;
-    scrollbar-width: thin;
-    scrollbar-color: var(--slate-300) transparent;
     padding: 0.5rem 0;
-    min-height: 0;
+    height: fit-content;
 }
 
-.scroll-options::-webkit-scrollbar {
+/* Move custom scrollbar sizing to time-col */
+.time-col {
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-300) transparent;
+}
+.time-col::-webkit-scrollbar {
     width: 4px;
 }
 
-.scroll-options::-webkit-scrollbar-track {
+.time-col::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.scroll-options::-webkit-scrollbar-thumb {
+.time-col::-webkit-scrollbar-thumb {
     background: var(--slate-300);
     border-radius: 4px;
 }
 
-.scroll-options::-webkit-scrollbar-thumb:hover {
+.time-col::-webkit-scrollbar-thumb:hover {
     background: var(--slate-400);
 }
 
