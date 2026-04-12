@@ -70,6 +70,15 @@ const LuxuryDateTimePicker = ({ value, onChange, placeholder = "Select Date & Ti
         setSelectedTime(newTime);
         if (selectedDate) {
             notifyChange(selectedDate, newTime);
+        } else {
+            // Implicitly select today's date
+            const today = currentMonth || new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const dayStr = String(today.getDate()).padStart(2, '0');
+            const formatted = `${year}-${month}-${dayStr}`;
+            setSelectedDate(formatted);
+            notifyChange(formatted, newTime);
         }
     };
 

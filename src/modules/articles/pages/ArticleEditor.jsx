@@ -251,7 +251,7 @@ const ArticleEditor = () => {
                 tel_summary: article.tel_summary || telTrans?.summary || (article.language === 'te' ? article.summary : ''),
                 category_ids: article.article_categories ? article.article_categories.map(c => c.category_id) : (article.categories ? article.categories.map(c => c.id) : []),
                 youtube_url: article.youtube_url || '',
-                is_top_story: article.is_top_story || false,
+                is_top_story: article.is_top_story || (article.features && article.features.some(f => f.feature_type === 'TOP')) || false,
                 additional_sections: article.additional_sections || [],
             });
 
@@ -702,11 +702,16 @@ const ArticleEditor = () => {
             formDataToSubmit.append('og_image_url', formData.og_image_url || '');
             formDataToSubmit.append('noindex', formData.noindex ? 'true' : 'false');
             formDataToSubmit.append('youtube_url', formData.youtube_url || '');
+            if (formData.expires_at) {
+                formDataToSubmit.append('expires_at', new Date(formData.expires_at).toISOString());
+            }
 
             // Status and Scheduling
-            formDataToSubmit.append('status', 'PUBLISHED'); 
             if (scheduleDate) {
+                formDataToSubmit.append('status', 'SCHEDULED');
                 formDataToSubmit.append('published_at', new Date(scheduleDate).toISOString());
+            } else {
+                formDataToSubmit.append('status', 'PUBLISHED'); 
             }
 
             // Ensure we have section and slug (crucial for backend validator)
@@ -715,9 +720,17 @@ const ArticleEditor = () => {
 
             if (!isEditMode) {
                 const newArticle = await newsService.createArticle(formDataToSubmit);
+                if (formData.is_top_story && newArticle && newArticle.id) {
+                    await newsService.pinArticle(newArticle.id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                }
                 showSnackbar(`Article ${scheduleDate ? 'scheduled' : 'published'} successfully`, 'success');
             } else {
                 await newsService.updateArticle(id, formDataToSubmit);
+                if (formData.is_top_story) {
+                    await newsService.pinArticle(id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                } else {
+                    await newsService.unpinArticle(id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                }
                 showSnackbar(`Article updated successfully`, 'success');
             }
 
@@ -804,6 +817,9 @@ const ArticleEditor = () => {
             formDataToSubmit.append('og_image_url', formData.og_image_url || '');
             formDataToSubmit.append('noindex', formData.noindex ? 'true' : 'false');
             formDataToSubmit.append('youtube_url', formData.youtube_url || '');
+            if (formData.expires_at) {
+                formDataToSubmit.append('expires_at', new Date(formData.expires_at).toISOString());
+            }
 
             // Status - Use DRAFT for handleSave
             formDataToSubmit.append('status', 'DRAFT');
@@ -814,9 +830,17 @@ const ArticleEditor = () => {
 
             if (isEditMode) {
                 await newsService.updateArticle(id, formDataToSubmit);
+                if (formData.is_top_story) {
+                    await newsService.pinArticle(id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                } else {
+                    await newsService.unpinArticle(id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                }
                 showSnackbar('Article updated successfully', 'success');
             } else {
-                await newsService.createArticle(formDataToSubmit);
+                const newArticle = await newsService.createArticle(formDataToSubmit);
+                if (formData.is_top_story && newArticle && newArticle.id) {
+                    await newsService.pinArticle(newArticle.id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
+                }
                 showSnackbar('Article created as Draft', 'success');
             }
 

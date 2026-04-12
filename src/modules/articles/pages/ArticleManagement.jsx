@@ -34,7 +34,7 @@ const ArticleManagement = ({ activeLanguage }) => {
         fetchNextPage,
         refetch
     } = useInfiniteAdminArticles({
-        status: (activeTab === 'SCHEDULED' || activeTab === 'FEATURED') ? 'PUBLISHED' : activeTab,
+        status: activeTab === 'FEATURED' ? 'PUBLISHED' : activeTab,
         q: searchQuery.trim() || undefined,
     });
 
