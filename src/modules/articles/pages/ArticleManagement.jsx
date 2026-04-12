@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { newsService } from '../../../services';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import { getUserContext } from '../../../services/api';
@@ -22,7 +22,13 @@ const ArticleManagement = ({ activeLanguage }) => {
     const { role: userRole } = getUserContext();
 
     // Use React Query hook for articles
-    const [activeTab, setActiveTab] = useState('PUBLISHED');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'PUBLISHED');
+
+    const handleTabChange = (status) => {
+        setActiveTab(status);
+        setSearchParams({ tab: status }, { replace: true });
+    };
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDate, setFilterDate] = useState('');
 
@@ -470,7 +476,7 @@ const ArticleManagement = ({ activeLanguage }) => {
                         <button
                             key={status}
                             className={`am-tab ${activeTab === status ? 'active' : ''} ${status === 'FEATURED' ? 'featured' : ''} ${status === 'SCHEDULED' ? 'scheduled' : ''}`}
-                            onClick={() => setActiveTab(status)}
+                            onClick={() => handleTabChange(status)}
                         >
                             {status === 'DRAFT' && <i className="fas fa-file-alt"></i>}
                             {status === 'REVIEW' && <i className="fas fa-search-plus"></i>}
