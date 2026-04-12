@@ -847,6 +847,8 @@
     gap: 0.5rem;
     flex: 1;
     height: 220px;
+    max-height: 220px;
+    min-height: 0;
 }
 
 .time-col {
