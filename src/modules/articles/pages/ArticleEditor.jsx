@@ -663,13 +663,32 @@ const ArticleEditor = () => {
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
             
-            // Content fields
-            formDataToSubmit.append('tel_title', formData.tel_title || '');
-            formDataToSubmit.append('tel_content', formData.tel_content || '');
-            formDataToSubmit.append('tel_summary', formData.tel_summary || '');
-            formDataToSubmit.append('eng_title', formData.eng_title || '');
-            formDataToSubmit.append('eng_content', formData.eng_content || '');
-            formDataToSubmit.append('eng_summary', formData.eng_summary || '');
+            // Check if English title accidentally contains Telugu script
+            const isEngTelugu = /[ఀ-౿]/.test(formData.eng_title || '');
+            let finalEngTitle = formData.eng_title || '';
+            let finalEngContent = formData.eng_content || '';
+            let finalEngSummary = formData.eng_summary || '';
+            let finalTelTitle = formData.tel_title || '';
+            let finalTelContent = formData.tel_content || '';
+            let finalTelSummary = formData.tel_summary || '';
+
+            if (isEngTelugu) {
+                // Rescue text to Telugu fields if Telugu is empty
+                if (!finalTelTitle) finalTelTitle = finalEngTitle;
+                if (!finalTelContent) finalTelContent = finalEngContent;
+                if (!finalTelSummary) finalTelSummary = finalEngSummary;
+                // Clear the English fields
+                finalEngTitle = '';
+                finalEngContent = '';
+                finalEngSummary = '';
+            }
+
+            formDataToSubmit.append('tel_title', finalTelTitle);
+            formDataToSubmit.append('tel_content', finalTelContent);
+            formDataToSubmit.append('tel_summary', finalTelSummary);
+            formDataToSubmit.append('eng_title', finalEngTitle);
+            formDataToSubmit.append('eng_content', finalEngContent);
+            formDataToSubmit.append('eng_summary', finalEngSummary);
 
             // Taxonomy and Sections
             const cleanCategoryIds = (formData.category_ids || [])
@@ -783,13 +802,32 @@ const ArticleEditor = () => {
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
             
-            // Content fields
-            formDataToSubmit.append('tel_title', formData.tel_title || '');
-            formDataToSubmit.append('tel_content', formData.tel_content || '');
-            formDataToSubmit.append('tel_summary', formData.tel_summary || '');
-            formDataToSubmit.append('eng_title', formData.eng_title || '');
-            formDataToSubmit.append('eng_content', formData.eng_content || '');
-            formDataToSubmit.append('eng_summary', formData.eng_summary || '');
+            // Check if English title accidentally contains Telugu script
+            const isEngTelugu = /[\u0c00-\u0c7f]/.test(formData.eng_title || '');
+            let finalEngTitle = formData.eng_title || '';
+            let finalEngContent = formData.eng_content || '';
+            let finalEngSummary = formData.eng_summary || '';
+            let finalTelTitle = formData.tel_title || '';
+            let finalTelContent = formData.tel_content || '';
+            let finalTelSummary = formData.tel_summary || '';
+
+            if (isEngTelugu) {
+                // Rescue text to Telugu fields if Telugu is empty
+                if (!finalTelTitle) finalTelTitle = finalEngTitle;
+                if (!finalTelContent) finalTelContent = finalEngContent;
+                if (!finalTelSummary) finalTelSummary = finalEngSummary;
+                // Clear the English fields
+                finalEngTitle = '';
+                finalEngContent = '';
+                finalEngSummary = '';
+            }
+
+            formDataToSubmit.append('tel_title', finalTelTitle);
+            formDataToSubmit.append('tel_content', finalTelContent);
+            formDataToSubmit.append('tel_summary', finalTelSummary);
+            formDataToSubmit.append('eng_title', finalEngTitle);
+            formDataToSubmit.append('eng_content', finalEngContent);
+            formDataToSubmit.append('eng_summary', finalEngSummary);
 
             // Taxonomy and Sections
             const cleanCategoryIds = (formData.category_ids || [])
