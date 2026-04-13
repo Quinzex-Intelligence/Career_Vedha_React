@@ -91,32 +91,34 @@ const LatestArticles = memo(({ latest: initialLatest, loading: initialLoading })
         <section className="latest-articles-section">
             <div className={`articles-grid ${loadingMore ? 'loading-overlay' : ''}`}>
                 {articles.map((article) => (
-                    <article key={article.id} className="article-card">
-                        <div className="article-image">
-                            <img
-                                src={article.featured_media?.url || article.og_image_url || "https://placehold.co/400x250/62269E/333333?text=Article"}
-                                alt={article.title}
-                                onError={(e) => {
-                                    e.target.src = "https://placehold.co/400x250/62269E/333333?text=Article";
-                                }}
-                            />
-                            <span className="article-badge">{article.section}</span>
-                        </div>
-                        <div className="article-content">
-                            <h3 className="news-title">{article.title}</h3>
-                            <p className="news-description">
-                                {article.summary || article.title}
-                            </p>
-                            <div className="news-card-footer">
-                                <div className="news-date">
-                                    <i className="far fa-clock"></i> {formatDate(article.published_at || article.created_at)}
-                                </div>
-                                <Link to={`/article/${article.section}/${article.slug}`} className="read-more-btn">
-                                    Read More <i className="fas fa-arrow-right"></i>
-                                </Link>
+                    <Link key={article.id} to={`/article/${article.section}/${article.slug}`} className="article-card-link">
+                        <article className="article-card">
+                            <div className="article-image">
+                                <img
+                                    src={article.featured_media?.url || article.og_image_url || "https://placehold.co/400x250/62269E/333333?text=Article"}
+                                    alt={article.title}
+                                    onError={(e) => {
+                                        e.target.src = "https://placehold.co/400x250/62269E/333333?text=Article";
+                                    }}
+                                />
+                                <span className="article-badge">{article.section}</span>
                             </div>
-                        </div>
-                    </article>
+                            <div className="article-content">
+                                <h3 className="news-title">{article.title}</h3>
+                                <p className="news-description">
+                                    {article.summary || article.title}
+                                </p>
+                                <div className="news-card-footer">
+                                    <div className="news-date">
+                                        <i className="far fa-clock"></i> {formatDate(article.published_at || article.created_at)}
+                                    </div>
+                                    <span className="read-more-btn">
+                                        Read More <i className="fas fa-arrow-right"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    </Link>
                 ))}
             </div>
 

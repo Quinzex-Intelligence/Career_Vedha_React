@@ -138,30 +138,33 @@ const AcademicsHome = () => {
                                     imageUrl = imageUrl || `https://placehold.co/600x400/6366f1/ffffff?text=${encodeURIComponent(article.section || 'Academic')}`;
 
                                     return (
-                                        <article key={article.id} className="article-card">
-                                            <div className="article-card-image">
-                                                <img src={imageUrl} alt={article.title} />
-                                                <div className="article-card-badge">
-                                                    {article.section || 'Academic'}
-                                                </div>
-                                            </div>
-                                            <div className="article-card-content">
-                                                <h3 className="news-title">{article.title}</h3>
-                                                <p className="news-description">{article.summary || article.title}</p>
-                                                <div className="news-card-footer">
-                                                    <div className="news-date">
-                                                        <i className="far fa-clock"></i>
-                                                        {formatDate(article.published_at || article.created_at)}
+                                        <Link 
+                                            key={article.id} 
+                                            to={`/article/${article.section || 'academics'}/${article.slug}`} 
+                                            className="article-card-link"
+                                        >
+                                            <article className="article-card">
+                                                <div className="article-card-image">
+                                                    <img src={imageUrl} alt={article.title} />
+                                                    <div className="article-card-badge">
+                                                        {article.section || 'Academic'}
                                                     </div>
-                                                    <Link
-                                                        to={`/article/${article.section || 'academics'}/${article.slug}`}
-                                                        className="read-more-btn"
-                                                    >
-                                                        {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
-                                                    </Link>
                                                 </div>
-                                            </div>
-                                        </article>
+                                                <div className="article-card-content">
+                                                    <h3 className="news-title">{article.title}</h3>
+                                                    <p className="news-description">{article.summary || article.title}</p>
+                                                    <div className="news-card-footer">
+                                                        <div className="news-date">
+                                                            <i className="far fa-clock"></i>
+                                                            {formatDate(article.published_at || article.created_at)}
+                                                        </div>
+                                                        <span className="read-more-btn">
+                                                            {t.readMore || 'Read More'} <i className="fas fa-arrow-right"></i>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        </Link>
                                     );
                                 })}
                             </div>
