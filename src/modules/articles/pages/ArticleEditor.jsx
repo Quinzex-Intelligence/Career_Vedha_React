@@ -1022,7 +1022,21 @@ const ArticleEditor = () => {
                                 </label>
                                 <CustomSelect
                                     value={formData.language}
-                                    onChange={(val) => setFormData(prev => ({...prev, language: val}))}
+                                    onChange={(val) => {
+                                        setFormData(prev => {
+                                            const updates = { language: val };
+                                            if (val === 'te') {
+                                                if (!prev.tel_title && prev.eng_title) updates.tel_title = prev.eng_title;
+                                                if (!prev.tel_content && prev.eng_content) updates.tel_content = prev.eng_content;
+                                                if (!prev.tel_summary && prev.eng_summary) updates.tel_summary = prev.eng_summary;
+                                            } else if (val === 'en') {
+                                                if (!prev.eng_title && prev.tel_title) updates.eng_title = prev.tel_title;
+                                                if (!prev.eng_content && prev.tel_content) updates.eng_content = prev.tel_content;
+                                                if (!prev.eng_summary && prev.tel_summary) updates.eng_summary = prev.tel_summary;
+                                            }
+                                            return { ...prev, ...updates };
+                                        });
+                                    }}
                                     options={[
                                         { value: 'te', label: '🇮🇳 Telugu' },
                                         { value: 'en', label: '🇬🇧 English' }
