@@ -705,6 +705,7 @@ const ArticleEditor = () => {
             if (formData.expires_at) {
                 formDataToSubmit.append('expires_at', new Date(formData.expires_at).toISOString());
             }
+            formDataToSubmit.append('is_top_story', formData.is_top_story ? 'true' : 'false');
 
             // Status and Scheduling
             if (scheduleDate) {
@@ -820,6 +821,7 @@ const ArticleEditor = () => {
             if (formData.expires_at) {
                 formDataToSubmit.append('expires_at', new Date(formData.expires_at).toISOString());
             }
+            formDataToSubmit.append('is_top_story', formData.is_top_story ? 'true' : 'false');
 
             // Status - Use DRAFT for handleSave
             formDataToSubmit.append('status', 'DRAFT');
