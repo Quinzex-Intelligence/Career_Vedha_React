@@ -116,9 +116,10 @@ const PrimaryNav = ({ isOpen }) => {
             try {
                 const cached = localStorage.getItem(NAV_CACHE_KEY);
                 if (cached) {
-                    const { data, timestamp } = JSON.parse(cached);
+                    const { data, sections, timestamp } = JSON.parse(cached);
                     if (Date.now() - timestamp < NAV_CACHE_TTL) {
-                        setNavData(data);
+                        if (data) setNavData(data);
+                        if (sections) setAllSections(sections);
                         setIsLoading(false);
                         // If it's very fresh, we skip the API call
                         if (Date.now() - timestamp < 5 * 60 * 1000) return;
@@ -160,6 +161,7 @@ const PrimaryNav = ({ isOpen }) => {
                 try {
                     localStorage.setItem(NAV_CACHE_KEY, JSON.stringify({
                         data: newData,
+                        sections: sectionsData || [],
                         timestamp: Date.now()
                     }));
                 } catch (_) { /* storage full */ }

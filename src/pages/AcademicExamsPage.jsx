@@ -1,6 +1,7 @@
-import React, { useState, useEffect, lazy, Suspense, useMemo, useRef } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams, useLocation, Link } from 'react-router-dom';
+import { lazyWithRetry } from '../utils/lazyLoading';
 import { useLanguage } from '../context/LanguageContext';
 import TopBar from '../components/layout/TopBar';
 import Header from '../components/layout/Header';
@@ -13,7 +14,7 @@ import API_CONFIG from '../config/api.config';
 import './Articles.css';
 
 // Lazy load heavier components
-const PreviousPapers = lazy(() => import('../components/home/PreviousPapers'));
+const PreviousPapers = lazyWithRetry(() => import('../components/home/PreviousPapers'));
 
 const SectionSkeleton = () => (
     <div className="container" style={{ padding: '2rem 0' }}>

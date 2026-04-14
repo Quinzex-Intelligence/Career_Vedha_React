@@ -155,9 +155,9 @@ Could you please guide me on how to proceed with the purchase?`
               </div>
             </Motion.div>
 
-            <div style={{ borderBottom: '1px solid #222', display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
               {['description', 'details'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '1rem 0', background: 'none', border: 'none', borderBottom: activeTab === tab ? '2px solid #62269E' : '2px solid transparent', color: activeTab === tab ? '#fff' : '#666', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '1rem 0', background: 'none', border: 'none', borderBottom: activeTab === tab ? '2px solid #62269E' : '2px solid transparent', color: activeTab === tab ? '#62269E' : '#64748B', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   {tab}
                 </button>
               ))}
@@ -181,7 +181,7 @@ Could you please guide me on how to proceed with the purchase?`
         </div>
 
         {relatedBooks.length > 0 && (
-          <section style={{ borderTop: '1px solid #222', paddingTop: '5rem' }}>
+          <section style={{ borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '5rem' }}>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', color: '#0F172A', marginBottom: '2.5rem' }}>You Might Also Like</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '2rem' }}>
               {relatedBooks.map((book) => (

@@ -1,72 +1,51 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
+import { lazyWithRetry } from './utils/lazyLoading';
 
 // Lazy load major route components
-const ArticlesPage = lazy(() => import('./pages/Articles'));
-const NewsPage = lazy(() => import('./pages/News'));
-const AdminLogin = lazy(() => import('./modules/auth/pages/AdminLogin'));
-const AdminRegister = lazy(() => import('./modules/auth/pages/AdminRegister'));
-const Dashboard = lazy(() => import('./modules/admin/pages/Dashboard'));
-const Exam = lazy(() => import('./modules/exam/pages/Exam'));
-const UserManagement = lazy(() => import('./modules/admin/pages/UserManagement'));
-const ArticleDetail = lazy(() => import('./modules/articles/pages/ArticleDetail'));
+const ArticlesPage = lazyWithRetry(() => import('./pages/Articles'));
+const NewsPage = lazyWithRetry(() => import('./pages/News'));
+const AdminLogin = lazyWithRetry(() => import('./modules/auth/pages/AdminLogin'));
+const AdminRegister = lazyWithRetry(() => import('./modules/auth/pages/AdminRegister'));
+const Dashboard = lazyWithRetry(() => import('./modules/admin/pages/Dashboard'));
+const Exam = lazyWithRetry(() => import('./modules/exam/pages/Exam'));
+const UserManagement = lazyWithRetry(() => import('./modules/admin/pages/UserManagement'));
+const ArticleDetail = lazyWithRetry(() => import('./modules/articles/pages/ArticleDetail'));
 
 // Additional Lazy Loads
-const JobsList = lazy(() => import('./modules/jobs/pages/JobsList'));
-const JobDetail = lazy(() => import('./modules/jobs/pages/JobDetail'));
-const JobsManagement = lazy(() => import('./modules/jobs/pages/JobsManagement'));
-const JobEditor = lazy(() => import('./modules/jobs/pages/JobEditor'));
-
-/**
- * Robust lazy loading that retries once on network failure (Failed to fetch dynamically imported module)
- * Common in Vite when the browser tries to load a stale/removed chunk from a previous build.
- */
-const lazyWithRetry = (componentImport) =>
-    lazy(async () => {
-        try {
-            return await componentImport();
-        } catch (error) {
-            console.warn("[Vite] Dynamic import failed, retrying once...", error);
-            // Refresh the page if it's likely a version mismatch - or just try import again
-            // For now, we try one more time.
-            try {
-                return await componentImport();
-            } catch (retryError) {
-                console.error("[Vite] Dynamic import retry failed.", retryError);
-                // If retry fails, we might need a full page reload, but let's throw for now
-                throw retryError;
-            }
-        }
-    });
+const JobsList = lazyWithRetry(() => import('./modules/jobs/pages/JobsList'));
+const JobDetail = lazyWithRetry(() => import('./modules/jobs/pages/JobDetail'));
+const JobsManagement = lazyWithRetry(() => import('./modules/jobs/pages/JobsManagement'));
+const JobEditor = lazyWithRetry(() => import('./modules/jobs/pages/JobEditor'));
 
 const ArticleEditor = lazyWithRetry(() => import('./modules/articles/pages/ArticleEditor'));
-const TaxonomyManagement = lazy(() => import('./modules/admin/pages/TaxonomyManagement'));
-const MediaManagement = lazy(() => import('./modules/admin/pages/MediaManagement'));
-const AcademicsHome = lazy(() => import('./modules/academics/pages/AcademicsHome'));
-const SubjectDetail = lazy(() => import('./modules/academics/pages/SubjectDetail'));
-const MaterialDetail = lazy(() => import('./modules/academics/pages/MaterialDetail'));
-const AcademicsManagement = lazy(() => import('./modules/admin/pages/AcademicsManagement'));
-const AcademicExamsPage = lazy(() => import('./pages/AcademicExamsPage'));
-const CurrentAffairs = lazy(() => import('./pages/CurrentAffairs'));
-const CurrentAffairsManagement = lazy(() => import('./modules/admin/pages/CurrentAffairsManagement'));
-const PapersManagement = lazy(() => import('./modules/admin/pages/PapersManagement'));
-const ComingSoon = lazy(() => import('./pages/ComingSoon'));
-const PaperViewer = lazy(() => import('./pages/PaperViewer'));
-const QuestionPapersPage = lazy(() => import('./pages/QuestionPapersPage'));
-const StudyMaterialsPage = lazy(() => import('./pages/StudyMaterialsPage'));
-const SearchResults = lazy(() => import('./pages/SearchResults'));
-const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const AboutUs = lazy(() => import('./pages/AboutUs'));
-const ContactUs = lazy(() => import('./pages/ContactUs'));
-const Curriculum = lazy(() => import('./pages/Curriculum'));
-const VideosPage = lazy(() => import("./pages/VideosPage"));
-const CV_Store_Module = lazy(() => import("./modules/_cv_sys_cache/index"));
-const EStoreAdminRoot = lazy(() => import("./modules/_cv_sys_cache/admin/EStoreAdminRoot"));
-const TopStoriesManagement = lazy(() => import('./modules/articles/pages/TopStoriesManagement'));
-const OurServicesManagement = lazy(() => import('./modules/ourServices/pages/OurServicesManagement'));
-const OurServicesEditor = lazy(() => import('./modules/ourServices/pages/OurServicesEditor'));
+const TaxonomyManagement = lazyWithRetry(() => import('./modules/admin/pages/TaxonomyManagement'));
+const MediaManagement = lazyWithRetry(() => import('./modules/admin/pages/MediaManagement'));
+const AcademicsHome = lazyWithRetry(() => import('./modules/academics/pages/AcademicsHome'));
+const SubjectDetail = lazyWithRetry(() => import('./modules/academics/pages/SubjectDetail'));
+const MaterialDetail = lazyWithRetry(() => import('./modules/academics/pages/MaterialDetail'));
+const AcademicsManagement = lazyWithRetry(() => import('./modules/admin/pages/AcademicsManagement'));
+const AcademicExamsPage = lazyWithRetry(() => import('./pages/AcademicExamsPage'));
+const CurrentAffairs = lazyWithRetry(() => import('./pages/CurrentAffairs'));
+const CurrentAffairsManagement = lazyWithRetry(() => import('./modules/admin/pages/CurrentAffairsManagement'));
+const PapersManagement = lazyWithRetry(() => import('./modules/admin/pages/PapersManagement'));
+const ComingSoon = lazyWithRetry(() => import('./pages/ComingSoon'));
+const PaperViewer = lazyWithRetry(() => import('./pages/PaperViewer'));
+const QuestionPapersPage = lazyWithRetry(() => import('./pages/QuestionPapersPage'));
+const StudyMaterialsPage = lazyWithRetry(() => import('./pages/StudyMaterialsPage'));
+const SearchResults = lazyWithRetry(() => import('./pages/SearchResults'));
+const TermsAndConditions = lazyWithRetry(() => import('./pages/TermsAndConditions'));
+const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'));
+const AboutUs = lazyWithRetry(() => import('./pages/AboutUs'));
+const ContactUs = lazyWithRetry(() => import('./pages/ContactUs'));
+const Curriculum = lazyWithRetry(() => import('./pages/Curriculum'));
+const VideosPage = lazyWithRetry(() => import("./pages/VideosPage"));
+const CV_Store_Module = lazyWithRetry(() => import("./modules/_cv_sys_cache/index"));
+const EStoreAdminRoot = lazyWithRetry(() => import("./modules/_cv_sys_cache/admin/EStoreAdminRoot"));
+const TopStoriesManagement = lazyWithRetry(() => import('./modules/articles/pages/TopStoriesManagement'));
+const OurServicesManagement = lazyWithRetry(() => import('./modules/ourServices/pages/OurServicesManagement'));
+const OurServicesEditor = lazyWithRetry(() => import('./modules/ourServices/pages/OurServicesEditor'));
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import api, { setUserContext } from './services/api';

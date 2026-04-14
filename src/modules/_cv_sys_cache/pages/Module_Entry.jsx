@@ -173,7 +173,7 @@ const Module_Entry = () => {
 
       {/* CATEGORY EXPLORER */}
       <section style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 1.5rem 8rem' }}>
-        <div style={{ borderTop: '1px solid #222', paddingTop: '5rem' }}>
+        <div style={{ borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '5rem' }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.5rem', color: '#0F172A', marginBottom: '3rem' }}>Explore Categories</h2>
           
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '4rem' }}>

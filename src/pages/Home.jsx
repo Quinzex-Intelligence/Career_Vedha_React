@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, Suspense } from 'react';
+import { lazyWithRetry } from '../utils/lazyLoading';
 import { Link } from 'react-router-dom';
 import { useHomeContent } from '../hooks/useHomeContent';
 import { getTranslations } from '../utils/translations';
@@ -18,11 +19,11 @@ import OurServicesPublic from '../components/home/OurServicesPublic';
 import Skeleton from '../components/ui/Skeleton';
 
 // Lazy load below-the-fold components
-const ExploreMore = lazy(() => import('../components/home/ExploreMore'));
-const PreviousPapers = lazy(() => import('../components/home/PreviousPapers'));
-const MultiWidgets = lazy(() => import('../components/home/MultiWidgets'));
-const Shorts = lazy(() => import('../components/home/Shorts'));
-const LongVideos = lazy(() => import('../components/home/LongVideos'));
+const ExploreMore = lazyWithRetry(() => import('../components/home/ExploreMore'));
+const PreviousPapers = lazyWithRetry(() => import('../components/home/PreviousPapers'));
+const MultiWidgets = lazyWithRetry(() => import('../components/home/MultiWidgets'));
+const Shorts = lazyWithRetry(() => import('../components/home/Shorts'));
+const LongVideos = lazyWithRetry(() => import('../components/home/LongVideos'));
 
 // Loading Placeholder for Lazy Components
 const SectionSkeleton = () => (

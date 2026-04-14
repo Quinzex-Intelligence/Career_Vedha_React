@@ -249,7 +249,9 @@ a:hover {
 .search-bar {
     width: 450px;
     display: flex;
-    border: 2px solid var(--cv-primary);
+    margin-left: auto;
+    margin-right: 120px; /* Increased to push slightly left */
+    border: 1px solid var(--gray-300) !important; /* Added explicit outline */
     border-radius: 50px;
     background-color: var(--white);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -437,7 +439,7 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-left: auto; /* Restored to right side */
+    margin-left: 0; /* Remove auto to let search bar push it */
     padding-right: 24px;
 }
 
@@ -477,7 +479,9 @@ a:hover {
 /* Primary Navigation */
 /* Primary Navigation - Premium Floating Pills */
 .primary-nav {
-    background-color: var(--cv-primary);
+    background-color: var(--white) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
@@ -539,7 +543,7 @@ a:hover {
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
-    color: var(--cv-primary-text); /* Changed from gray-900 for visibility */
+    color: var(--gray-900) !important; /* Force dark text for visibility on light backgrounds */
     text-decoration: none;
     font-weight: 700;
     font-size: 12px;
@@ -551,15 +555,16 @@ a:hover {
     border-radius: 4px;
 }
 
-/* Hover State - Glassmorphic lift */
+/* Hover State */
 .nav-menu li a:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--gray-100);
+    color: var(--cv-primary) !important;
 }
 
 .nav-menu li a.active {
-    background-color: var(--white);
-    color: var(--gray-900);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: var(--cv-primary-light);
+    color: var(--cv-primary) !important;
+    box-shadow: none;
 }
 
 /* Cleanup old effects */

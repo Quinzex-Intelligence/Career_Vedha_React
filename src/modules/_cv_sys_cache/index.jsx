@@ -1,5 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { lazyWithRetry } from '../../utils/lazyLoading';
 import { CacheProvider } from './context/Cache_Context';
 import DomainGuard from '../../components/utils/DomainGuard';
 import UI_Nav from './components/UI_Nav';
@@ -8,17 +9,17 @@ import './Module_Styles.css';
 import '../../styles/store.css'; // Global E-store responsive styles
 
 // Renamed core modules
-const Module_Entry = lazy(() => import('./pages/Module_Entry'));
-const Module_List = lazy(() => import('./pages/Module_List'));
-const Module_View = lazy(() => import('./pages/Module_View'));
-const Module_Queue = lazy(() => import('./pages/Module_Queue'));
-const Module_Process = lazy(() => import('./pages/Module_Process'));
-const Module_Info = lazy(() => import('./pages/Module_Info'));
-const Module_Orders = lazy(() => import('./pages/Module_Orders'));
-const Module_Login = lazy(() => import('./pages/Module_Login'));
-const Module_Register = lazy(() => import('./pages/Module_Register'));
-const Module_OrderDetail = lazy(() => import('./pages/Module_OrderDetail'));
-const Module_Library = lazy(() => import('./pages/Module_Library'));
+const Module_Entry = lazyWithRetry(() => import('./pages/Module_Entry'));
+const Module_List = lazyWithRetry(() => import('./pages/Module_List'));
+const Module_View = lazyWithRetry(() => import('./pages/Module_View'));
+const Module_Queue = lazyWithRetry(() => import('./pages/Module_Queue'));
+const Module_Process = lazyWithRetry(() => import('./pages/Module_Process'));
+const Module_Info = lazyWithRetry(() => import('./pages/Module_Info'));
+const Module_Orders = lazyWithRetry(() => import('./pages/Module_Orders'));
+const Module_Login = lazyWithRetry(() => import('./pages/Module_Login'));
+const Module_Register = lazyWithRetry(() => import('./pages/Module_Register'));
+const Module_OrderDetail = lazyWithRetry(() => import('./pages/Module_OrderDetail'));
+const Module_Library = lazyWithRetry(() => import('./pages/Module_Library'));
 
 const CV_Store_Module = () => {
   return (

@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { getTranslations } from '../../utils/translations';
 
 const QuickAccess = memo(({ activeLanguage = 'telugu' }) => {
+    // Hidden temporarily per user request
+    return null;
+
     const t = getTranslations(activeLanguage);
     
     const accessCards = [
