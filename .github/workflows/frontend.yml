@@ -24,6 +24,7 @@ jobs:
       - name: Clean workspace
         run: |
           rm -rf node_modules
+
           rm -rf ~/.npm
           rm -rf ~/.cache
 
@@ -34,6 +35,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+
 
       #  Clean install (recommended)
       - name: Install Dependencies
@@ -48,6 +50,7 @@ jobs:
       - name: Archive build
         run: |
           tar -czf frontend.tar.gz -C dist .
+
 
       - name: Set release tag
         run: echo "RELEASE_TAG=cvedha-${GITHUB_SHA}" >> $GITHUB_ENV
@@ -67,6 +70,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
 
       - name: Deploy to EC2 via SSM
         run: |
