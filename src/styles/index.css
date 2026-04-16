@@ -2142,13 +2142,26 @@ section {
         /* Squeezed padding */
     }
 
+    .must-read-ticker-container {
+        min-height: 54px;
+    }
+
+    .must-read-item {
+        white-space: normal;
+        border-radius: 12px;
+        align-items: flex-start;
+        padding: 8px 14px;
+    }
+
     .must-read-item p {
-        font-size: 12px;
-        /* Smaller text */
+        font-size: 13px;
+        white-space: normal;
+        line-height: 1.4;
     }
 
     .must-read-wrapper {
         gap: 10px;
+        align-items: center;
     }
 }
 
