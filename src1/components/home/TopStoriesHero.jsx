@@ -261,7 +261,7 @@ const TopStoriesHero = ({
                                                         {getStoryTitle(item)}
                                                     </span>
                                                 ) : (
-                                                    <Link to={`/article/${item.section || 'news'}/${item.slug}`}>
+                                                    <Link to={item.link || `/article/${item.section || 'news'}/${item.slug}`}>
                                                         {getStoryTitle(item)}
                                                     </Link>
                                                 )}

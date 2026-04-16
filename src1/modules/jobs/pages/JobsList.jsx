@@ -124,7 +124,7 @@ const JobsList = () => {
                 sidebarBlocks={[
                     {
                         title: "Trending Jobs",
-                        items: jobs.slice(0, 3).map(j => ({ ...j, section: 'jobs', title: j.title })),
+                        items: jobs.slice(0, 3).map(j => ({ ...j, section: 'jobs', title: j.title, link: `/jobs/${j.slug}` })),
                         viewAllLink: "/jobs"
                     },
                     {
