@@ -25,7 +25,7 @@ const ArticleEditor = () => {
 
     // UI State
     const [isCmsOpen, setIsCmsOpen] = useState(true);
-    
+
     const [formData, setFormData] = useState({
         section: '',
         slug: '',
@@ -59,14 +59,14 @@ const ArticleEditor = () => {
     const [level3, setLevel3] = useState(''); // Sub Category
     const [level4, setLevel4] = useState(''); // Segment
     const [level5, setLevel5] = useState(''); // Topic
-    
+
     // Multi-selection state
     const [selectedCategories, setSelectedCategories] = useState([]);
-    
+
     const userRole = getUserContext().role;
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
     const isAdminUser = ['SUPER_ADMIN', 'ADMIN', 'EDITOR'].includes(userRole);
-    
+
     // React Query hooks
     const { data: dynamicSections } = useSections(isAdminUser);
     const sections = useMemo(() => Array.isArray(dynamicSections) ? dynamicSections : (dynamicSections?.results || []), [dynamicSections]);
@@ -85,18 +85,18 @@ const ArticleEditor = () => {
         const name = (s.name || '').toLowerCase();
         return slug === currentSectionSlug || name === currentSectionSlug;
     });
-    
+
     // Background loading status for UI feedback (localized)
     const activeTreeQuery = (currentLevelsIdx !== -1) ? treeQueries[currentLevelsIdx] : null;
-    
+
     const loadingTaxonomy = !!(activeTreeQuery?.isLoading);
     const isTaxonomyError = !!(activeTreeQuery?.isError);
-    
+
     // Derived lists for cascading dropdowns
     // 1. Flatten the ALL taxonomy structures from ALL sections to help with pre-filling and cross-section support
     const fullHierarchy = useMemo(() => {
         const flat = [];
-        
+
         // Iterate through all tree queries from all sections
         treeQueries.forEach((query, idx) => {
             const sectionSlug = sections[idx]?.slug || sections[idx]?.name;
@@ -106,14 +106,14 @@ const ArticleEditor = () => {
                 const flatten = (nodes, level = 2, parentId = null) => {
                     nodes.forEach(node => {
                         if (node && node.id) {
-                            flat.push({ 
-                                id: node.id, 
-                                name: node.name, 
-                                level, 
+                            flat.push({
+                                id: node.id,
+                                name: node.name,
+                                level,
                                 parent_id: parentId,
                                 section: sectionSlug
                             });
-                            
+
                             // Recursive traversal for all levels
                             if (Array.isArray(node.children) && level < 5) {
                                 flatten(node.children, level + 1, node.id);
@@ -124,7 +124,7 @@ const ArticleEditor = () => {
                 flatten(treeData);
             }
         });
-        
+
         return flat;
     }, [treeQueries.map(q => q.data), sections]);
 
@@ -132,7 +132,7 @@ const ArticleEditor = () => {
     const hierarchy = useMemo(() => {
         return fullHierarchy.filter(h => h.section === currentSectionSlug);
     }, [fullHierarchy, currentSectionSlug]);
-    
+
     // 2. Generate Dropdown Options natively from the nested Tree
     const level2List = useMemo(() => {
         const treeData = activeTreeQuery?.data;
@@ -144,7 +144,7 @@ const ArticleEditor = () => {
         if (!level2) return [];
         const treeData = activeTreeQuery?.data;
         if (!Array.isArray(treeData)) return [];
-        
+
         const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
         if (!l2Node || !Array.isArray(l2Node.children)) return [];
         return l2Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
@@ -154,10 +154,10 @@ const ArticleEditor = () => {
         if (!level3) return [];
         const treeData = activeTreeQuery?.data;
         if (!Array.isArray(treeData)) return [];
-        
+
         const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
         if (!l2Node || !Array.isArray(l2Node.children)) return [];
-        
+
         const l3Node = l2Node.children.find(c => c.id?.toString() === level3?.toString());
         if (!l3Node || !Array.isArray(l3Node.children)) return [];
         return l3Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
@@ -167,47 +167,47 @@ const ArticleEditor = () => {
         if (!level4) return [];
         const treeData = activeTreeQuery?.data;
         if (!Array.isArray(treeData)) return [];
-        
+
         const l2Node = treeData.find(c => c.id?.toString() === level2?.toString());
         if (!l2Node || !Array.isArray(l2Node.children)) return [];
-        
+
         const l3Node = l2Node.children.find(c => c.id?.toString() === level3?.toString());
         if (!l3Node || !Array.isArray(l3Node.children)) return [];
-        
+
         const l4Node = l3Node.children.find(c => c.id?.toString() === level4?.toString());
         if (!l4Node || !Array.isArray(l4Node.children)) return [];
         return l4Node.children.map(c => ({ value: c.id?.toString(), label: c.name }));
     }, [activeTreeQuery?.data, level2, level3, level4]);
-    
+
     const createArticleMutation = useCreateArticle();
     const updateArticleMutation = useUpdateArticle();
     const publishArticleMutation = usePublishArticle();
     const assignCategoriesMutation = useAssignCategories();
-    
+
     // Mutation loading state (Manual overrides for multipart form submittals)
     const [isSaving, setIsSaving] = useState(false);
 
-    const { data: articleData, isLoading: loadingArticle } = useArticle(id, { 
-        enabled: isEditMode, 
-        staleTime: 0, 
-        gcTime: 0 
+    const { data: articleData, isLoading: loadingArticle } = useArticle(id, {
+        enabled: isEditMode,
+        staleTime: 0,
+        gcTime: 0
     });
 
     // Media Upload State
     const [bannerFile, setBannerFile] = useState(null);
     const [bannerMediaId, setBannerMediaId] = useState(null);
     const [bannerPreview, setBannerPreview] = useState(null);
-    
+
     const [mainFile, setMainFile] = useState(null);
     const [mainMediaId, setMainMediaId] = useState(null);
     const [mainPreview, setMainPreview] = useState(null);
-    
+
     // PDF Upload State
     const [pdfFile, setPdfFile] = useState(null);
     const [pdfPreview, setPdfPreview] = useState(null); // Just for displaying filename
     const [pdfFile2, setPdfFile2] = useState(null);
     const [pdfPreview2, setPdfPreview2] = useState(null);
-    
+
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [activeMediaTarget, setActiveMediaTarget] = useState('banner');
 
@@ -238,8 +238,8 @@ const ArticleEditor = () => {
 
             setFormData({
                 ...article,
-                tags: Array.isArray(article.tags) 
-                    ? article.tags.join(', ') 
+                tags: Array.isArray(article.tags)
+                    ? article.tags.join(', ')
                     : (article.tags || ''),
                 section: article.section || sectionParam || '',
                 language: (telTrans && (telTrans.content || telTrans.summary)) ? 'te' : ((engTrans && (engTrans.content || engTrans.summary)) ? 'en' : 'te'),
@@ -297,48 +297,48 @@ const ArticleEditor = () => {
         // Guard: Wait for all pieces to be ready (level1 MUST be set to avoid premature lock)
         if (isEditMode && fullHierarchy?.length > 0 && articleData && level1 && !prefillDoneRef.current) {
             console.log(`[Prefill] Starting match for IDs:`, articleData.category_ids || articleData.categories);
-            
+
             const rawIds = (articleData.article_categories && articleData.article_categories.length > 0)
-                ? articleData.article_categories.map(c => c.category_id) 
+                ? articleData.article_categories.map(c => c.category_id)
                 : (articleData.categories ? articleData.categories.map(c => (c.id || c.category_id)) : []);
-            
+
             const ids = rawIds.map(rid => Number(rid)).filter(rid => !isNaN(rid));
-            
+
             if (ids.length > 0) {
                 const matched = fullHierarchy.filter(h => ids.includes(Number(h.id)));
                 if (matched.length > 0) {
-                    setSelectedCategories(matched.map(m => ({ 
-                        id: m.id, 
-                        name: m.name, 
+                    setSelectedCategories(matched.map(m => ({
+                        id: m.id,
+                        name: m.name,
                         level: m.level,
-                        section: m.section 
+                        section: m.section
                     })));
-                    
+
                     // Trace deepest path — use case-insensitive match for current section first
-                    const currentSectionItems = matched.filter(m => 
+                    const currentSectionItems = matched.filter(m =>
                         (m.section || '').toLowerCase() === (level1 || '').toLowerCase()
                     );
-                    
+
                     // Fallback: if no categories match current section, use ALL matched items
                     const itemsToTrace = currentSectionItems.length > 0 ? currentSectionItems : matched;
                     const maxLevelItem = itemsToTrace.reduce((max, item) => (item.level || 0) > (max.level || 0) ? item : max, { level: 0 });
-                    
+
                     if (maxLevelItem && maxLevelItem.level > 1) {
                         // If categories are from a different section, switch Level 1 to match
                         if (currentSectionItems.length === 0 && maxLevelItem.section) {
                             console.log(`[Prefill] Switching Level 1 from "${level1}" to "${maxLevelItem.section}" to match category section`);
                             setLevel1(maxLevelItem.section);
                         }
-                        
+
                         let curr = maxLevelItem;
                         let l5 = '', l4 = '', l3 = '', l2 = '';
-                        
+
                         while (curr) {
                             if (curr.level === 5) l5 = String(curr.id);
                             if (curr.level === 4) l4 = String(curr.id);
                             if (curr.level === 3) l3 = String(curr.id);
                             if (curr.level === 2) l2 = String(curr.id);
-                            
+
                             // Move up to the parent using Number safe comparison within the SAME section
                             const parentId = curr.parent_id;
                             curr = parentId ? fullHierarchy.find(h => Number(h.id) === Number(parentId) && h.section === curr.section) : null;
@@ -378,7 +378,7 @@ const ArticleEditor = () => {
         }
 
         const categoryIds = selectedCategories.map(cat => cat.id);
-        
+
         // Automatically derive additional sections from selected categories
         const primarySection = level1;
         const otherSections = [...new Set(
@@ -387,8 +387,8 @@ const ArticleEditor = () => {
                 .filter(sec => sec && sec !== primarySection)
         )];
 
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             category_ids: categoryIds,
             additional_sections: [...new Set([...(prev.additional_sections || []), ...otherSections])]
         }));
@@ -420,7 +420,7 @@ const ArticleEditor = () => {
     };
 
     const [errors, setErrors] = useState({});
-    
+
     const isContentEmpty = (content) => {
         if (!content) return true;
         const hasMedia = content.includes('<img') || content.includes('<iframe');
@@ -430,7 +430,7 @@ const ArticleEditor = () => {
 
     const validateForm = () => {
         const newErrors = {};
-        
+
         // 1. Core Mandatory Fields
         if (!String(formData.slug || '').trim()) {
             newErrors.slug = true;
@@ -506,7 +506,7 @@ const ArticleEditor = () => {
                     section: formData.section,
                     limit: 5
                 }) || { results: [] };
-                
+
                 // Safely handle source tags (from form)
                 const rawTags = formData.tags;
                 const tagsToMatch = Array.isArray(rawTags)
@@ -515,16 +515,16 @@ const ArticleEditor = () => {
 
                 const filtered = results.results?.filter(a => {
                     if (a.id == id) return false;
-                    
+
                     // Safely handle target article tags
                     const aTagsRaw = a.tags || [];
                     const aTags = Array.isArray(aTagsRaw)
                         ? aTagsRaw.map(t => String(t || '').trim().toLowerCase()).filter(t => t)
                         : (typeof aTagsRaw === 'string' ? aTagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(t => t) : []);
-                    
+
                     const matchesTags = aTags.some(at => tagsToMatch.includes(at));
                     const matchesCats = a.article_categories?.some(ac => formData.category_ids?.includes(ac.category_id));
-                    
+
                     return matchesTags || matchesCats;
                 }).slice(0, 5) || [];
                 setRelatedArticles(filtered);
@@ -541,7 +541,7 @@ const ArticleEditor = () => {
     const handleEditorChange = (name, content) => {
         setFormData(prev => ({ ...prev, [name]: content }));
     };
-    
+
     // Enhanced Quill modules with full formatting
     // Enhanced Quill modules with full formatting (Memoized to prevent cursor jump/loss of focus)
     const modules = useMemo(() => ({
@@ -550,10 +550,10 @@ const ArticleEditor = () => {
             [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
             [{ 'size': ['small', false, 'large', 'huge'] }],
             ['bold', 'italic', 'underline', 'strike'],
-            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'script': 'sub' }, { 'script': 'super' }],
             [{ 'color': [] }, { 'background': [] }],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ 'indent': '-1' }, { 'indent': '+1' }],
             [{ 'align': [] }],
             ['link', 'image', 'video'],
             ['blockquote', 'code-block'],
@@ -585,7 +585,7 @@ const ArticleEditor = () => {
                 showSnackbar('File size exceeds 10MB limit.', 'error');
                 return;
             }
-            
+
             if (target === 'banner') {
                 setBannerFile(file);
                 setBannerMediaId(null);
@@ -669,11 +669,11 @@ const ArticleEditor = () => {
         let hasError = false;
         try {
             const formDataToSubmit = new FormData();
-            
+
             // Required fields
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
-            
+
             // Check if English title accidentally contains Telugu script
             const isEngTelugu = /[ఀ-౿]/.test(formData.eng_title || '');
             let finalEngTitle = formData.eng_title || '';
@@ -705,7 +705,7 @@ const ArticleEditor = () => {
             const cleanCategoryIds = (formData.category_ids || [])
                 .map(id => parseInt(id, 10))
                 .filter(id => !isNaN(id));
-            
+
             // Using standard key for array fields in multipart data
             cleanCategoryIds.forEach(id => formDataToSubmit.append('category_ids', id));
             (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections', sec));
@@ -742,7 +742,7 @@ const ArticleEditor = () => {
                 formDataToSubmit.append('status', 'SCHEDULED');
                 formDataToSubmit.append('scheduled_at', new Date(scheduleDate).toISOString());
             } else {
-                formDataToSubmit.append('status', 'PUBLISHED'); 
+                formDataToSubmit.append('status', 'PUBLISHED');
             }
 
             // Ensure we have section and slug (crucial for backend validator)
@@ -757,10 +757,10 @@ const ArticleEditor = () => {
                 showSnackbar(`Article ${scheduleDate ? 'scheduled' : 'published'} successfully`, 'success');
             } else {
                 await newsService.updateArticle(id, formDataToSubmit);
-                
+
                 // Directly manage the explicit state transition for Admins
                 await newsService.directPublish(id, scheduleDate ? { scheduled_at: new Date(scheduleDate).toISOString() } : {});
-                
+
                 if (formData.is_top_story) {
                     await newsService.pinArticle(id, { feature_type: 'TOP', section: formData.section || 'General' }).catch(console.error);
                 } else {
@@ -808,11 +808,11 @@ const ArticleEditor = () => {
         setIsSaving(true);
         try {
             const formDataToSubmit = new FormData();
-            
+
             // Required fields
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
-            
+
             // Check if English title accidentally contains Telugu script
             const isEngTelugu = /[\u0c00-\u0c7f]/.test(formData.eng_title || '');
             let finalEngTitle = formData.eng_title || '';
@@ -844,7 +844,7 @@ const ArticleEditor = () => {
             const cleanCategoryIds = (formData.category_ids || [])
                 .map(id => parseInt(id, 10))
                 .filter(id => !isNaN(id));
-            
+
             // Using standard key for array fields in multipart data
             cleanCategoryIds.forEach(id => formDataToSubmit.append('category_ids', id));
             (formData.additional_sections || []).forEach(sec => formDataToSubmit.append('additional_sections', sec));
@@ -928,7 +928,7 @@ const ArticleEditor = () => {
 
     // CRITICAL: Removed loadingTaxonomy from here to prevent full-page "refresh"
     const isLoading = (loadingArticle && isEditMode);
-    
+
     if (isLoading) return (
         <div className="cms-loading-overlay">
             <i className="fas fa-spinner fa-spin"></i>
@@ -965,7 +965,7 @@ const ArticleEditor = () => {
     return (
         <CMSLayout sidebarProps={sidebarProps} navbarProps={navbarProps}>
             <form className="article-editor-form" onSubmit={handleSubmit}>
-                
+
                 {/* ═══════ HEADER ═══════ */}
                 <div className="ae-header">
                     <div className="ae-header-left">
@@ -986,9 +986,9 @@ const ArticleEditor = () => {
                             {isEditMode ? 'Update' : 'Save Draft'}
                         </button>
                         {isAdmin && (
-                            <button 
-                                type="button" 
-                                className="ae-btn ae-btn-publish" 
+                            <button
+                                type="button"
+                                className="ae-btn ae-btn-publish"
                                 onClick={() => setShowPublishModal(true)}
                                 disabled={isSaving}
                             >
@@ -1010,9 +1010,9 @@ const ArticleEditor = () => {
                             </div>
                             <div className="ae-modal-body">
                                 <label className="ae-label">SCHEDULE PUBLICATION (OPTIONAL)</label>
-                                <LuxuryDateTimePicker 
-                                    value={scheduleDate} 
-                                    onChange={setScheduleDate} 
+                                <LuxuryDateTimePicker
+                                    value={scheduleDate}
+                                    onChange={setScheduleDate}
                                     placeholder="Pick Date & Time"
                                 />
                                 <p className="ae-helper"><i className="fas fa-info-circle"></i> Leave blank to publish immediately.</p>
@@ -1030,14 +1030,14 @@ const ArticleEditor = () => {
 
                 {/* ═══════ MAIN FORM ═══════ */}
                 <div className="ae-form-body">
-                    
+
                     {/* ── STEP 1: Basic Info ── */}
                     <div className="ae-card">
                         <div className="ae-card-header">
                             <span className="ae-step-badge">1</span>
                             <h2>Basic Information</h2>
                         </div>
-                        
+
                         <div className="ae-field">
                             <label className="ae-label">
                                 Heading <span className="ae-required">*</span>
@@ -1050,7 +1050,7 @@ const ArticleEditor = () => {
                                 className={`ae-input ${errors[titleField] ? 'ae-error' : ''}`}
                             />
                         </div>
-                        
+
                         <div className="ae-row-2">
                             <div className="ae-field">
                                 <label className="ae-label">
@@ -1073,43 +1073,16 @@ const ArticleEditor = () => {
                                     value={formData.language}
                                     onChange={(val) => {
                                         setFormData(prev => {
-                                            if (val === prev.language) return prev;
                                             const updates = { language: val };
-                                            
-                                            const srcLang = prev.language; // current language being switched FROM
-                                            const srcTitle = srcLang === 'te' ? prev.tel_title : prev.eng_title;
-                                            const srcContent = srcLang === 'te' ? prev.tel_content : prev.eng_content;
-                                            const srcSummary = srcLang === 'te' ? prev.tel_summary : prev.eng_summary;
-                                            const dstTitle = val === 'te' ? prev.tel_title : prev.eng_title;
-                                            const dstContent = val === 'te' ? prev.tel_content : prev.eng_content;
-                                            
-                                            const hasSrcContent = !!(srcTitle || srcContent || srcSummary);
-                                            const hasDstContent = !!(dstTitle || dstContent);
-                                            
-                                            // If source has content and destination is empty, MOVE content (copy + clear source)
-                                            if (hasSrcContent && !hasDstContent) {
-                                                const confirmMove = window.confirm(
-                                                    `Move existing content from ${srcLang === 'te' ? 'Telugu' : 'English'} to ${val === 'te' ? 'Telugu' : 'English'}?\n\nThis will clear the ${srcLang === 'te' ? 'Telugu' : 'English'} fields.`
-                                                );
-                                                if (confirmMove) {
-                                                    if (val === 'te') {
-                                                        updates.tel_title = prev.eng_title || '';
-                                                        updates.tel_content = prev.eng_content || '';
-                                                        updates.tel_summary = prev.eng_summary || '';
-                                                        updates.eng_title = '';
-                                                        updates.eng_content = '';
-                                                        updates.eng_summary = '';
-                                                    } else {
-                                                        updates.eng_title = prev.tel_title || '';
-                                                        updates.eng_content = prev.tel_content || '';
-                                                        updates.eng_summary = prev.tel_summary || '';
-                                                        updates.tel_title = '';
-                                                        updates.tel_content = '';
-                                                        updates.tel_summary = '';
-                                                    }
-                                                }
+                                            if (val === 'te') {
+                                                if (!prev.tel_title && prev.eng_title) updates.tel_title = prev.eng_title;
+                                                if (!prev.tel_content && prev.eng_content) updates.tel_content = prev.eng_content;
+                                                if (!prev.tel_summary && prev.eng_summary) updates.tel_summary = prev.eng_summary;
+                                            } else if (val === 'en') {
+                                                if (!prev.eng_title && prev.tel_title) updates.eng_title = prev.tel_title;
+                                                if (!prev.eng_content && prev.tel_content) updates.eng_content = prev.tel_content;
+                                                if (!prev.eng_summary && prev.tel_summary) updates.eng_summary = prev.tel_summary;
                                             }
-                                            
                                             return { ...prev, ...updates };
                                         });
                                     }}
@@ -1168,7 +1141,7 @@ const ArticleEditor = () => {
                                     isInvalid={!!errors.level1}
                                 />
                             </div>
-                            
+
                             <div className="ae-field">
                                 <label className="ae-label">
                                     <i className="fas fa-sitemap"></i>
@@ -1190,7 +1163,7 @@ const ArticleEditor = () => {
                                     noOptionsMessage={() => isTaxonomyError ? "Error loading categories" : "No root categories found"}
                                 />
                             </div>
-                            
+
                             <div className="ae-field">
                                 <label className="ae-label">
                                     <i className="fas fa-puzzle-piece"></i>
@@ -1212,7 +1185,7 @@ const ArticleEditor = () => {
                                     noOptionsMessage={() => loadingTaxonomy ? "Loading..." : "No items found"}
                                 />
                             </div>
-                            
+
                             <div className="ae-field">
                                 <label className="ae-label">
                                     <i className="fas fa-tag"></i>
@@ -1266,8 +1239,8 @@ const ArticleEditor = () => {
                                                 {cat.section?.toUpperCase()} › L{cat.level}:
                                             </span>
                                             <span className="ae-chip-name">{cat.name}</span>
-                                            <button 
-                                                className="ae-chip-remove" 
+                                            <button
+                                                className="ae-chip-remove"
                                                 onClick={() => removeCategory(cat.id)}
                                                 type="button"
                                                 title="Remove Category"
@@ -1307,7 +1280,7 @@ const ArticleEditor = () => {
                                     <span>Main Article Media</span>
                                     <span className="ae-size-hint">Max 10MB • Standard Ratio</span>
                                 </div>
-                                
+
                                 {mainPreview ? (
                                     <div className="ae-media-preview">
                                         <img src={mainPreview} alt="Main Preview" />
@@ -1347,7 +1320,7 @@ const ArticleEditor = () => {
                                     <span>Wide Banner Media</span>
                                     <span className="ae-size-hint">Max 10MB • 16:9 or 21:9</span>
                                 </div>
-                                
+
                                 {bannerPreview ? (
                                     <div className="ae-media-preview">
                                         <img src={bannerPreview} alt="Banner Preview" />
@@ -1387,7 +1360,7 @@ const ArticleEditor = () => {
                                     <span>Primary PDF (Optional)</span>
                                     <span className="ae-size-hint">Max 20MB • PDF only</span>
                                 </div>
-                                
+
                                 {pdfPreview ? (
                                     <div className="ae-media-preview ae-pdf-preview">
                                         <div className="ae-pdf-info">
@@ -1422,7 +1395,7 @@ const ArticleEditor = () => {
                                     <span>Secondary PDF (Optional)</span>
                                     <span className="ae-size-hint">Max 20MB • PDF only</span>
                                 </div>
-                                
+
                                 {pdfPreview2 ? (
                                     <div className="ae-media-preview ae-pdf-preview">
                                         <div className="ae-pdf-info">
@@ -1458,14 +1431,14 @@ const ArticleEditor = () => {
                             <span className="ae-step-badge">4</span>
                             <h2>Article Content <span className="ae-lang-indicator">{lang === 'te' ? 'తెలుగు' : 'English'}</span></h2>
                         </div>
-                        
+
                         <p className="ae-editor-hint">
                             <i className="fas fa-info-circle"></i>
                             Full-featured editor: Bold, Italic, Colors, Fonts, Images, Videos, Tables, and more. Works like a word processor.
                         </p>
-                        
+
                         <div className="ae-quill-wrapper">
-                            <ReactQuill 
+                            <ReactQuill
                                 theme="snow"
                                 value={formData[contentField] || ''}
                                 onChange={(content) => handleEditorChange(contentField, content)}
@@ -1579,8 +1552,8 @@ const ArticleEditor = () => {
                                             return (
                                                 <div key={secSlug} className="ae-category-chip">
                                                     {secName}
-                                                    <button 
-                                                        className="ae-chip-remove" 
+                                                    <button
+                                                        className="ae-chip-remove"
                                                         onClick={() => toggleAdditionalSection(secSlug)}
                                                         type="button"
                                                     >
@@ -1647,7 +1620,7 @@ const ArticleEditor = () => {
             </form>
 
             {/* Media Library Modal */}
-            <MediaLibraryModal 
+            <MediaLibraryModal
                 isOpen={showMediaLibrary}
                 onClose={() => setShowMediaLibrary(false)}
                 onSelect={(id, url) => handleMediaLibrarySelect(id, url)}
