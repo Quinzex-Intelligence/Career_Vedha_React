@@ -5438,3 +5438,13 @@ section {
     }
 }
 
+/* Ensure images inserted into Quill Editor are responsive and don't break layout */
+.ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 10px 0;
+    max-height: 450px;
+    object-fit: contain;
+}
+
