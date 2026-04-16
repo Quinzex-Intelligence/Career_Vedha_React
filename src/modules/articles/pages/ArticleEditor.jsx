@@ -242,7 +242,14 @@ const ArticleEditor = () => {
                     ? article.tags.join(', ')
                     : (article.tags || ''),
                 section: article.section || sectionParam || '',
-                language: (telTrans && (telTrans.content || telTrans.summary)) ? 'te' : ((engTrans && (engTrans.content || engTrans.summary)) ? 'en' : 'te'),
+                language: (() => {
+                    const teluguRegex = /[\u0c00-\u0c7f]/;
+                    const telHasTeluguChars = telTrans && (teluguRegex.test(telTrans.title || '') || teluguRegex.test(telTrans.content || '') || teluguRegex.test(telTrans.summary || ''));
+                    if (telHasTeluguChars) return 'te';
+                    if (engTrans && (engTrans.content || engTrans.summary)) return 'en';
+                    if (telTrans && (telTrans.content || telTrans.summary)) return 'te';
+                    return 'te';
+                })(),
                 eng_title: article.eng_title || engTrans?.title || (article.language === 'en' ? article.title : ''),
                 eng_content: article.eng_content || engTrans?.content || (article.language === 'en' ? article.content : ''),
                 eng_summary: article.eng_summary || engTrans?.summary || (article.language === 'en' ? article.summary : ''),
@@ -693,11 +700,13 @@ const ArticleEditor = () => {
                 finalEngTitle = '';
                 finalEngContent = '';
                 finalEngSummary = '';
-            } else if (isTelEnglish && !finalEngTitle.trim()) {
-                // English text found in Telugu fields with no English content — move to English
-                finalEngTitle = finalTelTitle;
-                finalEngContent = finalTelContent;
-                finalEngSummary = finalTelSummary;
+            } else if (isTelEnglish) {
+                // Telugu fields have no Telugu script — this is English content misplaced
+                // Copy to English fields only if English is empty
+                if (!finalEngTitle.trim()) finalEngTitle = finalTelTitle;
+                if (!finalEngContent.trim()) finalEngContent = finalTelContent;
+                if (!finalEngSummary.trim()) finalEngSummary = finalTelSummary;
+                // Always clear Telugu fields since content is not Telugu
                 finalTelTitle = '';
                 finalTelContent = '';
                 finalTelSummary = '';
@@ -841,11 +850,13 @@ const ArticleEditor = () => {
                 finalEngTitle = '';
                 finalEngContent = '';
                 finalEngSummary = '';
-            } else if (isTelEnglish && !finalEngTitle.trim()) {
-                // English text found in Telugu fields with no English content — move to English
-                finalEngTitle = finalTelTitle;
-                finalEngContent = finalTelContent;
-                finalEngSummary = finalTelSummary;
+            } else if (isTelEnglish) {
+                // Telugu fields have no Telugu script — this is English content misplaced
+                // Copy to English fields only if English is empty
+                if (!finalEngTitle.trim()) finalEngTitle = finalTelTitle;
+                if (!finalEngContent.trim()) finalEngContent = finalTelContent;
+                if (!finalEngSummary.trim()) finalEngSummary = finalTelSummary;
+                // Always clear Telugu fields since content is not Telugu
                 finalTelTitle = '';
                 finalTelContent = '';
                 finalTelSummary = '';
