@@ -221,7 +221,11 @@ const MediaManagement = () => {
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this media?')) {
             deleteMutation.mutate(id, {
-                onSuccess: () => showSnackbar('Media deleted successfully!', 'success'),
+                onSuccess: () => {
+                    showSnackbar('Media deleted successfully!', 'success');
+                    setAllMedia((prev) => prev.filter((item) => item.id !== id));
+                    setTotalCount((prev) => Math.max(0, prev - 1));
+                },
                 onError: (err) => showSnackbar(err.response?.data?.error || 'Failed to delete media', 'error')
             });
         }
