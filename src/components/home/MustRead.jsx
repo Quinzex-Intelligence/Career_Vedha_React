@@ -10,6 +10,16 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const intervalRef = useRef(null);
+    // Track a unique key that changes whenever the articles array is fully replaced
+    const [articlesKey, setArticlesKey] = useState(0);
+
+    // Reset state when language changes so stale content doesn't linger
+    useEffect(() => {
+        setArticles([]);
+        setCurrentIndex(0);
+        setLoading(true);
+        setArticlesKey(prev => prev + 1);
+    }, [activeLanguage]);
 
     // Fetch MUST_READ articles using the TOP feature list
     useEffect(() => {
@@ -45,14 +55,17 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
 
                 if (combined.length > 0) {
                     setArticles(combined);
+                    setArticlesKey(prev => prev + 1);
                 } else if (fallbackArticles.length > 0) {
                     setArticles(fallbackArticles);
+                    setArticlesKey(prev => prev + 1);
                 }
             } catch (error) {
                 if (cancelled) return;
                 console.warn('[MustRead] Failed to fetch featured articles:', error);
                 if (propArticles && propArticles.length > 0) {
                     setArticles(propArticles);
+                    setArticlesKey(prev => prev + 1);
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -67,15 +80,17 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
     useEffect(() => {
         if (propArticles && propArticles.length > 0 && articles.length === 0 && !loading) {
             setArticles(propArticles);
+            setArticlesKey(prev => prev + 1);
         }
     }, [propArticles, articles.length, loading]);
 
-    // Reset currentIndex when articles list changes
+    // Reset currentIndex whenever the articles identity changes
     useEffect(() => {
         setCurrentIndex(0);
-    }, [articles.length]);
+    }, [articlesKey]);
 
     // Auto-rotate through all articles, loop back to first
+    // Use articlesKey so that when new articles arrive (even with same length), interval restarts
     useEffect(() => {
         // Clear any existing interval
         if (intervalRef.current) {
@@ -95,7 +110,7 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
                 intervalRef.current = null;
             }
         };
-    }, [articles.length]);
+    }, [articles.length, articlesKey]);
 
     if (loading || articles.length === 0) return null;
 
@@ -121,7 +136,7 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
                     <AnimatePresence mode="wait">
                         <motion.div 
                             className="ticker-item-wrapper" 
-                            key={`${item.feature_id || item.id || currentIndex}-${currentIndex}`}
+                            key={`${articlesKey}-${item.feature_id || item.id || currentIndex}-${currentIndex}`}
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: -20, opacity: 0 }}
