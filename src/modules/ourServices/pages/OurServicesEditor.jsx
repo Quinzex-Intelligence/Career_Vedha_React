@@ -10,6 +10,16 @@ import { getUserContext } from '../../../services/api';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 
 import '../../../styles/Dashboard.css';
+import '../../../styles/ArticleManagement.css'; // Restores .am- input and button styles
+
+import { Quill } from 'react-quill';
+const ImageFormat = Quill.import('formats/image');
+const LinkFormat = Quill.import('formats/link');
+ImageFormat.sanitize = function(url) {
+    if (url.startsWith('blob:')) return url;
+    return LinkFormat.sanitize(url);
+};
+Quill.register(ImageFormat, true);
 
 const OurServicesEditor = () => {
     const { id } = useParams();
@@ -90,37 +100,35 @@ const OurServicesEditor = () => {
             const file = input.files[0];
             if (file) {
                 try {
-                    // Read file as Base64 so Quill preview works flawlessly without unsafe protocols
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = async () => {
-                        const localBase64 = reader.result;
-                        
-                        // Upload to get the real backend key
-                        const url = await ourServicesService.uploadImage(file);
-                        
-                        const quill = quillRef.current.getEditor();
-                        let range = quill.getSelection();
-                        if (!range) {
-                            range = { index: quill.getLength() };
+                    showSnackbar('Uploading image...', 'info');
+                    
+                    // Upload to get the real S3 URL immediately
+                    const url = await ourServicesService.uploadImage(file);
+                    
+                    // Generate local blob url
+                    const localUrl = URL.createObjectURL(file);
+                    
+                    const quill = quillRef.current.getEditor();
+                    let range = quill.getSelection();
+                    if (!range) {
+                        range = { index: quill.getLength() };
+                    }
+                    
+                    // Insert the local preview flawlessly because we overrode sanitize!
+                    quill.insertEmbed(range.index, 'image', localUrl);
+                    
+                    // Map local URL to real backend URL so we can swap it out upon saving
+                    setImageMap(prev => ({ ...prev, [localUrl]: url }));
+                    
+                    // Add to uploaded images gallery
+                    setUploadedImages(prev => {
+                        if (!prev.find(img => img.serverKey === url)) {
+                            return [...prev, { previewUrl: localUrl, serverKey: url }];
                         }
-                        
-                        // Insert the Base64 preview
-                        quill.insertEmbed(range.index, 'image', localBase64);
-                        
-                        // Map Base64 to real backend URL so we can swap it out upon saving
-                        setImageMap(prev => ({ ...prev, [localBase64]: url }));
-                        
-                        // Add to uploaded images gallery
-                        setUploadedImages(prev => {
-                            if (!prev.find(img => img.serverKey === url)) {
-                                return [...prev, { previewUrl: localBase64, serverKey: url }];
-                            }
-                            return prev;
-                        });
-                        
-                        showSnackbar('Image uploaded successfully', 'success');
-                    };
+                        return prev;
+                    });
+                    
+                    showSnackbar('Image uploaded successfully', 'success');
                 } catch (error) {
                     showSnackbar('Image upload failed', 'error');
                 }
@@ -181,6 +189,34 @@ const OurServicesEditor = () => {
             handlers: {
                 image: imageHandler
             }
+        },
+        keyboard: {
+            bindings: {
+                handleBackspace: {
+                    key: 'Backspace', // 8
+                    handler: function(range, context) {
+                        // Prevent backspacing an image!
+                        const [leaf] = this.quill.getLeaf(range.index - 1);
+                        if (leaf && leaf.domNode && leaf.domNode.tagName === 'IMG') {
+                            showSnackbar('Images cannot be deleted with backspace. Please use the Manage Uploaded Images gallery below.', 'info');
+                            return false; // Silently stop backspace
+                        }
+                        return true;
+                    }
+                },
+                handleDelete: {
+                    key: 'Delete', // 46
+                    handler: function(range, context) {
+                        // Prevent forward-delete of an image
+                        const [leaf] = this.quill.getLeaf(range.index);
+                        if (leaf && leaf.domNode && leaf.domNode.tagName === 'IMG') {
+                            showSnackbar('Images cannot be deleted with the delete key. Please use the Manage Uploaded Images gallery below.', 'info');
+                            return false;
+                        }
+                        return true;
+                    }
+                }
+            }
         }
     }), []);
 
@@ -193,11 +229,11 @@ const OurServicesEditor = () => {
 
         setSaving(true);
         try {
-            // Swap out temporary Base64 URLs with the actual S3 keys before saving
+            // Swap out temporary blob URLs with the actual S3 keys before saving
             let finalContent = formData.content;
-            Object.entries(imageMap).forEach(([localBase64, serverKey]) => {
+            Object.entries(imageMap).forEach(([localUrl, serverKey]) => {
                 // split/join approach for all occurrences
-                finalContent = finalContent.split(localBase64).join(serverKey);
+                finalContent = finalContent.split(localUrl).join(serverKey);
             });
 
             const payload = { ...formData, content: finalContent };
