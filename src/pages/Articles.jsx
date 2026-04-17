@@ -184,18 +184,15 @@ const ArticlesPage = () => {
                         {isLoadingSections ? (
                             <div className="tabs-loading-shimmer"></div>
                         ) : (
-                            sections.map(section => {
-                                const sectionId = section.slug || section.id;
-                                return (
+                            sections.map(section => (
                                 <button
-                                    key={sectionId}
-                                    onClick={() => setActiveSection(sectionId.toLowerCase())}
-                                    className={`section-tab ${activeSection === sectionId.toLowerCase() ? 'active' : ''}`}
+                                    key={section.id}
+                                    onClick={() => setActiveSection(section.id)}
+                                    className={`section-tab ${activeSection === section.id ? 'active' : ''}`}
                                 >
-                                    {section.name || section.title}
+                                    {section.name}
                                 </button>
-                                );
-                            })
+                            ))
                         )}
                     </div>
 
@@ -295,9 +292,9 @@ const ArticlesPage = () => {
                                 imageUrl = imageUrl || "https://placehold.co/600x400/62269E/333333?text=Article";
 
                                 return (
-                                    <Link 
-                                        key={article.id} 
-                                        to={`/article/${article.section || 'null'}/${article.slug}`} 
+                                    <Link
+                                        key={article.id}
+                                        to={`/article/${article.section || 'null'}/${article.slug}`}
                                         className="article-card-link"
                                     >
                                         <article className="article-card">
@@ -334,8 +331,8 @@ const ArticlesPage = () => {
 
                         {/* Infinite scroll sentinel */}
                         {hasNextPage && (
-                            <div 
-                                ref={sentinelRef} 
+                            <div
+                                ref={sentinelRef}
                                 className="load-more-section"
                                 style={{ height: '40px', margin: '20px 0', width: '100%', minHeight: '40px' }}
                             >
