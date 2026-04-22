@@ -147,7 +147,7 @@ export const translations = {
         navHome: "హోమ్",
         navNews: "న్యూస్",
         newsSubtitle: "తాజా ప్రకటనలు, సర్క్యులర్లు మరియు విద్యాపరమైన అప్‌డేట్‌ల గురించి తెలుసుకోండి.",
-        navAcademics: "విద్యా విషయాలు",
+        navAcademics: "అకడమిక్స్",
         navJobs: "ఉద్యోగాలు",
         navCurrentAffairs: "కరెంట్ అఫైర్స్",
         navPreviousPapers: "ప్రీవియస్ పేపర్స్",
@@ -162,7 +162,7 @@ export const translations = {
         navEStore: "ఈ-స్టోర్",
         navExams: "పరీక్షలు",
         navCampusPages: "క్యాంపస్ పేజీలు",
-        navMore: "మరిన్ని",
+        navMore: "ఇంకా...",
         navCurriculum: "కరికులం",
         
         // ===== HOME PAGE =====
@@ -183,7 +183,7 @@ export const translations = {
         accessNow: "యాక్సెస్ నౌ",
         
         // Must Read
-        mustRead: "తప్పక చదవాల్సినవి",
+        mustRead: "MUST READ",
         trending: "ట్రెండింగ్ ఇప్పుడు",
         
         // ===== CURRENT AFFAIRS PAGE =====
@@ -237,7 +237,7 @@ export const translations = {
         watchNow: "ఇప్పుడు చూడండి",
         
         // ===== SECTIONS =====
-        academics: "విద్యా విషయాలు",
+        academics: "అకడమిక్స్",
         jobs: "ఉద్యోగాలు",
         previousPapers: "గత పత్రాలు",
         examPreparation: "పరీక్ష తయారీ",
