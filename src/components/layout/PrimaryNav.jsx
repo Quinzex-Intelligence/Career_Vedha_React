@@ -144,6 +144,9 @@ const PrimaryNav = ({ isOpen }) => {
                 setNavData(prev => ({ ...prev, ...newData }));
                 setAllSections(sectionsData || []);
                 
+                // Store globally so new components can pick it up on mount
+                window[`__cv_nav_data_${langCode}`] = { data: newData, sections: sectionsData || [] };
+                
                 // Dispatch event so components like TaxonomyTabs can refresh
                 window.dispatchEvent(new CustomEvent(`cv-nav-updated-${langCode}`, { detail: { data: newData, sections: sectionsData || [] } }));
 

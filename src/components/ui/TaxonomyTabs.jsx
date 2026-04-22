@@ -21,9 +21,15 @@ const TaxonomyTabs = ({ sectionSlug }) => {
         return slug;
     };
 
-    const [navContext, setNavContext] = useState(null);
+    const [navContext, setNavContext] = useState(() => {
+        return window[`__cv_nav_data_${langCode}`] || null;
+    });
     
     useEffect(() => {
+        if (!navContext && window[`__cv_nav_data_${langCode}`]) {
+            setNavContext(window[`__cv_nav_data_${langCode}`]);
+        }
+
         const handleUpdate = (e) => {
             if (e.detail) setNavContext(e.detail);
         };

@@ -61,17 +61,24 @@ const ArticlesPage = () => {
         }
     }, [sectionParam, location.search]);
 
-    const [navContext, setNavContext] = useState(null);
+    const [navContext, setNavContext] = useState(() => {
+        const langCode = activeLanguage === 'telugu' ? 'te' : 'en';
+        return window[`__cv_nav_data_${langCode}`] || null;
+    });
 
     useEffect(() => {
         const langCode = activeLanguage === 'telugu' ? 'te' : 'en';
+        if (!navContext && window[`__cv_nav_data_${langCode}`]) {
+            setNavContext(window[`__cv_nav_data_${langCode}`]);
+        }
+        
         const handleUpdate = (e) => {
             if (e.detail) setNavContext(e.detail);
         };
         const eventName = `cv-nav-updated-${langCode}`;
         window.addEventListener(eventName, handleUpdate);
         return () => window.removeEventListener(eventName, handleUpdate);
-    }, [activeLanguage]);
+    }, [activeLanguage, navContext]);
 
     // Resolve State/District/Segment names from dynamic nav context for UI
     const hierarchyNames = useMemo(() => {
