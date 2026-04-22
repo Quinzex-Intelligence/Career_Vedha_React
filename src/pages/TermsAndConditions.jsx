@@ -106,7 +106,7 @@ const TermsAndConditions = () => {
                         <section>
                             <h2>11. Contact Us</h2>
                             <p>
-                                If you have any questions, contact us at: <strong>careervedha@gmail.com</strong>
+                                If you have any questions, contact us at: <strong>Contact@careervedha.com</strong>
                             </p>
                             <button 
                                 className="premium-contact-trigger"

@@ -115,7 +115,7 @@ const AboutUs = () => {
 
                         <section>
                             <p>
-                                For any queries, contact: <strong>careervedha@gmail.com</strong>
+                                For any queries, contact: <strong>Contact@careervedha.com</strong>
                             </p>
                             <button 
                                 className="premium-contact-trigger"

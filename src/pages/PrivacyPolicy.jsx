@@ -68,7 +68,7 @@ const PrivacyPolicy = () => {
                         <section>
                             <h2>6. Contact Us</h2>
                             <p>
-                                If you have any questions, contact us at: <strong>careervedha@gmail.com</strong>
+                                If you have any questions, contact us at: <strong>Contact@careervedha.com</strong>
                             </p>
                             <button
                                 className="premium-contact-trigger"
