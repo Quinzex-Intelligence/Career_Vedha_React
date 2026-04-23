@@ -131,15 +131,6 @@ const ArticleDetail = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="article-detail-loading">
-                <div className="spinner"></div>
-                <p>Loading reading experience...</p>
-            </div>
-        );
-    }
-
     const articleSchema = useMemo(() => {
         if (!article) return null;
         return {
@@ -159,6 +150,17 @@ const ArticleDetail = () => {
             }]
         };
     }, [article]);
+
+    if (loading) {
+        return (
+            <div className="article-detail-loading">
+                <div className="spinner"></div>
+                <p>Loading reading experience...</p>
+            </div>
+        );
+    }
+
+
 
     if (!article) {
         return (
