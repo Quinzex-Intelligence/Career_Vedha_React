@@ -4,7 +4,7 @@ import { questionPaperService } from '../../../services';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
 import './PapersManagement.css';
 
@@ -183,7 +183,7 @@ const PapersManagement = () => {
         activeSection: 'papers-management',
         checkAccess,
         MODULES,
-        onLogout: () => navigate('/admin-login'),
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

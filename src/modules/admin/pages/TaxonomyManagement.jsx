@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
-import api, { getUserContext, subscribeToAuthChanges } from '../../../services/api';
+import api, { getUserContext, subscribeToAuthChanges, logout } from '../../../services/api';
 import djangoApi from '../../../services/djangoApi';
 // import { newsService } from '../../../services'; // Replaced by hooks
 import { 
@@ -505,13 +505,8 @@ const TaxonomyManagement = () => {
         }));
     };
 
-    const handleLogout = async () => {
-        try {
-            await api.post('/log-out');
-            navigate('/admin-login');
-        } catch (err) {
-            navigate('/admin-login');
-        }
+    const handleLogout = () => {
+        logout();
     };
 
     const sidebarProps = {

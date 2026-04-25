@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
-import { getUserContext } from '../../../services/api'; // api import removed if not needed directly
+import { getUserContext, logout } from '../../../services/api';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
 import CMSLayout from '../../../components/layout/CMSLayout';
@@ -53,9 +53,8 @@ const JobsManagement = () => {
         });
     };
 
-    const handleLogout = async () => {
-        // Assuming logout logic is handled by global auth or just redirect
-        navigate('/admin-login');
+    const handleLogout = () => {
+        logout();
     };
 
     // --- Filtering Logic ---

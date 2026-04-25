@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import CustomSelect from '../../../components/ui/CustomSelect';
 import LuxuryDateTimePicker from '../../../components/ui/LuxuryDateTimePicker';
 import MediaLibraryModal from '../../media/components/MediaLibraryModal';
-import api, { getUserContext, subscribeToAuthChanges } from '../../../services/api';
+import api, { getUserContext, subscribeToAuthChanges, logout } from '../../../services/api';
 import { newsService } from '../../../services';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import API_CONFIG from '../../../config/api.config';
@@ -979,9 +979,7 @@ const ArticleEditor = () => {
         activeSection: 'articles',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
-        onLogout: () => {
-            api.post('/log-out').finally(() => navigate('/admin-login'));
-        },
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

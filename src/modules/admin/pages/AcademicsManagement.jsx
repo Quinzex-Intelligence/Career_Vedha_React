@@ -12,7 +12,7 @@ import {
 import { useQuizQuestions } from '../../../hooks/useQuiz';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import { useSnackbar } from '../../../context/SnackbarContext';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import { checkAccess as checkAccessGlobal, MODULES } from '../../../config/accessControl.config.js';
 import Skeleton, { SkeletonTable } from '../../../components/ui/Skeleton';
 import './AcademicsManagement.css';
@@ -100,10 +100,7 @@ const AcademicsManagement = ({ initialTab = 'hierarchy', hideOtherTabs = false }
         activeSection: 'course-materials',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
-        onLogout: () => {
-            // Simplified logout for demonstration
-            navigate('/admin-login');
-        },
+        onLogout: logout,
         isCmsOpen: true,
         setIsCmsOpen: () => {}
     };

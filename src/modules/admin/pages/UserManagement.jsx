@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import '../../../styles/UserManagement.css';
 import '../../../styles/Dashboard.css';
@@ -128,8 +128,8 @@ const UserManagement = () => {
         }
     };
 
-    const handleLogout = async () => {
-        navigate('/admin-login'); // Rely on backend cookie clearing or existing logic if needed
+    const handleLogout = () => {
+        logout();
     };
 
     /* ================= GLOBAL SEARCH (NAVBAR) ================= */

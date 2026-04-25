@@ -5,7 +5,7 @@ import { useSnackbar } from '../../../context/SnackbarContext';
 import Skeleton, { SkeletonTable } from '../../../components/ui/Skeleton';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 import '../../../styles/ArticleManagement.css'; // Reuse existing table styles
 
@@ -125,7 +125,7 @@ const OurServicesManagement = () => {
         activeSection: 'services-management',
         checkAccess,
         MODULES,
-        onLogout: () => navigate('/admin-login'),
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

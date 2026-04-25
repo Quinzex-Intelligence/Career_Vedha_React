@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import api, { getUserContext, setUserContext, subscribeToAuthChanges } from '../../../services/api';
+import api, { getUserContext, setUserContext, subscribeToAuthChanges, logout } from '../../../services/api';
 import '../../../styles/UserManagement.css';
 import '../../../styles/Dashboard.css';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
 import { getRoleInitials } from '../../../utils/roleUtils';
-import socketService, { connectWebSocket, disconnectWebSocket } from '../../../services/socket';
+import socketService, { connectWebSocket } from '../../../services/socket';
 import { useRealTime } from '../../../hooks/useRealTime';
 import { 
     fetchNotifications, 
@@ -930,16 +930,8 @@ const Dashboard = () => {
     /* ================= LOGOUT ================= */
 
     /* ================= LOGOUT ================= */
-    const handleLogout = async () => {
-        try {
-            await api.post(API_CONFIG.ENDPOINTS.LOGOUT);
-        } catch (err) {
-            console.error("Backend logout failed", err);
-        } finally {
-            setUserContext(null, null, null);
-            disconnectWebSocket();
-            navigate('/admin-login');
-        }
+    const handleLogout = () => {
+        logout();
     };
 
     const sidebarProps = {

@@ -4,7 +4,7 @@ import { useTopStories, useCreateTopStory, useUpdateTopStory, useDeleteTopStory 
 import './TopStoriesManagement.css';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import CMSLayout from '../../../components/layout/CMSLayout';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
 import { newsService } from '../../../services';
@@ -441,7 +441,7 @@ const TopStoriesManagement = () => {
         activeSection: 'top-stories',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
-        onLogout: () => navigate('/admin-login'),
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

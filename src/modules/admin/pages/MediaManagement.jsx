@@ -12,7 +12,7 @@ import {
     useMediaPresigned 
 } from '../../../hooks/useMedia';
 import { useSnackbar } from '../../../context/SnackbarContext';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 import Skeleton, { SkeletonCard } from '../../../components/ui/Skeleton';
@@ -370,8 +370,8 @@ const MediaManagement = () => {
         });
     };
 
-    const handleLogout = async () => {
-          // Trigger logout
+    const handleLogout = () => {
+        logout();
     };
 
      /* ================= GLOBAL SEARCH & LAYOUT PROPS ================= */

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import LuxuryTooltip from '../../../components/ui/LuxuryTooltip';
-import api, { getUserContext, subscribeToAuthChanges } from '../../../services/api';
+import api, { getUserContext, subscribeToAuthChanges, logout } from '../../../services/api';
 import { jobsService } from '../../../services/jobsService';
 import { fetchNotifications, markAsSeen, markAllAsSeen, approveRequest, rejectRequest } from '../../../services/notificationService';
 import { useSnackbar } from '../../../context/SnackbarContext';
@@ -131,13 +131,8 @@ const JobEditor = () => {
         }
     };
 
-    const handleLogout = async () => {
-        try {
-            await api.post('/log-out');
-            navigate('/admin-login');
-        } catch (err) {
-            navigate('/admin-login');
-        }
+    const handleLogout = () => {
+        logout();
     };
 
     const navigateToGlobalResult = (item) => {
@@ -163,9 +158,7 @@ const JobEditor = () => {
         activeSection: 'jobs',
         checkAccess: (module) => checkAccessGlobal(userRole, module),
         MODULES,
-        onLogout: () => {
-            api.post('/log-out').finally(() => navigate('/admin-login'));
-        },
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

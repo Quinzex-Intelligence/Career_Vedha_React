@@ -6,7 +6,7 @@ import { ourServicesService } from '../../../services';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import useGlobalSearch from '../../../hooks/useGlobalSearch';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
 
 import '../../../styles/Dashboard.css';
@@ -289,7 +289,7 @@ const OurServicesEditor = () => {
         activeSection: 'services-management',
         checkAccess,
         MODULES,
-        onLogout: () => navigate('/admin-login'),
+        onLogout: logout,
         isCmsOpen,
         setIsCmsOpen
     };

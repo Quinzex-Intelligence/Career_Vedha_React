@@ -143,4 +143,27 @@ api.interceptors.response.use(
     }
 );
 
+export const logout = async () => {
+    try {
+        // Call backend logout endpoint
+        await api.post(API_CONFIG.ENDPOINTS.LOGOUT);
+    } catch (err) {
+        console.error("Backend logout failed:", err);
+    } finally {
+        // Clear local context
+        setUserContext(null, null, null);
+        
+        // Disconnect WebSocket if active (Dynamic import to avoid circular dependency)
+        try {
+            const { disconnectWebSocket } = await import('./socket');
+            disconnectWebSocket();
+        } catch (wsErr) {
+            console.error("Failed to disconnect WebSocket during logout:", wsErr);
+        }
+
+        // Force redirect to login page (full reload to clear any remaining state)
+        window.location.href = '/admin-login';
+    }
+};
+
 export default api;

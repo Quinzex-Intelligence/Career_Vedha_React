@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import CMSLayout from '../../../components/layout/CMSLayout';
 import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/accessControl.config.js';
-import { getUserContext } from '../../../services/api';
+import { getUserContext, logout } from '../../../services/api';
 
 import '../../../styles/UserManagement.css';
 
@@ -27,7 +27,7 @@ const EStoreAdminRoot = () => {
     };
 
     const handleLogout = () => {
-        navigate('/admin-login');
+        logout();
     };
 
     const checkAccess = useCallback((module) => {
