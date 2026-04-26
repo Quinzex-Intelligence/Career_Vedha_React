@@ -526,6 +526,13 @@ const Dashboard = () => {
         return (total !== undefined && total !== null) ? total : currentCount;
     }, []);
 
+    // Helper to format date strings for Spring Boot LocalDateTime (remove 'Z' and milliseconds if needed)
+    const formatCursorDateTime = (dt) => {
+        if (!dt) return null;
+        if (typeof dt !== 'string') return dt;
+        return dt.split('.')[0].replace('Z', '');
+    };
+
     const fetchUnseenCount = useCallback(async () => {
         if (!userRole || userRole === 'CONTRIBUTOR') return;
         try {
@@ -579,7 +586,7 @@ const Dashboard = () => {
             const params = isFirstLoad ? { size: 20 } : {
                 size: 20,
                 cursorId: pendingCursorRef.current.id,
-                cursorTime: pendingCursorRef.current.timestamp
+                cursorTime: formatCursorDateTime(pendingCursorRef.current.timestamp)
             };
             const data = await fetchNotificationsByStatus('PENDING', userRole, params);
             const rawItems = Array.isArray(data) ? data : (data?.content || []);
@@ -603,7 +610,8 @@ const Dashboard = () => {
 
             setPendingFeed(prev => {
                 if (reset) return items;
-                const newItems = items.filter(n => !prev.some(p => String(p.id) === String(n.id)));
+                // Robust ID comparison handling both id and notificationId
+                const newItems = items.filter(n => !prev.some(p => String(p.id || p.notificationId) === String(n.id || n.notificationId)));
                 return [...prev, ...newItems];
             });
 
@@ -637,7 +645,7 @@ const Dashboard = () => {
             const params = isFirstLoad ? { size: 20 } : {
                 size: 20,
                 cursorId: archiveCursorRef.current.id,
-                cursorTime: archiveCursorRef.current.timestamp
+                localDateTime: formatCursorDateTime(archiveCursorRef.current.timestamp) // Backend expects localDateTime, not cursorTime
             };
             const data = await fetchAllNotifications(userRole, params);
             const rawItems = Array.isArray(data) ? data : (data?.content || []);
@@ -661,7 +669,7 @@ const Dashboard = () => {
 
             setArchiveFeed(prev => {
                 if (reset) return items;
-                const newItems = items.filter(n => !prev.some(p => String(p.id) === String(n.id)));
+                const newItems = items.filter(n => !prev.some(p => String(p.id || p.notificationId) === String(n.id || n.notificationId)));
                 return [...prev, ...newItems];
             });
 
@@ -693,7 +701,7 @@ const Dashboard = () => {
         try {
             const params = isFirstLoad ? { size: 20 } : {
                 size: 20,
-                createdAt: articleCursorRef.current.createdAt,
+                createdAt: formatCursorDateTime(articleCursorRef.current.createdAt),
                 cursorId: articleCursorRef.current.id
             };
             
@@ -710,7 +718,7 @@ const Dashboard = () => {
 
             setArticleFeed(prev => {
                 if (reset) return items;
-                const newItems = items.filter(n => !prev.some(p => String(p.id) === String(n.id)));
+                const newItems = items.filter(n => !prev.some(p => String(p.id || p.notificationId) === String(n.id || n.notificationId)));
                 return [...prev, ...newItems];
             });
 

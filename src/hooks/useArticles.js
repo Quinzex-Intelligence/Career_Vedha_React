@@ -40,6 +40,18 @@ export function useInfiniteAdminArticles(filters = {}) {
         Object.entries(filters).filter(([, v]) => v !== null && v !== undefined && v !== '')
     );
 
+    const extractCursor = (urlOrCursor) => {
+        if (!urlOrCursor) return null;
+        if (typeof urlOrCursor !== 'string') return urlOrCursor;
+        if (!urlOrCursor.includes('http')) return urlOrCursor;
+        try {
+            const url = new URL(urlOrCursor);
+            return url.searchParams.get('cursor') || url.searchParams.get('offset');
+        } catch (e) {
+            return urlOrCursor;
+        }
+    };
+
     return useInfiniteQuery({
         queryKey: [...articleKeys.adminList(cleanFilters), 'infinite'],
         queryFn: async ({ pageParam = null }) => {
@@ -47,7 +59,10 @@ export function useInfiniteAdminArticles(filters = {}) {
             if (pageParam) params.cursor = pageParam;
             return await newsService.getAdminArticles(params);
         },
-        getNextPageParam: (lastPage) => lastPage?.next_cursor || undefined,
+        getNextPageParam: (lastPage) => {
+            const next = lastPage?.next_cursor || lastPage?.next;
+            return next ? extractCursor(next) : undefined;
+        },
         staleTime: 0,
         refetchOnMount: true,
         refetchOnWindowFocus: false,
@@ -67,7 +82,10 @@ export function useInfiniteArticles(filters = {}, options = {}) {
                 cursor: pageParam
             });
         },
-        getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+        getNextPageParam: (lastPage) => {
+            const next = lastPage?.next_cursor || lastPage?.next;
+            return next ? extractCursor(next) : undefined;
+        },
         staleTime: 0,              // Always consider data stale so it refetches on mount
         refetchOnMount: true,      // Always refetch when the component mounts
         refetchOnWindowFocus: false, // Skip on window focus to avoid excessive calls

@@ -24,6 +24,13 @@ export const useNotifications = () => {
     const { role, id: userId, isAuthenticated } = getUserContext();
     const queryClient = useQueryClient();
     const { showSnackbar } = useSnackbar();
+
+    // Helper for Spring Boot LocalDateTime (remove 'Z' and milliseconds)
+    const formatCursorDateTime = (dt) => {
+        if (!dt) return null;
+        if (typeof dt !== 'string') return dt;
+        return dt.split('.')[0].replace('Z', '');
+    };
     
     // --- 1. Article Notifications (Post Notifications) ---
     
@@ -43,8 +50,8 @@ export const useNotifications = () => {
             if (!lastPage || lastPage.length < 20) return undefined;
             const last = lastPage[lastPage.length - 1];
             return {
-                createdAt: last.createdAt,
-                cursorId: last.notificationId
+                createdAt: formatCursorDateTime(last.createdAt || last.localDateTime || last.timestamp),
+                cursorId: last.notificationId || last.id
             };
         },
         initialPageParam: {},
