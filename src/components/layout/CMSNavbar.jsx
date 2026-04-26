@@ -34,11 +34,26 @@ const ApprovalNotificationItem = ({ item, onApprove, onReject }) => (
             <div className="notification-time-compact">
                 {new Date(item.localDateTime).toLocaleString()}
             </div>
+            {item.notificationStatus && (
+                <div style={{ marginTop: '4px', fontSize: '0.8rem', fontWeight: '500' }}>
+                    {item.notificationStatus === "PENDING" && (
+                        <span style={{ color: '#f59e0b' }}>⏳ Pending</span>
+                    )}
+                    {item.notificationStatus === "APPROVED" && (
+                        <span style={{ color: '#10b981' }}>✅ Approved by {item.userEmail || item.processedBy || 'Admin'}</span>
+                    )}
+                    {item.notificationStatus === "REJECTED" && (
+                        <span style={{ color: '#ef4444' }}>❌ Rejected by {item.userEmail || item.processedBy || 'Admin'}</span>
+                    )}
+                </div>
+            )}
         </div>
-        <div className="popover-actions">
-            <button className="popover-btn-approve" onClick={() => onApprove(item.id)}>Approve</button>
-            <button className="popover-btn-reject" onClick={() => onReject(item.id)}>Reject</button>
-        </div>
+        {item.notificationStatus === 'PENDING' && (
+            <div className="popover-actions">
+                <button className="popover-btn-approve" onClick={() => onApprove(item.id)}>Approve</button>
+                <button className="popover-btn-reject" onClick={() => onReject(item.id)}>Reject</button>
+            </div>
+        )}
     </div>
 );
 
@@ -244,12 +259,24 @@ const CMSNavbar = ({
                                                 <p>No pending approvals</p>
                                             </div>
                                         ) : (
-                                            roleItems.map(n => (
+                                            [...roleItems]
+                                                .sort((a, b) => {
+                                                    if (a.notificationStatus === "PENDING" && b.notificationStatus !== "PENDING") return -1;
+                                                    if (b.notificationStatus === "PENDING" && a.notificationStatus !== "PENDING") return 1;
+                                                    return 0;
+                                                })
+                                                .map(n => (
                                                 <ApprovalNotificationItem
                                                     key={n.id}
                                                     item={n}
                                                     onApprove={(id) => { approve(id); setShowPopover(false); }}
-                                                    onReject={(id) => { reject({ id }); setShowPopover(false); }}
+                                                    onReject={(id) => { 
+                                                        const reason = window.prompt("Please provide a reason for rejecting this request:");
+                                                        if (reason !== null) {
+                                                            reject({ id, reason: reason || "Rejected by admin" }); 
+                                                            setShowPopover(false); 
+                                                        }
+                                                    }}
                                                 />
                                             ))
                                         )

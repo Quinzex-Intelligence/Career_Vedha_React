@@ -26,6 +26,21 @@ const NotificationItem = React.memo(({ notification, onApprove, onReject, onMark
     const isUnseen = !notification.seen && (!lastSeenAllAt || new Date(notification.createdAt) > new Date(lastSeenAllAt));
     const shouldHighlight = isArchive && isUnseen;
 
+    const [isProcessing, setIsProcessing] = React.useState(false);
+
+    const handleApproveClick = async () => {
+        setIsProcessing(true);
+        try {
+            await onApprove(notification.id);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRejectClick = () => {
+        onReject(notification.id);
+    };
+
     return (
         <div className={`notification-card-modern ${shouldHighlight ? 'unread' : ''} ${isArchive ? 'archived' : ''}`}>
             <div className="notification-card-header">
@@ -38,6 +53,20 @@ const NotificationItem = React.memo(({ notification, onApprove, onReject, onMark
                         <span className="notification-time">{timeAgo}</span>
                     </div>
                     <div className="notification-message">{notification.message}</div>
+                    
+                    {notification.notificationStatus && (
+                        <div className="notification-status-row" style={{ marginTop: '8px', fontSize: '0.85rem', fontWeight: '500' }}>
+                            {notification.notificationStatus === "PENDING" && (
+                                <span style={{ color: '#f59e0b' }}><i className="fas fa-hourglass-half"></i> ⏳ Pending</span>
+                            )}
+                            {notification.notificationStatus === "APPROVED" && (
+                                <span style={{ color: '#10b981' }}><i className="fas fa-check-circle"></i> ✅ Approved by {notification.userEmail || notification.processedBy || 'Admin'}</span>
+                            )}
+                            {notification.notificationStatus === "REJECTED" && (
+                                <span style={{ color: '#ef4444' }}><i className="fas fa-times-circle"></i> ❌ Rejected by {notification.userEmail || notification.processedBy || 'Admin'}</span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 {isArchive && !notification.seen && (
                     <button className="mark-read-btn" title="Mark as seen" onClick={() => onMarkSeen(notification.id)}>
@@ -47,13 +76,13 @@ const NotificationItem = React.memo(({ notification, onApprove, onReject, onMark
             </div>
 
             {/* Actions Row */}
-            {!isArchive && notification.notificationStatus === 'PENDING' && (
+            {notification.notificationStatus === 'PENDING' && (
                 <div className="notification-card-footer">
-                    <button className="btn-reject" onClick={() => onReject(notification.id)}>
+                    <button className="btn-reject" onClick={handleRejectClick} disabled={isProcessing}>
                         <i className="fas fa-times"></i> Reject
                     </button>
-                    <button className="btn-approve" onClick={() => onApprove(notification.id)}>
-                        <i className="fas fa-check"></i> Approve
+                    <button className="btn-approve" onClick={handleApproveClick} disabled={isProcessing}>
+                        {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>} Approve
                     </button>
                 </div>
             )}

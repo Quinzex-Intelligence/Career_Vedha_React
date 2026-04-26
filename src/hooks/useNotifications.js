@@ -97,6 +97,9 @@ export const useNotifications = () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
             showSnackbar("Request approved", "success");
         },
+        onError: (err) => {
+            showSnackbar(err.response?.data?.message || "Approval failed", "error");
+        }
     });
 
     const rejectMutation = useMutation({
@@ -105,6 +108,9 @@ export const useNotifications = () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
             showSnackbar("Request rejected", "info");
         },
+        onError: (err) => {
+            showSnackbar(err.response?.data?.message || "Rejection failed", "error");
+        }
     });
 
     // --- 3. WebSocket Real-time Sync ---
