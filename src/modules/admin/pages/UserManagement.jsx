@@ -226,7 +226,7 @@ const UserManagement = () => {
                     </button>
 
                     <button
-                        className={`um-tab ${activeTab === 'all' ? 'active' : ''}`}
+                        className={`um-tab ${activeTab === 'all' || activeTab === 'search' ? 'active' : ''}`}
                         onClick={() => handleTabChange('all')}
                     >
                         <i className="fas fa-list"></i>

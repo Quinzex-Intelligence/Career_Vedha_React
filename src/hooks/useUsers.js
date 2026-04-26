@@ -15,30 +15,30 @@ export const userKeys = {
  */
 export const useUsers = ({ tab, page, size, keyword }) => {
     return useQuery({
-        queryKey: userKeys.list({ tab, page, size, keyword }),
+        queryKey: userKeys.list({ tab, page, size, keyword: tab === 'search' ? keyword : '' }),
         queryFn: async () => {
             let url = '';
             const params = { page, size };
 
             switch (tab) {
                 case 'active':
-                    url = '/get-active-users';
+                    url = API_CONFIG.ENDPOINTS.ACTIVE;
                     break;
                 case 'inactive':
-                    url = '/get-inactive-users';
+                    url = API_CONFIG.ENDPOINTS.INACTIVE;
                     break;
                 case 'all':
-                    url = '/get-all-users';
+                    url = API_CONFIG.ENDPOINTS.ALL;
                     break;
                 case 'search':
                     if (!keyword?.trim()) {
                         return { content: [], totalPages: 0, totalElements: 0 };
                     }
-                    url = '/search';
+                    url = API_CONFIG.ENDPOINTS.SEARCH;
                     params.keyword = keyword;
                     break;
                 default:
-                    url = '/get-active-users';
+                    url = API_CONFIG.ENDPOINTS.ACTIVE;
             }
 
             const { data } = await api.get(url, { params });
