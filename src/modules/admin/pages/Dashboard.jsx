@@ -637,7 +637,7 @@ const Dashboard = () => {
             const params = isFirstLoad ? { size: 20 } : {
                 size: 20,
                 cursorId: archiveCursorRef.current.id,
-                localDateTime: archiveCursorRef.current.timestamp
+                cursorTime: archiveCursorRef.current.timestamp
             };
             const data = await fetchAllNotifications(userRole, params);
             const rawItems = Array.isArray(data) ? data : (data?.content || []);
@@ -704,17 +704,13 @@ const Dashboard = () => {
                 const last = items[items.length - 1];
                 articleCursorRef.current = {
                     id: last.notificationId || last.id,
-                    createdAt: last.createdAt || last.timestamp || last.localDateTime
+                    createdAt: last.createdAt
                 };
             }
 
             setArticleFeed(prev => {
                 if (reset) return items;
-                // Use robust ID check (notificationId or id)
-                const newItems = items.filter(n => {
-                    const nid = n.notificationId || n.id;
-                    return !prev.some(p => String(p.notificationId || p.id) === String(nid));
-                });
+                const newItems = items.filter(n => !prev.some(p => String(p.id) === String(n.id)));
                 return [...prev, ...newItems];
             });
 
@@ -827,8 +823,7 @@ const Dashboard = () => {
                 });
             } else if (n.type === 'ARTICLE_SUBMISSION' || n.type === 'ARTICLE_PUBLISHED') {
                 setArticleFeed(prev => {
-                    const nid = n.notificationId || n.id;
-                    if (prev.some(x => String(x.notificationId || x.id) === String(nid))) return prev;
+                    if (prev.some(x => x.id === n.id)) return prev;
                     setArticleUnseenCount(c => c + 1);
                     setOverallUnseenCount(c => c + 1);
                     return [n, ...prev];
