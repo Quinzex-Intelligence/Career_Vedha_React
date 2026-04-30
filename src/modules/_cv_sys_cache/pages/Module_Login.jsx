@@ -15,6 +15,7 @@ const Module_Login = () => {
     const [resendTimer, setResendTimer] = useState(0);
     const { showSnackbar } = useSnackbar();
     const otpInputRefs = useRef([]);
+    const recaptchaRef = useRef(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -109,6 +110,10 @@ const Module_Login = () => {
         } catch (err) {
             console.error(err);
             showSnackbar(err.response?.data?.message || 'Invalid OTP', 'error');
+            setCaptchaToken(null);
+            if (recaptchaRef.current) {
+                recaptchaRef.current.reset();
+            }
         } finally {
             setLoading(false);
         }
@@ -294,6 +299,7 @@ const Module_Login = () => {
 
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
                             <ReCAPTCHA
+                                ref={recaptchaRef}
                                 sitekey="6Lc169EsAAAAAFHLYFrpzcO71cZPTcikPxWMtKzL"
                                 onChange={(token) => setCaptchaToken(token)}
                             />
