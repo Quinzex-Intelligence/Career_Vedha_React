@@ -681,36 +681,13 @@ const ArticleEditor = () => {
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
 
-            // Smart language detection: auto-correct misplaced content
-            const teluguRegex = /[\u0c00-\u0c7f]/;
-            const isEngTelugu = teluguRegex.test(formData.eng_title || '');
-            const isTelEnglish = (formData.tel_title || '').trim() && !teluguRegex.test(formData.tel_title || '');
-            let finalEngTitle = formData.eng_title || '';
-            let finalEngContent = formData.eng_content || '';
-            let finalEngSummary = formData.eng_summary || '';
-            let finalTelTitle = formData.tel_title || '';
-            let finalTelContent = formData.tel_content || '';
-            let finalTelSummary = formData.tel_summary || '';
-
-            if (isEngTelugu) {
-                // Telugu script found in English fields — move to Telugu
-                if (!finalTelTitle) finalTelTitle = finalEngTitle;
-                if (!finalTelContent) finalTelContent = finalEngContent;
-                if (!finalTelSummary) finalTelSummary = finalEngSummary;
-                finalEngTitle = '';
-                finalEngContent = '';
-                finalEngSummary = '';
-            } else if (isTelEnglish) {
-                // Telugu fields have no Telugu script — this is English content misplaced
-                // Copy to English fields only if English is empty
-                if (!finalEngTitle.trim()) finalEngTitle = finalTelTitle;
-                if (!finalEngContent.trim()) finalEngContent = finalTelContent;
-                if (!finalEngSummary.trim()) finalEngSummary = finalTelSummary;
-                // Always clear Telugu fields since content is not Telugu
-                finalTelTitle = '';
-                finalTelContent = '';
-                finalTelSummary = '';
-            }
+            // Language fields — sent as-is (language switch handler already placed content correctly)
+            const finalEngTitle = formData.eng_title || '';
+            const finalEngContent = formData.eng_content || '';
+            const finalEngSummary = formData.eng_summary || '';
+            const finalTelTitle = formData.tel_title || '';
+            const finalTelContent = formData.tel_content || '';
+            const finalTelSummary = formData.tel_summary || '';
 
             formDataToSubmit.append('tel_title', finalTelTitle);
             formDataToSubmit.append('tel_content', finalTelContent);
@@ -831,36 +808,13 @@ const ArticleEditor = () => {
             formDataToSubmit.append('slug', formData.slug);
             formDataToSubmit.append('section', formData.section);
 
-            // Smart language detection: auto-correct misplaced content
-            const teluguRegex = /[\u0c00-\u0c7f]/;
-            const isEngTelugu = teluguRegex.test(formData.eng_title || '');
-            const isTelEnglish = (formData.tel_title || '').trim() && !teluguRegex.test(formData.tel_title || '');
-            let finalEngTitle = formData.eng_title || '';
-            let finalEngContent = formData.eng_content || '';
-            let finalEngSummary = formData.eng_summary || '';
-            let finalTelTitle = formData.tel_title || '';
-            let finalTelContent = formData.tel_content || '';
-            let finalTelSummary = formData.tel_summary || '';
-
-            if (isEngTelugu) {
-                // Telugu script found in English fields — move to Telugu
-                if (!finalTelTitle) finalTelTitle = finalEngTitle;
-                if (!finalTelContent) finalTelContent = finalEngContent;
-                if (!finalTelSummary) finalTelSummary = finalEngSummary;
-                finalEngTitle = '';
-                finalEngContent = '';
-                finalEngSummary = '';
-            } else if (isTelEnglish) {
-                // Telugu fields have no Telugu script — this is English content misplaced
-                // Copy to English fields only if English is empty
-                if (!finalEngTitle.trim()) finalEngTitle = finalTelTitle;
-                if (!finalEngContent.trim()) finalEngContent = finalTelContent;
-                if (!finalEngSummary.trim()) finalEngSummary = finalTelSummary;
-                // Always clear Telugu fields since content is not Telugu
-                finalTelTitle = '';
-                finalTelContent = '';
-                finalTelSummary = '';
-            }
+            // Language fields — sent as-is (language switch handler already placed content correctly)
+            const finalEngTitle = formData.eng_title || '';
+            const finalEngContent = formData.eng_content || '';
+            const finalEngSummary = formData.eng_summary || '';
+            const finalTelTitle = formData.tel_title || '';
+            const finalTelContent = formData.tel_content || '';
+            const finalTelSummary = formData.tel_summary || '';
 
             formDataToSubmit.append('tel_title', finalTelTitle);
             formDataToSubmit.append('tel_content', finalTelContent);
@@ -1102,13 +1056,23 @@ const ArticleEditor = () => {
                                         setFormData(prev => {
                                             const updates = { language: val };
                                             if (val === 'te') {
-                                                if (!prev.tel_title && prev.eng_title) updates.tel_title = prev.eng_title;
-                                                if (!prev.tel_content && prev.eng_content) updates.tel_content = prev.eng_content;
-                                                if (!prev.tel_summary && prev.eng_summary) updates.tel_summary = prev.eng_summary;
+                                                // Move content from English to Telugu if Telugu is empty
+                                                updates.tel_title = prev.tel_title || prev.eng_title || '';
+                                                updates.tel_content = prev.tel_content || prev.eng_content || '';
+                                                updates.tel_summary = prev.tel_summary || prev.eng_summary || '';
+                                                // Clear English fields so old translation gets removed on save
+                                                updates.eng_title = '';
+                                                updates.eng_content = '';
+                                                updates.eng_summary = '';
                                             } else if (val === 'en') {
-                                                if (!prev.eng_title && prev.tel_title) updates.eng_title = prev.tel_title;
-                                                if (!prev.eng_content && prev.tel_content) updates.eng_content = prev.tel_content;
-                                                if (!prev.eng_summary && prev.tel_summary) updates.eng_summary = prev.tel_summary;
+                                                // Move content from Telugu to English if English is empty
+                                                updates.eng_title = prev.eng_title || prev.tel_title || '';
+                                                updates.eng_content = prev.eng_content || prev.tel_content || '';
+                                                updates.eng_summary = prev.eng_summary || prev.tel_summary || '';
+                                                // Clear Telugu fields so old translation gets removed on save
+                                                updates.tel_title = '';
+                                                updates.tel_content = '';
+                                                updates.tel_summary = '';
                                             }
                                             return { ...prev, ...updates };
                                         });
