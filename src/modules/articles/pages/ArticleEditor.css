@@ -900,3 +900,28 @@
     font-size: 1rem;
     font-weight: 600;
 }
+
+/* Quill Table Support */
+.ql-snow .ql-toolbar button.ql-table::after {
+    content: 'Table';
+    font-size: 11px;
+    font-weight: bold;
+    color: #444;
+}
+
+.ql-editor table.ql-table-custom {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-bottom: 1rem;
+}
+
+.ql-editor table.ql-table-custom td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    max-width: 250px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    vertical-align: top;
+}
+

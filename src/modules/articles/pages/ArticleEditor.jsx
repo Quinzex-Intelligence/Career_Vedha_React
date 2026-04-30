@@ -16,6 +16,42 @@ import './ArticleEditor.css';
 import '../../../styles/Dashboard.css';
 import ReactQuill from 'react-quill';
 
+// ─── Robust Quill Wrapper to prevent cursor jumping ──────────────────────────
+const QuillWrapper = ({ value, onChange, placeholder, modules, formats, className }) => {
+    const quillRef = useRef(null);
+    const lastEmittedValue = useRef(value);
+
+    useEffect(() => {
+        if (quillRef.current && value !== lastEmittedValue.current) {
+            const editor = quillRef.current.getEditor();
+            // Convert HTML to delta and set contents silently to avoid triggering onChange
+            const delta = editor.clipboard.convert(value || '');
+            editor.setContents(delta, 'silent');
+            lastEmittedValue.current = value;
+        }
+    }, [value]);
+
+    const handleChange = (content, delta, source) => {
+        if (source === 'user') {
+            lastEmittedValue.current = content;
+            onChange(content);
+        }
+    };
+
+    return (
+        <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            defaultValue={value || ''}
+            onChange={handleChange}
+            modules={modules}
+            formats={formats}
+            placeholder={placeholder}
+            className={className}
+        />
+    );
+};
+
 const ArticleEditor = () => {
     const { section: sectionParam, id } = useParams();
     const navigate = useNavigate();
@@ -552,20 +588,54 @@ const ArticleEditor = () => {
     // Enhanced Quill modules with full formatting
     // Enhanced Quill modules with full formatting (Memoized to prevent cursor jump/loss of focus)
     const modules = useMemo(() => ({
-        toolbar: [
-            [{ 'font': [] }],
-            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-            [{ 'size': ['small', false, 'large', 'huge'] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'script': 'sub' }, { 'script': 'super' }],
-            [{ 'color': [] }, { 'background': [] }],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-            [{ 'indent': '-1' }, { 'indent': '+1' }],
-            [{ 'align': [] }],
-            ['link', 'image', 'video'],
-            ['blockquote', 'code-block'],
-            ['clean']
-        ],
+        toolbar: {
+            container: [
+                [{ 'font': [] }],
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'script': 'sub' }, { 'script': 'super' }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'indent': '-1' }, { 'indent': '+1' }],
+                [{ 'align': [] }],
+                ['link', 'image', 'video'],
+                ['blockquote', 'code-block', 'table'],
+                ['clean']
+            ],
+            handlers: {
+                table: function() {
+                    const rowsStr = prompt('Enter number of rows:', '3');
+                    const colsStr = prompt('Enter number of columns:', '3');
+                    if (rowsStr && colsStr) {
+                        const rows = parseInt(rowsStr);
+                        const cols = parseInt(colsStr);
+                        if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
+                            try {
+                                this.quill.getModule('table').insertTable(rows, cols);
+                            } catch (error) {
+                                console.error('Table insertion failed. Table module might not be fully supported in this Quill version.', error);
+                                // Fallback: Inject HTML if the module fails
+                                let tableHTML = '<table class="ql-table-custom" style="width: 100%; border-collapse: collapse; table-layout: fixed;"><tbody>';
+                                for(let i=0; i<rows; i++){
+                                    tableHTML += '<tr>';
+                                    for(let j=0; j<cols; j++){
+                                        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px; word-wrap: break-word; white-space: pre-wrap; max-width: 250px;"><br></td>';
+                                    }
+                                    tableHTML += '</tr>';
+                                }
+                                tableHTML += '</tbody></table><p><br></p>';
+                                const range = this.quill.getSelection();
+                                if (range) {
+                                    this.quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        table: true
     }), []);
 
     const formats = useMemo(() => [
@@ -575,7 +645,7 @@ const ArticleEditor = () => {
         'color', 'background',
         'list', 'bullet', 'indent', 'align',
         'link', 'image', 'video',
-        'blockquote', 'code-block'
+        'blockquote', 'code-block', 'table'
     ], []);
 
     // Media Upload Handlers
@@ -1429,8 +1499,7 @@ const ArticleEditor = () => {
                         </p>
 
                         <div className="ae-quill-wrapper">
-                            <ReactQuill
-                                theme="snow"
+                            <QuillWrapper
                                 value={formData[contentField] || ''}
                                 onChange={(content) => handleEditorChange(contentField, content)}
                                 modules={modules}

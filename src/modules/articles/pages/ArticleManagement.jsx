@@ -66,7 +66,7 @@ const ArticleManagement = ({ activeLanguage }) => {
         fetchNextPage,
         refetch
     } = useInfiniteAdminArticles({
-        status: activeTab === 'FEATURED' ? 'PUBLISHED' : activeTab,
+        status: activeTab, // Let backend handle FEATURED vs PUBLISHED logic
         q: searchQuery.trim() || undefined,
         language: filterLanguage || undefined,
         ...timeFilters
@@ -198,7 +198,7 @@ const ArticleManagement = ({ activeLanguage }) => {
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            const allIds = filteredArticles.map(a => a.id);
+            const allIds = mappedArticles.map(a => a.id);
             setSelectedIds(allIds);
         } else {
             setSelectedIds([]);
@@ -424,58 +424,8 @@ const ArticleManagement = ({ activeLanguage }) => {
         });
     };
 
-    // Client-side filtering for SCHEDULED vs PUBLISHED vs FEATURED tabs
-    const filteredArticles = useMemo(() => {
-        const now = new Date();
-        const baseArticles = mappedArticles;
-        
-        if (activeTab === 'SCHEDULED') {
-            // Show explicit SCHEDULED status OR PUBLISHED articles with future dates
-            return baseArticles.filter(a => {
-                if (a.status === 'SCHEDULED') return true;
-                if (a.status === 'PUBLISHED' && a.published_at) {
-                    return new Date(a.published_at) > now;
-                }
-                return false;
-            });
-        } else if (activeTab === 'PUBLISHED') {
-            // Show PUBLISHED articles that have reached their publish time
-            return baseArticles.filter(a => {
-                if (a.status !== 'PUBLISHED') return false;
-                if (!a.published_at) return true; // No scheduled date = published immediately
-                return new Date(a.published_at) <= now;
-            });
-        } else if (activeTab === 'FEATURED') {
-            // Show only articles that have pinning/feature info
-            return baseArticles.filter(a => a.features && a.features.length > 0);
-        }
-        
-        // For other tabs (DRAFT, REVIEW, INACTIVE), return from base
-        return baseArticles.filter(a => a.status === activeTab);
-    }, [mappedArticles, activeTab]);
-
-    const statusCounts = useMemo(() => {
-        const now = new Date();
-        const baseArticles = mappedArticles;
-        return {
-            PUBLISHED: baseArticles.filter(a => {
-                if (a.status !== 'PUBLISHED') return false;
-                if (!a.published_at) return true;
-                return new Date(a.published_at) <= now;
-            }).length,
-            SCHEDULED: baseArticles.filter(a => {
-                if (a.status === 'SCHEDULED') return true;
-                if (a.status === 'PUBLISHED' && a.published_at) {
-                    return new Date(a.published_at) > now;
-                }
-                return false;
-            }).length,
-            DRAFT: baseArticles.filter(a => a.status === 'DRAFT').length,
-            REVIEW: baseArticles.filter(a => a.status === 'REVIEW').length,
-            INACTIVE: baseArticles.filter(a => a.status === 'INACTIVE').length,
-            FEATURED: baseArticles.filter(a => a.features && a.features.length > 0).length
-        };
-    }, [mappedArticles]);
+    // Removing client-side filtering and statusCounts as this is now handled powerfully on the backend.
+    const filteredArticles = mappedArticles;
 
     return (
         <div className="section-fade-in">
@@ -513,17 +463,6 @@ const ArticleManagement = ({ activeLanguage }) => {
                             {status === 'INACTIVE' && <i className="fas fa-eye-slash"></i>}
                             {status === 'FEATURED' && <i className="fas fa-thumbtack"></i>}
                             {status.charAt(0) + status.slice(1).toLowerCase()}
-                            {!['SCHEDULED', 'DRAFT', 'INACTIVE'].includes(status) && (
-                                <span style={{
-                                    background: 'rgba(0,0,0,0.06)',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.7em',
-                                    marginLeft: '4px'
-                                }}>
-                                    {statusCounts[status] || 0}
-                                </span>
-                            )}
                         </button>
                     ))}
                 </div>
