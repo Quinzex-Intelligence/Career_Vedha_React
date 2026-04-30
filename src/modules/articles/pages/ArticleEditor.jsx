@@ -603,7 +603,13 @@ const ArticleEditor = () => {
     };
 
     const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        let { name, value, type, checked } = e.target;
+
+        // 🔗 Auto-slugify: Replace spaces with hyphens and convert to lowercase in real-time
+        if (name === 'slug' && value) {
+            value = value.toLowerCase().replace(/\s+/g, '-');
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value

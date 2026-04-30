@@ -13,9 +13,8 @@ import VideoPlayerModal from '../components/ui/VideoPlayerModal';
 import '../styles/VideosPage.css';
 
 /* ── Small reusable section that fetches one category ── */
-const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters = {}, activeLanguage }) => {
+const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters = {} }) => {
     const [videos, setVideos] = useState([]);
-    const [displayVideos, setDisplayVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -42,20 +41,9 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters =
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [apiCategory, label, JSON.stringify(filters)]);
+    }, [apiCategory, label]);
 
-    useEffect(() => { fetchVideos(true); }, [fetchVideos]);
-
-    useEffect(() => {
-        // Filter videos by language in frontend
-        const langCode = activeLanguage === 'telugu' ? 'TE' : 'EN';
-        const filtered = videos.filter(v => {
-            // Default to Telugu if no language specified (majority content)
-            if (!v.language) return langCode === 'TE';
-            return v.language === langCode;
-        });
-        setDisplayVideos(filtered);
-    }, [videos, activeLanguage]);
+    useEffect(() => { fetchVideos(true); }, [fetchVideos, filters.category, filters.sub_category, filters.segment]);
 
     const getYoutubeId = (url) => {
         const m = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]{11})/);
@@ -77,19 +65,19 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters =
         );
     }
 
-    if (!loading && displayVideos.length === 0) return null;
+    if (videos.length === 0) return null;
 
     return (
         <section className="video-section">
             <div className="videos-section-header">
                 <h2>
                     {label}
-                    <span className="videos-count-badge">{displayVideos.length}</span>
+                    <span className="videos-count-badge">{videos.length}</span>
                 </h2>
             </div>
 
             <div className={`videos-grid ${layoutClass}`}>
-                {displayVideos.map((video) => {
+                {videos.map((video) => {
                     const videoId = getYoutubeId(video.url);
                     const thumbnail = videoId
                         ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
@@ -193,7 +181,6 @@ const VideosPage = () => {
                             layoutClass="long-layout"
                             onVideoClick={handleVideoClick}
                             filters={videoFilters}
-                            activeLanguage={activeLanguage}
                         />
                     )}
 
@@ -204,7 +191,6 @@ const VideosPage = () => {
                             layoutClass="shorts-layout"
                             onVideoClick={handleVideoClick}
                             filters={videoFilters}
-                            activeLanguage={activeLanguage}
                         />
                     )}
                 </div>

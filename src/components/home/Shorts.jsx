@@ -15,16 +15,8 @@ const Shorts = ({ activeLanguage }) => {
             setLoading(true);
             try {
                 const data = await youtubeService.getYoutubeUrls(youtubeService.CATEGORIES.SHORT);
-                
-                // Filter by language in frontend
-                const langCode = activeLanguage === 'telugu' ? 'TE' : 'EN';
-                const filtered = data.filter(v => {
-                    if (!v.language) return langCode === 'TE';
-                    return v.language === langCode;
-                });
-
                 // Return only 4-6 for the home page section
-                setShorts(filtered.slice(0, 6));
+                setShorts(data.slice(0, 6));
             } catch (error) {
                 console.error('Error loading shorts:', error);
             } finally {
@@ -33,7 +25,7 @@ const Shorts = ({ activeLanguage }) => {
         };
 
         fetchShorts();
-    }, [activeLanguage]);
+    }, []);
 
     const getYoutubeId = (url) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
