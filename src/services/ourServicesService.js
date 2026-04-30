@@ -6,8 +6,7 @@ const BASE = 'services'; // Translates to /api/spring/services/...
 // Dedicated axios instance for file uploads — NO interceptors
 const uploadClient = axios.create({
     baseURL: api.defaults.baseURL,
-    withCredentials: true,
-    timeout: 60000, // 60 seconds
+    timeout: 300000, // 5 minutes
 });
 
 export const ourServicesService = {
@@ -23,7 +22,7 @@ export const ourServicesService = {
     delete: async (id) => (await api.delete(`${BASE}/${id}`)).data,
 
     // Image Upload — using clean axios instance for better performance than fetch
-    uploadImage: async (file) => {
+    uploadImage: async (file, onProgress) => {
         const fd = new FormData();
         fd.append('file', file);
         const token = getAccessToken();
@@ -33,6 +32,13 @@ export const ourServicesService = {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 // DO NOT set Content-Type — browser auto-generates boundary
             },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                console.log(`Upload Progress: ${percentCompleted}% (${progressEvent.loaded} bytes of ${progressEvent.total})`);
+                if (onProgress) {
+                    onProgress(percentCompleted);
+                }
+            }
         });
         
         return response.data;

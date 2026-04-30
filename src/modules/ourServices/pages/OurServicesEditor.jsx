@@ -39,6 +39,8 @@ const OurServicesEditor = () => {
     const [saving, setSaving] = useState(false);
     const [imageMap, setImageMap] = useState({}); // Maps local Base64 URLs to backend keys
     const [uploadedImages, setUploadedImages] = useState([]); // Tracks images for gallery/deletion
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
 
 
     useEffect(() => {
@@ -110,10 +112,14 @@ const OurServicesEditor = () => {
                 }
                 
                 try {
+                    setIsUploading(true);
+                    setUploadProgress(0);
                     showSnackbar('Uploading image...', 'info');
                     
                     // Upload to get the real S3 URL immediately
-                    const uploadResponse = await ourServicesService.uploadImage(file);
+                    const uploadResponse = await ourServicesService.uploadImage(file, (progress) => {
+                        setUploadProgress(progress);
+                    });
                     const serverKey = uploadResponse.key; // The new backend returns { key, url }
                     
                     // Generate local blob url
@@ -145,6 +151,8 @@ const OurServicesEditor = () => {
                     const backendMsg = error.message || error.response?.data?.message || error.response?.data?.error;
                     showSnackbar(backendMsg ? `Upload failed: ${backendMsg}` : 'Image upload failed. Please check file size and type.', 'error');
                 } finally {
+                    setIsUploading(false);
+                    setUploadProgress(0);
                     // Clean up the DOM node after everything is done
                     if (document.body.contains(input)) {
                         document.body.removeChild(input);
@@ -362,6 +370,17 @@ const OurServicesEditor = () => {
 
                 <div className="am-form-group">
                     <label className="am-label">Service Content (Rich Text) * <span style={{fontSize: '12px', color: 'var(--slate-500)', fontWeight: 'normal', marginLeft: '10px'}}>(Max image size: 10MB)</span></label>
+                    {isUploading && (
+                        <div style={{ marginBottom: '15px', background: '#f1f5f9', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--slate-700)' }}>
+                                <span>Uploading Image...</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                                <div style={{ width: `${uploadProgress}%`, background: '#3b82f6', height: '100%', transition: 'width 0.2s ease' }}></div>
+                            </div>
+                        </div>
+                    )}
                     <div className="quill-wrapper" style={{ minHeight: '400px', background: 'white' }}>
                         <ReactQuill
                             ref={quillRef}
