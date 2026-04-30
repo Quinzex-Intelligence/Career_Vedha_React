@@ -17,6 +17,29 @@ import '../../../styles/Dashboard.css';
 import ReactQuill from 'react-quill';
 
 // ─── Robust Quill Wrapper with table support ─────────────────────────────────
+// Helper: temporarily disconnect Quill's MutationObserver so it doesn't strip table nodes
+const withObserverDisabled = (editor, fn) => {
+    const scroll = editor.scroll;
+    const editorRoot = editor.root;
+    // Disconnect Quill's internal MutationObserver
+    if (scroll && scroll.observer) {
+        scroll.observer.disconnect();
+    }
+
+    fn();
+
+    // Reconnect the observer so Quill can track future user edits
+    if (scroll && scroll.observer) {
+        scroll.observer.observe(editorRoot, {
+            attributes: true,
+            characterData: true,
+            characterDataOldValue: true,
+            childList: true,
+            subtree: true,
+        });
+    }
+};
+
 const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, formats, className }, ref) => {
     const quillRef = useRef(null);
     const lastEmittedValue = useRef(value);
@@ -32,21 +55,23 @@ const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, 
             const editorRoot = editor.root;
             const range = editor.getSelection();
 
-            const temp = document.createElement('div');
-            temp.innerHTML = tableHTML;
+            withObserverDisabled(editor, () => {
+                const temp = document.createElement('div');
+                temp.innerHTML = tableHTML;
 
-            if (range) {
-                const [blot] = editor.getLine(range.index);
-                if (blot && blot.domNode && blot.domNode.parentNode === editorRoot) {
-                    while (temp.firstChild) {
-                        editorRoot.insertBefore(temp.firstChild, blot.domNode);
+                if (range) {
+                    const [blot] = editor.getLine(range.index);
+                    if (blot && blot.domNode && blot.domNode.parentNode === editorRoot) {
+                        while (temp.firstChild) {
+                            editorRoot.insertBefore(temp.firstChild, blot.domNode);
+                        }
+                    } else {
+                        while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
                     }
                 } else {
                     while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
                 }
-            } else {
-                while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
-            }
+            });
 
             // Read back the actual DOM innerHTML (preserves tables) and sync state
             const newHTML = editorRoot.innerHTML;
@@ -58,9 +83,11 @@ const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, 
     useEffect(() => {
         if (quillRef.current && value !== lastEmittedValue.current) {
             const editor = quillRef.current.getEditor();
-            // If content contains tables, set innerHTML directly to preserve them
+            // If content contains tables, set innerHTML directly with observer disabled
             if (value && value.includes('<table')) {
-                editor.root.innerHTML = value;
+                withObserverDisabled(editor, () => {
+                    editor.root.innerHTML = value;
+                });
             } else {
                 const delta = editor.clipboard.convert(value || '');
                 editor.setContents(delta, 'silent');
