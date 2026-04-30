@@ -293,7 +293,7 @@ export const newsService = {
                 }
             }
 
-            const response = await djangoApi.patch(`${API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_CREATE}${articleId}/`, payload, { headers });
+            const response = await djangoApi.put(`${API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_CREATE}${articleId}/`, payload, { headers });
             return response.data;
         } catch (error) {
             console.error('Error updating article:', error);
