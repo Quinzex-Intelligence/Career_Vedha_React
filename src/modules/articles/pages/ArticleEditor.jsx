@@ -16,30 +16,50 @@ import './ArticleEditor.css';
 import '../../../styles/Dashboard.css';
 import ReactQuill from 'react-quill';
 
-// ─── Robust Quill Wrapper with table support ─────────────────────────────────
-// Helper: temporarily disconnect Quill's MutationObserver so it doesn't strip table nodes
-const withObserverDisabled = (editor, fn) => {
-    const scroll = editor.scroll;
-    const editorRoot = editor.root;
-    // Disconnect Quill's internal MutationObserver
-    if (scroll && scroll.observer) {
-        scroll.observer.disconnect();
+// ─── Custom Embed Blot for Tables ────────────────────────────────────────────
+// By making the table an "Embed", Quill treats the entire table as a single, opaque character.
+// This prevents Quill from trying to parse the nested HTML or intercepting Enter keys inside cells.
+const Quill = ReactQuill.Quill;
+if (Quill) {
+    const BlockEmbed = Quill.import('blots/block/embed');
+
+    class CustomTableBlot extends BlockEmbed {
+        static create(value) {
+            const node = super.create();
+            node.setAttribute('contenteditable', 'false');
+            node.innerHTML = value;
+
+            // Make cells editable but stop event propagation to hide typing from Quill
+            setTimeout(() => {
+                const cells = node.querySelectorAll('td, th');
+                cells.forEach(cell => {
+                    cell.setAttribute('contenteditable', 'true');
+                    // Prevent Quill from hijacking Enter, Backspace, or Arrow keys inside the table
+                    cell.addEventListener('keydown', (e) => {
+                        e.stopPropagation();
+                    });
+                    cell.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                    });
+                });
+            }, 0);
+
+            return node;
+        }
+
+        static value(node) {
+            return node.innerHTML;
+        }
     }
 
-    fn();
+    CustomTableBlot.blotName = 'custom-table';
+    CustomTableBlot.tagName = 'div';
+    CustomTableBlot.className = 'custom-table-wrapper';
 
-    // Reconnect the observer so Quill can track future user edits
-    if (scroll && scroll.observer) {
-        scroll.observer.observe(editorRoot, {
-            attributes: true,
-            characterData: true,
-            characterDataOldValue: true,
-            childList: true,
-            subtree: true,
-        });
-    }
-};
+    Quill.register(CustomTableBlot, true);
+}
 
+// ─── Robust Quill Wrapper ────────────────────────────────────────────────────
 const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, formats, className }, ref) => {
     const quillRef = useRef(null);
     const lastEmittedValue = useRef(value);
@@ -48,57 +68,30 @@ const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, 
         getEditor: () => {
             return quillRef.current ? quillRef.current.getEditor() : null;
         },
-        // Insert a table directly into the DOM, bypassing Quill's delta model
         insertTableDirect: (tableHTML) => {
             if (!quillRef.current) return;
             const editor = quillRef.current.getEditor();
-            const editorRoot = editor.root;
-            const range = editor.getSelection();
-
-            withObserverDisabled(editor, () => {
-                const temp = document.createElement('div');
-                temp.innerHTML = tableHTML;
-
-                if (range) {
-                    const [blot] = editor.getLine(range.index);
-                    if (blot && blot.domNode && blot.domNode.parentNode === editorRoot) {
-                        while (temp.firstChild) {
-                            editorRoot.insertBefore(temp.firstChild, blot.domNode);
-                        }
-                    } else {
-                        while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
-                    }
-                } else {
-                    while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
-                }
-            });
-
-            // Read back the actual DOM innerHTML (preserves tables) and sync state
-            const newHTML = editorRoot.innerHTML;
-            lastEmittedValue.current = newHTML;
-            onChange(newHTML);
+            const range = editor.getSelection(true) || { index: editor.getLength() };
+            // Insert the table as a custom embed block
+            editor.insertEmbed(range.index, 'custom-table', tableHTML, 'user');
+            // Move cursor to the next line so the user can continue typing below the table
+            editor.setSelection(range.index + 1, 'user');
         }
     }));
 
     useEffect(() => {
         if (quillRef.current && value !== lastEmittedValue.current) {
             const editor = quillRef.current.getEditor();
-            // If content contains tables, set innerHTML directly with observer disabled
-            if (value && value.includes('<table')) {
-                withObserverDisabled(editor, () => {
-                    editor.root.innerHTML = value;
-                });
-            } else {
-                const delta = editor.clipboard.convert(value || '');
-                editor.setContents(delta, 'silent');
-            }
+            // Since we use a proper Blot now, we can use clipboard.convert safely!
+            const delta = editor.clipboard.convert(value || '');
+            editor.setContents(delta, 'silent');
             lastEmittedValue.current = value;
         }
     }, [value]);
 
     const handleChange = (content, delta, source) => {
         if (source === 'user') {
-            // Read innerHTML directly to preserve any table markup in the DOM
+            // Read innerHTML directly to preserve the exact DOM state of our editable cells
             const editor = quillRef.current ? quillRef.current.getEditor() : null;
             const actualHTML = editor ? editor.root.innerHTML : content;
             lastEmittedValue.current = actualHTML;
