@@ -4,11 +4,13 @@ import { Mail, ShieldCheck, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom';
 import api, { setUserContext, getUserContext } from '../../../services/api';
 import { useSnackbar } from '../../../context/SnackbarContext';
+import ReCAPTCHA from "react-google-recaptcha";
 
 const Module_Login = () => {
     const [step, setStep] = useState(1); // 1: Email, 2: OTP
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState(new Array(6).fill(""));
+    const [captchaToken, setCaptchaToken] = useState(null);
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
     const { showSnackbar } = useSnackbar();
@@ -76,10 +78,17 @@ const Module_Login = () => {
             return;
         }
 
+        if (!captchaToken) {
+            showSnackbar('Please complete the captcha verification', 'warning');
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await api.post('/login', {
                 email,
-                otp: otpString
+                otp: otpString,
+                captchaToken
             });
 
             const { accessToken, role } = response.data;
@@ -281,6 +290,13 @@ const Module_Login = () => {
                                     Resend Verification Code
                                 </button>
                             )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <ReCAPTCHA
+                                sitekey="6Lc169EsAAAAAFHLYFrpzcO71cZPTcikPxWMtKzL"
+                                onChange={(token) => setCaptchaToken(token)}
+                            />
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>

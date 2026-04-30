@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import api, { setUserContext, getUserContext } from '../../../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSnackbar } from '../../../context/SnackbarContext';
+import ReCAPTCHA from "react-google-recaptcha";
 // Styles are now in index.css
 
 const AdminLogin = () => {
     const [step, setStep] = useState(1); // 1: Email, 2: OTP
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState(new Array(6).fill(""));
+    const [captchaToken, setCaptchaToken] = useState(null);
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
     const { showSnackbar } = useSnackbar();
@@ -75,10 +77,17 @@ const AdminLogin = () => {
             return;
         }
 
+        if (!captchaToken) {
+            showSnackbar('Please complete the captcha verification', 'warning');
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await api.post('/login', {
                 email,
-                otp: otpString
+                otp: otpString,
+                captchaToken
             });
 
             const { accessToken, role } = response.data;
@@ -226,6 +235,13 @@ const AdminLogin = () => {
                                             Resend Verification Code
                                         </button>
                                     )}
+                                </div>
+
+                                <div className="captcha-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '1rem'}}>
+                                    <ReCAPTCHA
+                                        sitekey="6Lc169EsAAAAAFHLYFrpzcO71cZPTcikPxWMtKzL"
+                                        onChange={(token) => setCaptchaToken(token)}
+                                    />
                                 </div>
 
                                 <div className="action-buttons">
