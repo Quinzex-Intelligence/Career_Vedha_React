@@ -113,7 +113,8 @@ const OurServicesEditor = () => {
                     showSnackbar('Uploading image...', 'info');
                     
                     // Upload to get the real S3 URL immediately
-                    const url = await ourServicesService.uploadImage(file);
+                    const uploadResponse = await ourServicesService.uploadImage(file);
+                    const serverKey = uploadResponse.key; // The new backend returns { key, url }
                     
                     // Generate local blob url
                     const localUrl = URL.createObjectURL(file);
@@ -128,12 +129,12 @@ const OurServicesEditor = () => {
                     quill.insertEmbed(range.index, 'image', localUrl);
                     
                     // Map local URL to real backend URL so we can swap it out upon saving
-                    setImageMap(prev => ({ ...prev, [localUrl]: url }));
+                    setImageMap(prev => ({ ...prev, [localUrl]: serverKey }));
                     
                     // Add to uploaded images gallery
                     setUploadedImages(prev => {
-                        if (!prev.find(img => img.serverKey === url)) {
-                            return [...prev, { previewUrl: localUrl, serverKey: url }];
+                        if (!prev.find(img => img.serverKey === serverKey)) {
+                            return [...prev, { previewUrl: localUrl, serverKey: serverKey }];
                         }
                         return prev;
                     });
