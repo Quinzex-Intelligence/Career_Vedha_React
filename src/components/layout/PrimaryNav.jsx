@@ -123,13 +123,19 @@ const PrimaryNav = ({ isOpen }) => {
                 const [treeResults, levelResults, sectionsData] = await Promise.all([
                     Promise.all(
                         TREE_SECTIONS.map(async (slug) => {
-                            const data = await newsService.getTaxonomyTree(slug, activeLanguage);
+                            let data = await newsService.getTaxonomyTree(slug, activeLanguage);
+                            if ((!Array.isArray(data) || data.length === 0) && activeLanguage === 'english') {
+                                data = await newsService.getTaxonomyTree(slug, 'telugu');
+                            }
                             return { slug, data: Array.isArray(data) ? data : [] };
                         })
                     ),
                     Promise.all(
                         LEVEL_SECTIONS.map(async (slug) => {
-                            const data = await newsService.getTaxonomyLevels(slug, activeLanguage);
+                            let data = await newsService.getTaxonomyLevels(slug, activeLanguage);
+                            if ((!Array.isArray(data) || data.length === 0) && activeLanguage === 'english') {
+                                data = await newsService.getTaxonomyLevels(slug, 'telugu');
+                            }
                             return { slug, data: Array.isArray(data) ? data : [] };
                         })
                     ),
