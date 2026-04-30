@@ -25,6 +25,38 @@ const ArticleManagement = ({ activeLanguage }) => {
     const [activeTab, setActiveTab] = useState('PUBLISHED');
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDate, setFilterDate] = useState('');
+    const [filterLanguage, setFilterLanguage] = useState('');
+    
+    // Time filter states
+    const [timeFilterMode, setTimeFilterMode] = useState('ALL'); 
+    const [filterYear, setFilterYear] = useState('');
+    const [startYear, setStartYear] = useState('');
+    const [endYear, setEndYear] = useState('');
+    const [startMonth, setStartMonth] = useState('');
+    const [endMonth, setEndMonth] = useState('');
+
+    const timeFilters = useMemo(() => {
+        let start_date = undefined;
+        let end_date = undefined;
+        let exact_date = undefined;
+
+        if (timeFilterMode === 'DATE' && filterDate) {
+            exact_date = filterDate;
+        } else if (timeFilterMode === 'YEAR' && filterYear) {
+            start_date = `${filterYear}-01-01`;
+            end_date = `${filterYear}-12-31`;
+        } else if (timeFilterMode === 'YEAR_RANGE' && startYear && endYear) {
+            start_date = `${startYear}-01-01`;
+            end_date = `${endYear}-12-31`;
+        } else if (timeFilterMode === 'MONTH_RANGE' && startMonth && endMonth) {
+            start_date = `${startMonth}-01`;
+            const [y, m] = endMonth.split('-');
+            const lastDay = new Date(y, parseInt(m), 0).getDate();
+            end_date = `${endMonth}-${lastDay}`;
+        }
+
+        return { start_date, end_date, date: exact_date };
+    }, [timeFilterMode, filterDate, filterYear, startYear, endYear, startMonth, endMonth]);
 
     const {
         data: infiniteData,
@@ -36,7 +68,8 @@ const ArticleManagement = ({ activeLanguage }) => {
     } = useInfiniteAdminArticles({
         status: activeTab === 'FEATURED' ? 'PUBLISHED' : activeTab,
         q: searchQuery.trim() || undefined,
-        date: filterDate || undefined,
+        language: filterLanguage || undefined,
+        ...timeFilters
     });
 
     // Flatten all cursor pages into a single list
@@ -524,10 +557,107 @@ const ArticleManagement = ({ activeLanguage }) => {
                             )}
                         </div>
 
-                        <LuxuryCalendar 
-                            selectedDate={filterDate} 
-                            onDateSelect={setFilterDate} 
-                        />
+                        <select 
+                            value={filterLanguage} 
+                            onChange={(e) => setFilterLanguage(e.target.value)}
+                            style={{
+                                padding: '0 1rem',
+                                height: '100%',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                background: '#f8fafc',
+                                outline: 'none',
+                                cursor: 'pointer',
+                                color: '#475569',
+                                fontWeight: '500',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            <option value="">All Languages</option>
+                            <option value="en">English</option>
+                            <option value="te">Telugu</option>
+                        </select>
+
+                        {/* Time Filter Controls */}
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', height: '100%' }}>
+                            <select 
+                                value={timeFilterMode}
+                                onChange={(e) => setTimeFilterMode(e.target.value)}
+                                style={{
+                                    padding: '0 1rem',
+                                    height: '100%',
+                                    borderRadius: '8px',
+                                    border: '1px solid #cbd5e1',
+                                    background: '#f8fafc',
+                                    outline: 'none',
+                                    cursor: 'pointer',
+                                    color: '#475569',
+                                    fontWeight: '500',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                <option value="ALL">All Time</option>
+                                <option value="DATE">Specific Date</option>
+                                <option value="YEAR">By Year</option>
+                                <option value="YEAR_RANGE">Between Years</option>
+                                <option value="MONTH_RANGE">Between Months</option>
+                            </select>
+
+                            {timeFilterMode === 'DATE' && (
+                                <LuxuryCalendar 
+                                    selectedDate={filterDate} 
+                                    onDateSelect={setFilterDate} 
+                                />
+                            )}
+
+                            {timeFilterMode === 'YEAR' && (
+                                <input 
+                                    type="number" 
+                                    placeholder="YYYY" 
+                                    value={filterYear}
+                                    onChange={(e) => setFilterYear(e.target.value)}
+                                    style={{ width: '80px', padding: '0 0.5rem', height: '100%', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                                />
+                            )}
+
+                            {timeFilterMode === 'YEAR_RANGE' && (
+                                <>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Start YYYY" 
+                                        value={startYear}
+                                        onChange={(e) => setStartYear(e.target.value)}
+                                        style={{ width: '90px', padding: '0 0.5rem', height: '100%', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                                    />
+                                    <span style={{ color: '#64748b' }}>to</span>
+                                    <input 
+                                        type="number" 
+                                        placeholder="End YYYY" 
+                                        value={endYear}
+                                        onChange={(e) => setEndYear(e.target.value)}
+                                        style={{ width: '90px', padding: '0 0.5rem', height: '100%', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                                    />
+                                </>
+                            )}
+
+                            {timeFilterMode === 'MONTH_RANGE' && (
+                                <>
+                                    <input 
+                                        type="month" 
+                                        value={startMonth}
+                                        onChange={(e) => setStartMonth(e.target.value)}
+                                        style={{ padding: '0 0.5rem', height: '100%', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', color: '#475569' }}
+                                    />
+                                    <span style={{ color: '#64748b' }}>to</span>
+                                    <input 
+                                        type="month" 
+                                        value={endMonth}
+                                        onChange={(e) => setEndMonth(e.target.value)}
+                                        style={{ padding: '0 0.5rem', height: '100%', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', color: '#475569' }}
+                                    />
+                                </>
+                            )}
+                        </div>
 
                         {selectedIds.length > 0 && canDelete && (
                             <button
