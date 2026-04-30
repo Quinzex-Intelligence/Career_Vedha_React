@@ -16,87 +16,66 @@ import './ArticleEditor.css';
 import '../../../styles/Dashboard.css';
 import ReactQuill from 'react-quill';
 
-// ─── Register custom Table blots so Quill doesn't strip <table> HTML ─────────
-const Quill = ReactQuill.Quill;
-if (Quill) {
-    const Block = Quill.import('blots/block');
-    const Container = Quill.import('blots/container');
-
-    class TableCellBlot extends Block {
-        static create(value) {
-            const node = super.create();
-            node.setAttribute('style', 'border: 1px solid #ccc; padding: 8px; word-wrap: break-word; white-space: pre-wrap; max-width: 250px; vertical-align: top;');
-            return node;
-        }
-    }
-    TableCellBlot.blotName = 'table-cell';
-    TableCellBlot.tagName = 'TD';
-
-    class TableRowBlot extends Container {
-        static create(value) {
-            return super.create();
-        }
-    }
-    TableRowBlot.blotName = 'table-row';
-    TableRowBlot.tagName = 'TR';
-    TableRowBlot.allowedChildren = [TableCellBlot];
-
-    class TableBodyBlot extends Container {
-        static create(value) {
-            return super.create();
-        }
-    }
-    TableBodyBlot.blotName = 'table-body';
-    TableBodyBlot.tagName = 'TBODY';
-    TableBodyBlot.allowedChildren = [TableRowBlot];
-
-    class TableContainerBlot extends Container {
-        static create(value) {
-            const node = super.create();
-            node.setAttribute('style', 'width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 1rem;');
-            node.setAttribute('class', 'ql-table-custom');
-            return node;
-        }
-    }
-    TableContainerBlot.blotName = 'table-container';
-    TableContainerBlot.tagName = 'TABLE';
-    TableContainerBlot.allowedChildren = [TableBodyBlot];
-
-    TableRowBlot.requiredContainer = TableBodyBlot;
-    TableCellBlot.requiredContainer = TableRowBlot;
-    TableBodyBlot.requiredContainer = TableContainerBlot;
-
-    Quill.register(TableCellBlot, true);
-    Quill.register(TableRowBlot, true);
-    Quill.register(TableBodyBlot, true);
-    Quill.register(TableContainerBlot, true);
-}
-
-// ─── Robust Quill Wrapper to prevent cursor jumping ──────────────────────────
+// ─── Robust Quill Wrapper with table support ─────────────────────────────────
 const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, formats, className }, ref) => {
     const quillRef = useRef(null);
+    const lastEmittedValue = useRef(value);
 
     React.useImperativeHandle(ref, () => ({
         getEditor: () => {
             return quillRef.current ? quillRef.current.getEditor() : null;
+        },
+        // Insert a table directly into the DOM, bypassing Quill's delta model
+        insertTableDirect: (tableHTML) => {
+            if (!quillRef.current) return;
+            const editor = quillRef.current.getEditor();
+            const editorRoot = editor.root;
+            const range = editor.getSelection();
+
+            const temp = document.createElement('div');
+            temp.innerHTML = tableHTML;
+
+            if (range) {
+                const [blot] = editor.getLine(range.index);
+                if (blot && blot.domNode && blot.domNode.parentNode === editorRoot) {
+                    while (temp.firstChild) {
+                        editorRoot.insertBefore(temp.firstChild, blot.domNode);
+                    }
+                } else {
+                    while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
+                }
+            } else {
+                while (temp.firstChild) editorRoot.appendChild(temp.firstChild);
+            }
+
+            // Read back the actual DOM innerHTML (preserves tables) and sync state
+            const newHTML = editorRoot.innerHTML;
+            lastEmittedValue.current = newHTML;
+            onChange(newHTML);
         }
     }));
-    const lastEmittedValue = useRef(value);
 
     useEffect(() => {
         if (quillRef.current && value !== lastEmittedValue.current) {
             const editor = quillRef.current.getEditor();
-            // Convert HTML to delta and set contents silently to avoid triggering onChange
-            const delta = editor.clipboard.convert(value || '');
-            editor.setContents(delta, 'silent');
+            // If content contains tables, set innerHTML directly to preserve them
+            if (value && value.includes('<table')) {
+                editor.root.innerHTML = value;
+            } else {
+                const delta = editor.clipboard.convert(value || '');
+                editor.setContents(delta, 'silent');
+            }
             lastEmittedValue.current = value;
         }
     }, [value]);
 
     const handleChange = (content, delta, source) => {
         if (source === 'user') {
-            lastEmittedValue.current = content;
-            onChange(content);
+            // Read innerHTML directly to preserve any table markup in the DOM
+            const editor = quillRef.current ? quillRef.current.getEditor() : null;
+            const actualHTML = editor ? editor.root.innerHTML : content;
+            lastEmittedValue.current = actualHTML;
+            onChange(actualHTML);
         }
     };
 
@@ -670,8 +649,6 @@ const ArticleEditor = () => {
 
     const insertTableHTML = () => {
         if (!quillEditorRef.current) return;
-        const editor = quillEditorRef.current.getEditor();
-        if (!editor) return;
 
         const rowsStr = prompt('Enter number of rows:', '3');
         const colsStr = prompt('Enter number of columns:', '3');
@@ -679,47 +656,17 @@ const ArticleEditor = () => {
             const rows = parseInt(rowsStr);
             const cols = parseInt(colsStr);
             if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
-                // Build table HTML
                 let tableHTML = '<table class="ql-table-custom" style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 1rem;"><tbody>';
                 for (let i = 0; i < rows; i++) {
                     tableHTML += '<tr>';
                     for (let j = 0; j < cols; j++) {
-                        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px; min-height: 30px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; max-width: 250px; vertical-align: top;" contenteditable="true"><br></td>';
+                        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px; min-height: 30px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; max-width: 250px; vertical-align: top;"><br></td>';
                     }
                     tableHTML += '</tr>';
                 }
                 tableHTML += '</tbody></table><p><br></p>';
 
-                // Direct DOM insertion — bypass Quill's Delta parser
-                const editorRoot = editor.root;
-                const range = editor.getSelection();
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = tableHTML;
-
-                if (range) {
-                    // Find the block element at cursor position
-                    const [blot] = editor.getLine(range.index);
-                    if (blot && blot.domNode) {
-                        const refNode = blot.domNode;
-                        // Insert each child (table + trailing <p>) before the current line
-                        while (tempDiv.firstChild) {
-                            editorRoot.insertBefore(tempDiv.firstChild, refNode);
-                        }
-                    } else {
-                        // Append at end
-                        while (tempDiv.firstChild) {
-                            editorRoot.appendChild(tempDiv.firstChild);
-                        }
-                    }
-                } else {
-                    // No selection, append at end
-                    while (tempDiv.firstChild) {
-                        editorRoot.appendChild(tempDiv.firstChild);
-                    }
-                }
-
-                // Tell Quill its contents changed
-                editor.update('user');
+                quillEditorRef.current.insertTableDirect(tableHTML);
             }
         }
     };
