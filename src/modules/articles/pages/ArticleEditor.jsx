@@ -6,6 +6,7 @@ import LuxuryDateTimePicker from '../../../components/ui/LuxuryDateTimePicker';
 import MediaLibraryModal from '../../media/components/MediaLibraryModal';
 import api, { getUserContext, subscribeToAuthChanges, logout } from '../../../services/api';
 import { newsService } from '../../../services';
+import mediaService from '../../../services/mediaService';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import API_CONFIG from '../../../config/api.config';
 import CMSLayout from '../../../components/layout/CMSLayout';
@@ -794,6 +795,57 @@ const ArticleEditor = () => {
     };
 
 
+    // ─── Pre-upload helper ────────────────────────────────────────────────────
+    // For PUBLISHER+ roles: uploads raw files to /media/upload/ BEFORE the
+    // article save request. This keeps the article payload lightweight, preventing
+    // Nginx/S3 timeouts that block publish & schedule.
+    // For CONTRIBUTOR/EDITOR: falls back to embedding raw files in the article
+    // payload (media/upload requires PUBLISHER+).
+    const preUploadFiles = async ({ bannerFile, mainFile, section }) => {
+        let resolvedBannerMediaId = bannerMediaId;  // keep existing library ID if set
+        let resolvedMainMediaId   = mainMediaId;
+        let fallbackBannerFile    = null;  // raw file fallback for lower roles
+        let fallbackMainFile      = null;
+
+        const canPreUpload = ['SUPER_ADMIN', 'ADMIN', 'PUBLISHER'].includes(userRole);
+
+        if (bannerFile) {
+            if (canPreUpload) {
+                showSnackbar('Uploading banner image…', 'info');
+                const fd = new FormData();
+                fd.append('file', bannerFile);
+                fd.append('purpose', 'article');
+                fd.append('section', section || '');
+                const result = await mediaService.upload(fd);
+                resolvedBannerMediaId = result.media_id;
+                setBannerMediaId(result.media_id);
+                setBannerFile(null);
+            } else {
+                // CONTRIBUTOR/EDITOR: send raw file directly in article payload
+                fallbackBannerFile = bannerFile;
+            }
+        }
+
+        if (mainFile) {
+            if (canPreUpload) {
+                showSnackbar('Uploading main image…', 'info');
+                const fd = new FormData();
+                fd.append('file', mainFile);
+                fd.append('purpose', 'article');
+                fd.append('section', section || '');
+                const result = await mediaService.upload(fd);
+                resolvedMainMediaId = result.media_id;
+                if (canPreUpload) setBannerMediaId(resolvedBannerMediaId); // keep in sync
+                setMainMediaId(result.media_id);
+                setMainFile(null);
+            } else {
+                fallbackMainFile = mainFile;
+            }
+        }
+
+        return { resolvedBannerMediaId, resolvedMainMediaId, fallbackBannerFile, fallbackMainFile };
+    };
+
     const handleDirectPublish = async (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         if (isSaving || publishArticleMutation.isPending || createArticleMutation.isPending) return;
@@ -802,6 +854,15 @@ const ArticleEditor = () => {
         setIsSaving(true);
         let hasError = false;
         try {
+            // ── Step 1: Pre-upload raw image files to /media/upload/ first ──────
+            // This prevents S3 upload latency from blocking the article save+publish
+            // transaction and triggering Nginx timeouts.
+            const { resolvedBannerMediaId, resolvedMainMediaId, fallbackBannerFile, fallbackMainFile } = await preUploadFiles({
+                bannerFile,
+                mainFile,
+                section: formData.section
+            });
+
             const formDataToSubmit = new FormData();
 
             // Required fields
@@ -838,13 +899,13 @@ const ArticleEditor = () => {
             formDataToSubmit.append('tags', JSON.stringify(tagsArray));
             formDataToSubmit.append('keywords', JSON.stringify(keywordsArray));
 
-            // Media
-            if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
-            if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            // Media — PUBLISHER+ uses pre-uploaded media IDs; lower roles embed raw files
             if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
             if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
-            if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
-            if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
+            if (resolvedBannerMediaId) formDataToSubmit.append('banner_media_id', resolvedBannerMediaId);
+            if (resolvedMainMediaId) formDataToSubmit.append('main_media_id', resolvedMainMediaId);
+            if (fallbackBannerFile) formDataToSubmit.append('banner_file', fallbackBannerFile);
+            if (fallbackMainFile) formDataToSubmit.append('main_file', fallbackMainFile);
 
             // SEO and Metadata
             formDataToSubmit.append('meta_title', formData.meta_title || '');
@@ -929,6 +990,13 @@ const ArticleEditor = () => {
 
         setIsSaving(true);
         try {
+            // ── Step 1: Pre-upload raw image files to /media/upload/ first ──────
+            const { resolvedBannerMediaId, resolvedMainMediaId, fallbackBannerFile, fallbackMainFile } = await preUploadFiles({
+                bannerFile,
+                mainFile,
+                section: formData.section
+            });
+
             const formDataToSubmit = new FormData();
 
             // Required fields
@@ -965,13 +1033,13 @@ const ArticleEditor = () => {
             formDataToSubmit.append('tags', JSON.stringify(tagsArray));
             formDataToSubmit.append('keywords', JSON.stringify(keywordsArray));
 
-            // Media
-            if (bannerFile) formDataToSubmit.append('banner_file', bannerFile);
-            if (mainFile) formDataToSubmit.append('main_file', mainFile);
+            // Media — PUBLISHER+ uses pre-uploaded media IDs; lower roles embed raw files
             if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
             if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
-            if (bannerMediaId) formDataToSubmit.append('banner_media_id', bannerMediaId);
-            if (mainMediaId) formDataToSubmit.append('main_media_id', mainMediaId);
+            if (resolvedBannerMediaId) formDataToSubmit.append('banner_media_id', resolvedBannerMediaId);
+            if (resolvedMainMediaId) formDataToSubmit.append('main_media_id', resolvedMainMediaId);
+            if (fallbackBannerFile) formDataToSubmit.append('banner_file', fallbackBannerFile);
+            if (fallbackMainFile) formDataToSubmit.append('main_file', fallbackMainFile);
 
             // SEO and Metadata
             formDataToSubmit.append('meta_title', formData.meta_title || '');
