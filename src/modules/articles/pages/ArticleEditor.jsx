@@ -679,18 +679,47 @@ const ArticleEditor = () => {
             const rows = parseInt(rowsStr);
             const cols = parseInt(colsStr);
             if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
-                let tableHTML = '<table class="ql-table-custom" style="width: 100%; border-collapse: collapse; table-layout: fixed;"><tbody>';
-                for(let i=0; i<rows; i++){
+                // Build table HTML
+                let tableHTML = '<table class="ql-table-custom" style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 1rem;"><tbody>';
+                for (let i = 0; i < rows; i++) {
                     tableHTML += '<tr>';
-                    for(let j=0; j<cols; j++){
-                        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px; word-wrap: break-word; white-space: pre-wrap; max-width: 250px;"><br></td>';
+                    for (let j = 0; j < cols; j++) {
+                        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px; min-height: 30px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; max-width: 250px; vertical-align: top;" contenteditable="true"><br></td>';
                     }
                     tableHTML += '</tr>';
                 }
                 tableHTML += '</tbody></table><p><br></p>';
-                
-                const range = editor.getSelection(true) || { index: editor.getLength() };
-                editor.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
+
+                // Direct DOM insertion — bypass Quill's Delta parser
+                const editorRoot = editor.root;
+                const range = editor.getSelection();
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = tableHTML;
+
+                if (range) {
+                    // Find the block element at cursor position
+                    const [blot] = editor.getLine(range.index);
+                    if (blot && blot.domNode) {
+                        const refNode = blot.domNode;
+                        // Insert each child (table + trailing <p>) before the current line
+                        while (tempDiv.firstChild) {
+                            editorRoot.insertBefore(tempDiv.firstChild, refNode);
+                        }
+                    } else {
+                        // Append at end
+                        while (tempDiv.firstChild) {
+                            editorRoot.appendChild(tempDiv.firstChild);
+                        }
+                    }
+                } else {
+                    // No selection, append at end
+                    while (tempDiv.firstChild) {
+                        editorRoot.appendChild(tempDiv.firstChild);
+                    }
+                }
+
+                // Tell Quill its contents changed
+                editor.update('user');
             }
         }
     };
