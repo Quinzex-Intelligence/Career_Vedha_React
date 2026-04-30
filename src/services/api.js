@@ -18,7 +18,7 @@ let failedQueue = [];
 const api = axios.create({
     baseURL: API_BASE.endsWith('/') ? API_BASE : `${API_BASE}/`,
     withCredentials: true,
-    timeout: 30000, // Increased default to 30s
+    timeout: 120000, // Increased to 2 minutes for slow S3 uploads
 });
 
 export const setUserContext = (token, role, email, firstName = null, lastName = null, status = null, id = null) => {

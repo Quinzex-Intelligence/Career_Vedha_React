@@ -127,8 +127,8 @@ const API_CONFIG = {
         DELETE: 'media/', // + <id>/
     },
 
-    // Request timeout in milliseconds (30 seconds for complex Django queries)
-    TIMEOUT: 30000,
+    // Request timeout in milliseconds (120 seconds for slow uploads)
+    TIMEOUT: 120000,
 
     // Headers
     HEADERS: {
