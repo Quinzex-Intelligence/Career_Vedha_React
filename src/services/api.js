@@ -14,7 +14,7 @@ let _userStatus = null;
 
 export const restoreAuthFromStorage = () => {
     try {
-        const stored = sessionStorage.getItem('cv_admin_auth');
+        const stored = localStorage.getItem('cv_admin_auth');
         if (stored) {
             const data = JSON.parse(stored);
             _accessToken = data.token;
@@ -53,13 +53,13 @@ export const setUserContext = (token, role, email, firstName = null, lastName = 
 
     if (token) {
         try {
-            sessionStorage.setItem('cv_admin_auth', JSON.stringify({
+            localStorage.setItem('cv_admin_auth', JSON.stringify({
                 token, role, email, firstName, lastName, status, id
             }));
         } catch (e) {}
     } else {
         try {
-            sessionStorage.removeItem('cv_admin_auth');
+            localStorage.removeItem('cv_admin_auth');
         } catch (e) {}
     }
 
