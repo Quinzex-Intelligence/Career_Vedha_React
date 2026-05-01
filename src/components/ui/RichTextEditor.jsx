@@ -54,15 +54,18 @@ const MenuBar = ({ editor, onImageClick }) => {
 
     const [savedSelection, setSavedSelection] = React.useState(null);
 
-    const handleColorMouseDown = () => {
-        setSavedSelection(editor.state.selection);
+    const handleColorFocus = () => {
+        // Save the exact range so it can't be mutated or lost
+        const { from, to } = editor.state.selection;
+        setSavedSelection({ from, to });
     };
 
     const setColor = (e) => {
-        if (savedSelection) {
-            editor.chain().focus().setTextSelection(savedSelection).setColor(e.target.value).run();
+        const color = e.target.value;
+        if (savedSelection && savedSelection.from !== savedSelection.to) {
+            editor.chain().focus().setTextSelection(savedSelection).setColor(color).run();
         } else {
-            editor.chain().focus().setColor(e.target.value).run();
+            editor.chain().focus().setColor(color).run();
         }
     }
 
@@ -139,9 +142,9 @@ const MenuBar = ({ editor, onImageClick }) => {
             <div className="toolbar-divider" />
 
             <div className="toolbar-group">
-                <div className="color-picker-wrapper" title="Text Color" onMouseDown={handleColorMouseDown}>
+                <div className="color-picker-wrapper" title="Text Color" onMouseDown={handleColorFocus} onClick={handleColorFocus}>
                     <Baseline size={16} style={{ color: editor.getAttributes('textStyle').color || 'currentColor' }} />
-                    <input type="color" onMouseDown={handleColorMouseDown} onInput={setColor} onChange={setColor} value={editor.getAttributes('textStyle').color || '#000000'} />
+                    <input type="color" onMouseDown={handleColorFocus} onClick={handleColorFocus} onInput={setColor} onChange={setColor} value={editor.getAttributes('textStyle').color || '#000000'} />
                 </div>
                 <button type="button" onClick={() => editor.chain().focus().toggleHighlight().run()} className={editor.isActive('highlight') ? 'is-active' : ''} title="Highlight">
                     <Highlighter size={16} />
