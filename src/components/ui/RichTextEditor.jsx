@@ -228,10 +228,27 @@ const RichTextEditor = React.forwardRef(({ value, onChange, placeholder, style, 
         if (customImageHandler) {
             customImageHandler();
         } else {
-            const url = window.prompt('Enter Image URL');
-            if (url) {
-                editor.chain().focus().setImage({ src: url }).run();
-            }
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+
+            input.onchange = () => {
+                const file = input.files[0];
+                if (file) {
+                    // Check file size (e.g., 5MB limit)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('Image is too large. Maximum size is 5MB.');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result;
+                        editor.chain().focus().setImage({ src: base64 }).run();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
         }
     };
 
