@@ -2151,33 +2151,39 @@ section {
     }
 
     .must-read-ticker-container {
-        min-height: 54px;
+        min-height: 36px;
     }
 
     .must-read-item {
-        white-space: normal !important;
-        border-radius: 12px;
-        align-items: flex-start;
-        padding: 8px 14px;
+        white-space: nowrap !important;
+        border-radius: 50px;
+        align-items: center;
+        padding: 6px 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .must-read-item p {
         font-size: 13px;
-        white-space: normal !important;
-        line-height: 1.4;
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 0;
     }
 
     .ticker-item-wrapper {
-        position: relative; /* Let content stretch container */
+        position: absolute;
+        width: 100%;
     }
 
     .must-read-wrapper {
         gap: 10px;
         align-items: center;
         height: auto;
-        min-height: 60px;
-        padding-top: 5px;
-        padding-bottom: 5px;
+        min-height: 44px;
+        padding-top: 4px;
+        padding-bottom: 4px;
     }
 }
 
