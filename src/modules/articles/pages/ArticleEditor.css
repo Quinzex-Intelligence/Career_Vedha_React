@@ -925,3 +925,63 @@
     vertical-align: top;
 }
 
+/* ═══════════════════════════════════════
+   Custom Table Embed - Formatting Support
+   ═══════════════════════════════════════ */
+.custom-table-wrapper {
+    margin: 1rem 0;
+}
+
+.custom-table-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.custom-table-wrapper td,
+.custom-table-wrapper th {
+    border: 1px solid #ccc;
+    padding: 8px 10px;
+    min-height: 30px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    vertical-align: top;
+    line-height: 1.5;
+}
+
+/* Ensure inline formatting from execCommand renders visibly */
+.custom-table-wrapper td b,
+.custom-table-wrapper td strong,
+.custom-table-wrapper th b,
+.custom-table-wrapper th strong {
+    font-weight: 700 !important;
+}
+
+.custom-table-wrapper td i,
+.custom-table-wrapper td em,
+.custom-table-wrapper th i,
+.custom-table-wrapper th em {
+    font-style: italic !important;
+}
+
+.custom-table-wrapper td u,
+.custom-table-wrapper th u {
+    text-decoration: underline !important;
+}
+
+.custom-table-wrapper td s,
+.custom-table-wrapper td strike,
+.custom-table-wrapper th s,
+.custom-table-wrapper th strike {
+    text-decoration: line-through !important;
+}
+
+/* Focus highlight when editing a cell */
+.custom-table-wrapper td:focus,
+.custom-table-wrapper th:focus {
+    outline: 2px solid var(--ae-primary, #62269e);
+    outline-offset: -2px;
+    background: rgba(98, 38, 158, 0.03);
+}
+

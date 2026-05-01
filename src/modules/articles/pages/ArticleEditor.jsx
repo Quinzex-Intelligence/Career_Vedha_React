@@ -39,8 +39,22 @@ if (Quill) {
                     cell.addEventListener('keydown', (e) => {
                         e.stopPropagation();
                     });
+                    // Allow mousedown to propagate so native selection works,
+                    // but stop Quill from processing it as a Quill selection event
                     cell.addEventListener('mousedown', (e) => {
                         e.stopPropagation();
+                    });
+                    // Support Ctrl+B / Ctrl+I / Ctrl+U keyboard shortcuts inside table cells
+                    cell.addEventListener('keydown', (e) => {
+                        if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+                            const key = e.key.toLowerCase();
+                            const cmdMap = { 'b': 'bold', 'i': 'italic', 'u': 'underline' };
+                            if (cmdMap[key]) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                document.execCommand(cmdMap[key], false, null);
+                            }
+                        }
                     });
                 });
             }, 0);
@@ -58,6 +72,21 @@ if (Quill) {
     CustomTableBlot.className = 'custom-table-wrapper';
 
     Quill.register(CustomTableBlot, true);
+}
+
+// ─── Helper: Check if native selection is inside a table cell ────────────────
+function getTableCellSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node = sel.anchorNode;
+    while (node) {
+        if (node.nodeType === 1 && (node.tagName === 'TD' || node.tagName === 'TH')) {
+            // Verify it's inside a custom-table-wrapper (our embed)
+            if (node.closest('.custom-table-wrapper')) return { selection: sel, cell: node };
+        }
+        node = node.parentNode;
+    }
+    return null;
 }
 
 // ─── Robust Quill Wrapper ────────────────────────────────────────────────────
@@ -79,6 +108,78 @@ const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, 
             editor.setSelection(range.index + 1, 'user');
         }
     }));
+
+    // ─── Intercept toolbar buttons for table cell formatting ─────────────
+    useEffect(() => {
+        if (!quillRef.current) return;
+        const editorContainer = quillRef.current.getEditor()?.container?.closest('.quill');
+        if (!editorContainer) return;
+
+        const toolbar = editorContainer.querySelector('.ql-toolbar');
+        if (!toolbar) return;
+
+        // Map toolbar CSS classes to document.execCommand commands
+        const buttonCommandMap = {
+            'ql-bold': 'bold',
+            'ql-italic': 'italic',
+            'ql-underline': 'underline',
+            'ql-strike': 'strikeThrough',
+        };
+
+        const handleToolbarClick = (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            // Check which command this button maps to
+            let execCmd = null;
+            for (const [cls, cmd] of Object.entries(buttonCommandMap)) {
+                if (btn.classList.contains(cls)) {
+                    execCmd = cmd;
+                    break;
+                }
+            }
+            if (!execCmd) return;
+
+            // Check if the current native selection is inside a table cell
+            const tableSel = getTableCellSelection();
+            if (!tableSel) return; // Not in a table — let Quill handle normally
+
+            // Save the native selection range before the toolbar click steals focus
+            const savedRange = tableSel.selection.getRangeAt(0).cloneRange();
+
+            // Prevent Quill's default toolbar handler from running
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Restore native selection into the table cell
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+
+            // Apply formatting via execCommand (works on any contenteditable element)
+            document.execCommand(execCmd, false, null);
+
+            // Trigger change event so the editor picks up the updated HTML
+            if (quillRef.current) {
+                const editor = quillRef.current.getEditor();
+                if (editor && editor.root) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = editor.root.innerHTML;
+                    const editables = tempDiv.querySelectorAll('[contenteditable]');
+                    editables.forEach(el => el.removeAttribute('contenteditable'));
+                    lastEmittedValue.current = tempDiv.innerHTML;
+                    onChange(tempDiv.innerHTML);
+                }
+            }
+        };
+
+        // Use capture phase so we intercept BEFORE Quill's handler
+        toolbar.addEventListener('mousedown', handleToolbarClick, true);
+
+        return () => {
+            toolbar.removeEventListener('mousedown', handleToolbarClick, true);
+        };
+    }, [onChange]);
 
     useEffect(() => {
         if (quillRef.current && value !== lastEmittedValue.current) {
