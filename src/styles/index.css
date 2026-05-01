@@ -2190,7 +2190,7 @@ section {
         margin: 0;
         flex-shrink: 0;
         padding-left: 100%;
-        animation: scrollNewsText 10s linear infinite;
+        animation: scrollNewsText 12s linear infinite;
     }
 
     @keyframes scrollNewsText {

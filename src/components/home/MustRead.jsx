@@ -102,7 +102,7 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
 
         intervalRef.current = setInterval(() => {
             setCurrentIndex(prev => (prev + 1) % articles.length);
-        }, 8000);
+        }, 12000);
 
         return () => {
             if (intervalRef.current) {
