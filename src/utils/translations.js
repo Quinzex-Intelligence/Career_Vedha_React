@@ -162,7 +162,7 @@ export const translations = {
         navEStore: "ఈ-స్టోర్",
         navExams: "పరీక్షలు",
         navCampusPages: "క్యాంపస్ పేజీలు",
-        navMore: "ఇంకా...",
+        navMore: "ఇంకా",
         navCurriculum: "కరికులం",
         
         // ===== HOME PAGE =====
