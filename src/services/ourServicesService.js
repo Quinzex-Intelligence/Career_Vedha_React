@@ -21,33 +21,26 @@ export const ourServicesService = {
     update: async (id, payload) => (await api.put(`${BASE}/${id}`, payload)).data,
     delete: async (id) => (await api.delete(`${BASE}/${id}`)).data,
 
-    // Image Upload — Direct to S3 via Presigned URL (bypasses Nginx completely for maximum speed)
-    uploadImage: async (file, onProgress) => {
-        // 1. Get the Presigned URL from the backend
-        const presignedRes = await api.get(`${BASE}/upload-presigned`, {
-            params: {
-                filename: file.name,
-                contentType: file.type
-            }
-        });
-        
-        const { key, url: s3Url } = presignedRes.data;
-        
-        // 2. Upload directly to S3 URL using raw axios (no interceptors, no auth headers)
-        await axios.put(s3Url, file, {
+    // Image Upload — Using the Multipart endpoint from the new backend
+    uploadImage: async (file, folder = 'services', onProgress) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', folder);
+
+        const response = await api.post(`${BASE}/upload`, formData, {
             headers: {
-                'Content-Type': file.type
+                'Content-Type': 'multipart/form-data'
             },
             onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                console.log(`Upload Progress: ${percentCompleted}% (${progressEvent.loaded} bytes of ${progressEvent.total})`);
                 if (onProgress) {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                     onProgress(percentCompleted);
                 }
             }
         });
         
-        return { key, url: s3Url };
+        // The backend returns the S3 Key as a plain string
+        return response.data; 
     },
     deleteImage: async (key) => (await api.delete(`${BASE}/file`, { params: { key } })).data,
 };

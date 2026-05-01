@@ -109,10 +109,9 @@ const OurServicesEditor = () => {
                     showSnackbar('Uploading image...', 'info');
                     
                     // Upload to get the real S3 URL immediately
-                    const uploadResponse = await ourServicesService.uploadImage(file, (progress) => {
+                    const serverKey = await ourServicesService.uploadImage(file, 'services', (progress) => {
                         setUploadProgress(progress);
                     });
-                    const serverKey = uploadResponse.key; // The new backend returns { key, url }
                     
                     // Generate local blob url
                     const localUrl = URL.createObjectURL(file);
@@ -210,11 +209,19 @@ const OurServicesEditor = () => {
         try {
             // Swap out temporary blob URLs with the actual S3 keys before saving
             let finalContent = formData.content;
+            
+            // 1. Replace local blob URLs with S3 keys
             Object.entries(imageMap).forEach(([localUrl, serverKey]) => {
-                // split/join approach for all occurrences
                 finalContent = finalContent.split(localUrl).join(serverKey);
             });
 
+            // 2. CLEANUP: If existing images have signed URLs (loaded from backend), 
+            // we should ideally keep them as keys. However, since the backend processes 
+            // them automatically on retrieval, saving them back as full URLs would be 
+            // redundant or potentially save expired links. 
+            // The backend processHtml only replaces keys that ARE NOT http, so we are safe 
+            // as long as we only upload keys.
+            
             const payload = { ...formData, content: finalContent };
 
             if (isEditMode) {
