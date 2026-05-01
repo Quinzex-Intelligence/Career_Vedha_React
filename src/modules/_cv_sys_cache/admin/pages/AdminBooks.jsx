@@ -3,6 +3,7 @@ import inventoryApi from '../../api/inventoryApi';
 import { useSnackbar } from '../../../../context/SnackbarContext';
 import BookModal from '../components/BookModal';
 import BulkUploadModal from '../components/BulkUploadModal';
+import PreviewModal from '../components/PreviewModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminBooks = () => {
@@ -14,11 +15,24 @@ const AdminBooks = () => {
     const [selectedIds, setSelectedIds] = useState([]);
     const { showSnackbar } = useSnackbar();
 
+    // Preview state
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [previewType, setPreviewType] = useState('image');
+    const [previewTitle, setPreviewTitle] = useState('Preview');
+
+    const openPreview = (url, type, title) => {
+        setPreviewUrl(url);
+        setPreviewType(type);
+        setPreviewTitle(title);
+        setPreviewOpen(true);
+    };
+
     const fetchAllBooks = async () => {
         setLoading(true);
         try {
             const [activeRes, inactiveRes] = await Promise.all([
-                inventoryApi.get('books'),
+                inventoryApi.get('admin/ebooks/active'),
                 inventoryApi.get('admin/ebooks/inactive')
             ]);
             
@@ -178,7 +192,9 @@ const AdminBooks = () => {
                             <th>Cover</th>
                             <th>Title & Author</th>
                             <th>Category</th>
+                            <th>Language</th>
                             <th>Price</th>
+                            <th>Stock</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -186,7 +202,7 @@ const AdminBooks = () => {
                     <tbody>
                         {books.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="um-empty-state">
+                                <td colSpan={10} className="um-empty-state">
                                     <i className="fas fa-inbox"></i>
                                     <p>No books found in inventory</p>
                                 </td>
@@ -203,9 +219,35 @@ const AdminBooks = () => {
                                     </td>
                                     <td className="um-book-id">#{book.bookId}</td>
                                     <td>
-                                        <div className="um-book-cover">
+                                        <div className="um-book-cover" style={{ position: 'relative', cursor: book.coverPhotoUrl ? 'pointer' : 'default' }}>
                                             {book.coverPhotoUrl ? (
-                                                <img src={book.coverPhotoUrl} alt="cover" />
+                                                <>
+                                                    <img 
+                                                        src={book.coverPhotoUrl} 
+                                                        alt="cover"
+                                                        onClick={() => openPreview(book.coverPhotoUrl, 'image', `${book.bookName} - Cover`)}
+                                                    />
+                                                    {/* Preview overlay on hover */}
+                                                    <div 
+                                                        onClick={() => openPreview(book.coverPhotoUrl, 'image', `${book.bookName} - Cover`)}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            inset: 0,
+                                                            background: 'rgba(0,0,0,0.4)',
+                                                            borderRadius: '8px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            opacity: 0,
+                                                            transition: 'opacity 0.2s ease',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+                                                    >
+                                                        <i className="fas fa-eye" style={{ color: 'white', fontSize: '1rem' }} />
+                                                    </div>
+                                                </>
                                             ) : (
                                                 <div className="um-cover-placeholder">
                                                     <i className="fas fa-image"></i>
@@ -220,12 +262,31 @@ const AdminBooks = () => {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className="um-role-badge">
+                                        <span className="um-role-badge" style={{
+                                            background: book.bookCategory === 'EBOOK' ? '#f3e8ff' : '#e0f2fe',
+                                            color: book.bookCategory === 'EBOOK' ? '#7c3aed' : '#0369a1',
+                                        }}>
+                                            <i className={`fas ${book.bookCategory === 'EBOOK' ? 'fa-file-pdf' : 'fa-book'}`} style={{ marginRight: '4px', fontSize: '0.65rem' }} />
                                             {book.bookCategory || 'OTHER'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--slate-600)' }}>
+                                            {book.languageCategory || '—'}
                                         </span>
                                     </td>
                                     <td className="um-book-price">
                                         ₹{book.bookPrice}
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.8rem' }}>
+                                            <span style={{ fontWeight: 700, color: 'var(--slate-800)' }}>
+                                                {book.availableQuantity ?? '—'} <span style={{ color: 'var(--slate-400)', fontWeight: 400 }}>avail</span>
+                                            </span>
+                                            <span style={{ color: 'var(--slate-500)', fontSize: '0.72rem' }}>
+                                                {book.totalQuantity ?? '—'} total · {book.reservedQuantity ?? 0} rsrvd
+                                            </span>
+                                        </div>
                                     </td>
                                     <td>
                                         <span className={`um-status-badge ${book.status === 'ACTIVE' ? 'active' : 'inactive'}`}>
@@ -235,6 +296,33 @@ const AdminBooks = () => {
                                     </td>
                                     <td>
                                         <div className="um-action-buttons">
+                                            {/* Preview Cover */}
+                                            {book.coverPhotoUrl && (
+                                                <button
+                                                    className="um-action-btn"
+                                                    style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #e9d5ff' }}
+                                                    onClick={() => openPreview(book.coverPhotoUrl, 'image', `${book.bookName} - Cover`)}
+                                                    title="Preview Cover Image"
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; e.currentTarget.style.color = 'white'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#f3e8ff'; e.currentTarget.style.color = '#7c3aed'; }}
+                                                >
+                                                    <i className="fas fa-image"></i>
+                                                </button>
+                                            )}
+                                            {/* Preview PDF */}
+                                            {book.pdfUrl && (
+                                                <button
+                                                    className="um-action-btn"
+                                                    style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                                                    onClick={() => openPreview(book.pdfUrl, 'pdf', `${book.bookName} - PDF`)}
+                                                    title="Preview PDF"
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = 'white'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
+                                                >
+                                                    <i className="fas fa-file-pdf"></i>
+                                                </button>
+                                            )}
+                                            {/* Toggle Status */}
                                             <button
                                                 className={`um-action-btn ${book.status === 'ACTIVE' ? 'deactivate' : 'activate'}`}
                                                 onClick={() => toggleStatus(book.bookId, book.status)}
@@ -242,10 +330,14 @@ const AdminBooks = () => {
                                             >
                                                 <i className={`fas ${book.status === 'ACTIVE' ? 'fa-ban' : 'fa-check'}`}></i>
                                             </button>
+                                            {/* Edit */}
                                             <button 
                                                 className="um-action-btn edit" 
                                                 title="Edit Book" 
                                                 onClick={() => handleEditClick(book)}
+                                                style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #dbeafe' }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.color = 'white'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#2563eb'; }}
                                             >
                                                 <i className="fas fa-edit"></i>
                                             </button>
@@ -296,6 +388,15 @@ const AdminBooks = () => {
                 isOpen={isBulkModalOpen}
                 onClose={() => setIsBulkModalOpen(false)}
                 onSave={handleBulkSave}
+            />
+
+            {/* Preview Modal */}
+            <PreviewModal 
+                isOpen={previewOpen}
+                onClose={() => setPreviewOpen(false)}
+                url={previewUrl}
+                type={previewType}
+                title={previewTitle}
             />
         </div>
     );

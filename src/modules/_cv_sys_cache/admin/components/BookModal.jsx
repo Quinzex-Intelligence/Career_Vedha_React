@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PreviewModal from './PreviewModal';
 
 const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
     const initialState = {
@@ -18,6 +19,16 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
     const [ebookPdf, setEbookPdf] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Preview state for existing files
+    const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+
+    // Lightbox preview state
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [previewType, setPreviewType] = useState('image');
+    const [previewTitle, setPreviewTitle] = useState('');
+
     useEffect(() => {
         if (book) {
             setFormData({
@@ -30,9 +41,15 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
                 languageCategory: book.languageCategory || 'ENGLISH',
                 bookPublishDate: book.bookPublishDate || new Date().toISOString().split('T')[0]
             });
+            setCoverPreviewUrl(book.coverPhotoUrl || null);
+            setPdfPreviewUrl(book.pdfUrl || null);
         } else {
             setFormData(initialState);
+            setCoverPreviewUrl(null);
+            setPdfPreviewUrl(null);
         }
+        setCoverPhoto(null);
+        setEbookPdf(null);
     }, [book, isOpen]);
 
     const handleChange = (e) => {
@@ -42,8 +59,27 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
 
     const handleFileChange = (e) => {
         const { name, files } = e.target;
-        if (name === 'coverPhoto') setCoverPhoto(files[0]);
-        if (name === 'ebookPdf') setEbookPdf(files[0]);
+        if (name === 'coverPhoto') {
+            setCoverPhoto(files[0]);
+            // Show local preview for the newly selected file
+            if (files[0]) {
+                setCoverPreviewUrl(URL.createObjectURL(files[0]));
+            }
+        }
+        if (name === 'ebookPdf') {
+            setEbookPdf(files[0]);
+            // Show local preview for new PDF
+            if (files[0]) {
+                setPdfPreviewUrl(URL.createObjectURL(files[0]));
+            }
+        }
+    };
+
+    const openPreview = (url, type, title) => {
+        setPreviewUrl(url);
+        setPreviewType(type);
+        setPreviewTitle(title);
+        setPreviewOpen(true);
     };
 
     const handleSubmit = async (e) => {
@@ -86,7 +122,7 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
                     className="um-modal"
-                    style={{ maxWidth: '600px', width: '90%' }}
+                    style={{ maxWidth: '640px', width: '90%' }}
                 >
                     <div className="um-modal-header">
                         <h2 className="um-modal-title">
@@ -199,28 +235,151 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
                                 ></textarea>
                             </div>
 
-                            <div className="um-form-group">
-                                <label className="um-label">Cover Photo {book && '(Optional)'}</label>
+                            {/* Cover Photo Section */}
+                            <div className="um-form-group" style={{ gridColumn: 'span 2' }}>
+                                <label className="um-label">Cover Photo {book && '(Optional - upload to replace)'}</label>
+                                
+                                {/* Existing cover preview */}
+                                {coverPreviewUrl && (
+                                    <div style={{
+                                        marginBottom: '0.75rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        padding: '0.75rem',
+                                        background: '#f8fafc',
+                                        borderRadius: '10px',
+                                        border: '1px solid #e2e8f0',
+                                    }}>
+                                        <img 
+                                            src={coverPreviewUrl} 
+                                            alt="Cover Preview" 
+                                            style={{ 
+                                                width: '60px', 
+                                                height: '80px', 
+                                                objectFit: 'cover', 
+                                                borderRadius: '6px',
+                                                border: '1px solid #e2e8f0',
+                                                cursor: 'pointer',
+                                            }}
+                                            onClick={() => openPreview(coverPreviewUrl, 'image', `${formData.bookName} - Cover`)}
+                                        />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                                                {coverPhoto ? coverPhoto.name : 'Current Cover Photo'}
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                                {coverPhoto ? `New file selected (${(coverPhoto.size / 1024).toFixed(1)} KB)` : 'Click the image or the preview button to view'}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => openPreview(coverPreviewUrl, 'image', `${formData.bookName} - Cover`)}
+                                            style={{
+                                                width: '34px',
+                                                height: '34px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #e9d5ff',
+                                                background: '#f3e8ff',
+                                                color: '#7c3aed',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '0.85rem',
+                                                transition: 'all 0.2s ease',
+                                                flexShrink: 0,
+                                            }}
+                                            title="Preview Cover"
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; e.currentTarget.style.color = 'white'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.background = '#f3e8ff'; e.currentTarget.style.color = '#7c3aed'; }}
+                                        >
+                                            <i className="fas fa-eye" />
+                                        </button>
+                                    </div>
+                                )}
+
                                 <input 
                                     type="file" 
                                     name="coverPhoto"
                                     className="um-input" 
                                     accept="image/*"
                                     onChange={handleFileChange}
-                                    required={!book}
+                                    required={!book && !coverPreviewUrl}
                                 />
                             </div>
 
+                            {/* E-Book PDF Section */}
                             {formData.bookCategory === 'EBOOK' && (
-                                <div className="um-form-group">
-                                    <label className="um-label">E-Book PDF {book && '(Optional)'}</label>
+                                <div className="um-form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="um-label">E-Book PDF {book && '(Optional - upload to replace)'}</label>
+
+                                    {/* Existing PDF preview */}
+                                    {pdfPreviewUrl && (
+                                        <div style={{
+                                            marginBottom: '0.75rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            padding: '0.75rem',
+                                            background: '#fef2f2',
+                                            borderRadius: '10px',
+                                            border: '1px solid #fecaca',
+                                        }}>
+                                            <div style={{
+                                                width: '48px',
+                                                height: '48px',
+                                                borderRadius: '8px',
+                                                background: '#fee2e2',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0,
+                                            }}>
+                                                <i className="fas fa-file-pdf" style={{ color: '#dc2626', fontSize: '1.3rem' }} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                                                    {ebookPdf ? ebookPdf.name : 'Current E-Book PDF'}
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                                    {ebookPdf ? `New file selected (${(ebookPdf.size / 1024 / 1024).toFixed(2)} MB)` : 'Click preview to view the PDF'}
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => openPreview(pdfPreviewUrl, 'pdf', `${formData.bookName} - PDF`)}
+                                                style={{
+                                                    width: '34px',
+                                                    height: '34px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #fecaca',
+                                                    background: '#fee2e2',
+                                                    color: '#dc2626',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '0.85rem',
+                                                    transition: 'all 0.2s ease',
+                                                    flexShrink: 0,
+                                                }}
+                                                title="Preview PDF"
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = 'white'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                                            >
+                                                <i className="fas fa-eye" />
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <input 
                                         type="file" 
                                         name="ebookPdf"
                                         className="um-input" 
                                         accept=".pdf"
                                         onChange={handleFileChange}
-                                        required={!book}
+                                        required={!book && !pdfPreviewUrl}
                                     />
                                 </div>
                             )}
@@ -241,6 +400,15 @@ const BookModal = ({ isOpen, onClose, onSave, book = null }) => {
                     </form>
                 </motion.div>
             </div>
+
+            {/* Lightbox Preview (inside the modal) */}
+            <PreviewModal 
+                isOpen={previewOpen}
+                onClose={() => setPreviewOpen(false)}
+                url={previewUrl}
+                type={previewType}
+                title={previewTitle}
+            />
         </AnimatePresence>
     );
 };
