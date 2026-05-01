@@ -43,7 +43,7 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters =
         }
     }, [apiCategory, label]);
 
-    useEffect(() => { fetchVideos(true); }, [fetchVideos, filters.category, filters.sub_category, filters.segment]);
+    useEffect(() => { fetchVideos(true); }, [fetchVideos, filters.category, filters.sub_category, filters.segment, filters.language]);
 
     const getYoutubeId = (url) => {
         const m = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]{11})/);
@@ -136,8 +136,9 @@ const VideosPage = () => {
     const videoFilters = React.useMemo(() => ({
         category: categoryParam || undefined,
         sub_category: subParam || undefined,
-        segment: segmentParam || undefined
-    }), [categoryParam, subParam, segmentParam]);
+        segment: segmentParam || undefined,
+        language: activeLanguage
+    }), [categoryParam, subParam, segmentParam, activeLanguage]);
 
     useEffect(() => { window.scrollTo(0, 0); }, [category, categoryParam, subParam, segmentParam]);
 

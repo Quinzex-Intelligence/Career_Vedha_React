@@ -1021,6 +1021,12 @@ export const youtubeService = {
             if (filters.category) params.category_slug = filters.category;
             if (filters.sub_category) params.sub_category_slug = filters.sub_category;
             if (filters.segment) params.segment = filters.segment;
+            if (filters.language) {
+                let lang = filters.language.toUpperCase();
+                if (lang === 'TELUGU') lang = 'TE';
+                if (lang === 'ENGLISH') lang = 'EN';
+                params.language = lang;
+            }
 
             const response = await apiClient.get(API_CONFIG.ENDPOINTS.GET_YT_URLS_BY_CATEGORY, { params });
             return response.data;
