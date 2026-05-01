@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import inventoryApi from '../../api/inventoryApi';
 import { useSnackbar } from '../../../../context/SnackbarContext';
 import BookModal from '../components/BookModal';
@@ -13,6 +13,7 @@ const AdminBooks = () => {
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [editingBook, setEditingBook] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const { showSnackbar } = useSnackbar();
 
     // Preview state
@@ -75,9 +76,18 @@ const AdminBooks = () => {
         fetchAllBooks();
     }, []);
 
+    // Filter books based on selected tab
+    const filteredBooks = useMemo(() => {
+        if (statusFilter === 'ALL') return books;
+        return books.filter(b => b.status === statusFilter);
+    }, [books, statusFilter]);
+
+    const activeCount = useMemo(() => books.filter(b => b.status === 'ACTIVE').length, [books]);
+    const inactiveCount = useMemo(() => books.filter(b => b.status === 'INACTIVE').length, [books]);
+
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedIds(books.map(b => b.bookId));
+            setSelectedIds(filteredBooks.map(b => b.bookId));
         } else {
             setSelectedIds([]);
         }
@@ -198,6 +208,33 @@ const AdminBooks = () => {
                 </div>
             </div>
 
+            {/* Status Filter Tabs */}
+            <div className="um-filter-bar">
+                <div className="um-tabs">
+                    <button
+                        className={`um-tab ${statusFilter === 'ALL' ? 'active' : ''}`}
+                        onClick={() => { setStatusFilter('ALL'); setSelectedIds([]); }}
+                    >
+                        <i className="fas fa-layer-group"></i>
+                        All <span style={{ marginLeft: '4px', opacity: 0.7 }}>({books.length})</span>
+                    </button>
+                    <button
+                        className={`um-tab ${statusFilter === 'ACTIVE' ? 'active' : ''}`}
+                        onClick={() => { setStatusFilter('ACTIVE'); setSelectedIds([]); }}
+                    >
+                        <i className="fas fa-check-circle"></i>
+                        Active <span style={{ marginLeft: '4px', opacity: 0.7 }}>({activeCount})</span>
+                    </button>
+                    <button
+                        className={`um-tab ${statusFilter === 'INACTIVE' ? 'active' : ''}`}
+                        onClick={() => { setStatusFilter('INACTIVE'); setSelectedIds([]); }}
+                    >
+                        <i className="fas fa-times-circle"></i>
+                        Inactive <span style={{ marginLeft: '4px', opacity: 0.7 }}>({inactiveCount})</span>
+                    </button>
+                </div>
+            </div>
+
             <div className="um-table-container">
                 <table className="um-table">
                     <thead>
@@ -206,7 +243,7 @@ const AdminBooks = () => {
                                 <input 
                                     type="checkbox" 
                                     onChange={handleSelectAll}
-                                    checked={selectedIds.length === books.length && books.length > 0}
+                                    checked={selectedIds.length === filteredBooks.length && filteredBooks.length > 0}
                                 />
                             </th>
                             <th>Book ID</th>
@@ -221,15 +258,15 @@ const AdminBooks = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {books.length === 0 ? (
+                        {filteredBooks.length === 0 ? (
                             <tr>
                                 <td colSpan={10} className="um-empty-state">
                                     <i className="fas fa-inbox"></i>
-                                    <p>No books found in inventory</p>
+                                    <p>{statusFilter === 'INACTIVE' ? 'No inactive books found' : statusFilter === 'ACTIVE' ? 'No active books found' : 'No books found in inventory'}</p>
                                 </td>
                             </tr>
                         ) : (
-                            books.map((book) => (
+                            filteredBooks.map((book) => (
                                 <tr key={book.bookId} className={`um-table-row ${selectedIds.includes(book.bookId) ? 'selected' : ''}`}>
                                     <td>
                                         <input 
