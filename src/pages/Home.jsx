@@ -167,7 +167,7 @@ const Home = () => {
                 <MultiWidgets activeLanguage={activeLanguage} />
             </Suspense> */}
             
-            {/* <section className="home-videos-wrapper bg-white py-5">
+            <section className="home-videos-wrapper bg-white py-5">
                 <div className="container">
                     <div className="section-header-branded mb-5" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <h2 className="text-dark" style={{ fontSize: '32px', fontWeight: 800, paddingLeft: 0, margin: '0 0 16px 0', letterSpacing: '-0.02em' }}>Videos</h2>
@@ -183,7 +183,7 @@ const Home = () => {
                         <Shorts activeLanguage={activeLanguage} />
                     </Suspense>
                 </div>
-            </section> */}
+            </section>
             
             
             <Footer />
