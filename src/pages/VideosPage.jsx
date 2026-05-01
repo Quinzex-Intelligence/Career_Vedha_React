@@ -41,7 +41,7 @@ const VideoSection = ({ apiCategory, label, layoutClass, onVideoClick, filters =
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [apiCategory, label]);
+    }, [apiCategory, label, filters]);
 
     useEffect(() => { fetchVideos(true); }, [fetchVideos, filters.category, filters.sub_category, filters.segment, filters.language]);
 
