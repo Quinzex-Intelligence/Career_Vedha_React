@@ -145,12 +145,12 @@ const MustRead = ({ activeLanguage = 'telugu', articles: propArticles }) => {
                             {slug ? (
                                 <Link to={`/article/${section}/${slug}`} className="must-read-item">
                                     <span className="ticket-tag">{section === 'null' || !section ? 'News' : section}</span>
-                                    <p>{title}</p>
+                                    <div className="marquee-container"><p>{title}</p></div>
                                 </Link>
                             ) : (
                                 <div className="must-read-item">
                                     <span className="ticket-tag">{section || 'Update'}</span>
-                                    <p>{title}</p>
+                                    <div className="marquee-container"><p>{title}</p></div>
                                 </div>
                             )}
                         </motion.div>
