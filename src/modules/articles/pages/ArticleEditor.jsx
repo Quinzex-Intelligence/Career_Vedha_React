@@ -83,17 +83,36 @@ const QuillWrapper = React.forwardRef(({ value, onChange, placeholder, modules, 
 
     useEffect(() => {
         if (quillRef.current && value !== lastEmittedValue.current) {
-            // Prevent lagging prop updates from resetting the editor and moving cursor to top
+            const editor = quillRef.current.getEditor();
+
+            // If the editor is currently focused, the user is actively working.
+            // Never reset contents from lagging props while focused to prevent cursor jumping!
+            if (editor.hasFocus()) {
+                lastEmittedValue.current = value;
+                return;
+            }
+
+            // Prevent lagging prop updates from resetting the editor
             if (emittedHistory.current.includes(value)) {
+                lastEmittedValue.current = value;
                 return;
             }
             
-            const editor = quillRef.current.getEditor();
+            // Save selection before making any changes
+            const currentSelection = editor.getSelection();
+
             // Since we use a proper Blot now, we can use clipboard.convert safely!
             const delta = editor.clipboard.convert(value || '');
             editor.setContents(delta, 'silent');
             lastEmittedValue.current = value;
             emittedHistory.current = []; // Clear history on external programmatic update
+
+            // Restore selection if there was one
+            if (currentSelection) {
+                setTimeout(() => {
+                    editor.setSelection(currentSelection.index, currentSelection.length, 'silent');
+                }, 0);
+            }
         }
     }, [value]);
 
