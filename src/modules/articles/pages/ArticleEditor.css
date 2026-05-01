@@ -551,6 +551,109 @@
     transform: scale(1.1);
 }
 
+/* ═══════════════════════════════════════
+   PDF Attachment Card
+   ═══════════════════════════════════════ */
+.ae-pdf-attached {
+    padding: 0;
+}
+
+.ae-pdf-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 50%, #fff 100%);
+    border: 1.5px solid #fecaca;
+    border-radius: 12px;
+    transition: var(--ae-transition);
+}
+
+.ae-pdf-card:hover {
+    border-color: #f87171;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.1);
+}
+
+.ae-pdf-icon-wrap {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.ae-pdf-icon-wrap i {
+    font-size: 1.35rem;
+    color: white;
+}
+
+.ae-pdf-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ae-pdf-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--ae-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.ae-pdf-type {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ae-pdf-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.ae-pdf-action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1.5px solid var(--ae-border);
+    background: white;
+    color: var(--ae-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    transition: var(--ae-transition);
+}
+
+.ae-pdf-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.ae-pdf-replace:hover {
+    background: var(--ae-primary-light);
+    border-color: var(--ae-primary);
+    color: var(--ae-primary);
+}
+
+.ae-pdf-remove:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #ef4444;
+}
 
 /* ═══════════════════════════════════════
    Quill Editor

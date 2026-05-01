@@ -1422,20 +1422,33 @@ const ArticleEditor = () => {
                             {/* PDF Upload 1 */}
                             <div className="ae-media-box">
                                 <div className="ae-media-box-header">
-                                    <i className="fas fa-file-pdf"></i>
+                                    <i className="fas fa-file-pdf" style={{ color: '#e74c3c' }}></i>
                                     <span>Primary PDF (Optional)</span>
                                     <span className="ae-size-hint">Max 20MB • PDF only</span>
                                 </div>
 
                                 {pdfPreview ? (
-                                    <div className="ae-media-preview ae-pdf-preview">
-                                        <div className="ae-pdf-info">
-                                            <i className="fas fa-file-pdf"></i>
-                                            <span title={pdfPreview}>{pdfPreview.length > 30 ? pdfPreview.substring(0, 27) + '...' : pdfPreview}</span>
+                                    <div className="ae-pdf-attached">
+                                        <div className="ae-pdf-card">
+                                            <div className="ae-pdf-icon-wrap">
+                                                <i className="fas fa-file-pdf"></i>
+                                            </div>
+                                            <div className="ae-pdf-meta">
+                                                <span className="ae-pdf-name" title={pdfPreview}>
+                                                    {pdfPreview.length > 40 ? pdfPreview.substring(0, 37) + '...' : pdfPreview}
+                                                </span>
+                                                <span className="ae-pdf-type">PDF Document</span>
+                                            </div>
+                                            <div className="ae-pdf-actions">
+                                                <label htmlFor="pdf-replace-1" className="ae-pdf-action-btn ae-pdf-replace" title="Replace">
+                                                    <i className="fas fa-sync-alt"></i>
+                                                </label>
+                                                <input type="file" accept="application/pdf" onChange={(e) => handlePdfFileChange(e, 1)} id="pdf-replace-1" hidden />
+                                                <button type="button" className="ae-pdf-action-btn ae-pdf-remove" onClick={() => clearPdfMedia(1)} title="Remove">
+                                                    <i className="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button type="button" className="ae-media-remove" onClick={() => clearPdfMedia(1)}>
-                                            <i className="fas fa-trash-alt"></i>
-                                        </button>
                                     </div>
                                 ) : (
                                     <div className="ae-upload-zone">
@@ -1457,20 +1470,33 @@ const ArticleEditor = () => {
                             {/* PDF Upload 2 */}
                             <div className="ae-media-box">
                                 <div className="ae-media-box-header">
-                                    <i className="fas fa-file-pdf"></i>
+                                    <i className="fas fa-file-pdf" style={{ color: '#e74c3c' }}></i>
                                     <span>Secondary PDF (Optional)</span>
                                     <span className="ae-size-hint">Max 20MB • PDF only</span>
                                 </div>
 
                                 {pdfPreview2 ? (
-                                    <div className="ae-media-preview ae-pdf-preview">
-                                        <div className="ae-pdf-info">
-                                            <i className="fas fa-file-pdf"></i>
-                                            <span title={pdfPreview2}>{pdfPreview2.length > 30 ? pdfPreview2.substring(0, 27) + '...' : pdfPreview2}</span>
+                                    <div className="ae-pdf-attached">
+                                        <div className="ae-pdf-card">
+                                            <div className="ae-pdf-icon-wrap">
+                                                <i className="fas fa-file-pdf"></i>
+                                            </div>
+                                            <div className="ae-pdf-meta">
+                                                <span className="ae-pdf-name" title={pdfPreview2}>
+                                                    {pdfPreview2.length > 40 ? pdfPreview2.substring(0, 37) + '...' : pdfPreview2}
+                                                </span>
+                                                <span className="ae-pdf-type">PDF Document</span>
+                                            </div>
+                                            <div className="ae-pdf-actions">
+                                                <label htmlFor="pdf-replace-2" className="ae-pdf-action-btn ae-pdf-replace" title="Replace">
+                                                    <i className="fas fa-sync-alt"></i>
+                                                </label>
+                                                <input type="file" accept="application/pdf" onChange={(e) => handlePdfFileChange(e, 2)} id="pdf-replace-2" hidden />
+                                                <button type="button" className="ae-pdf-action-btn ae-pdf-remove" onClick={() => clearPdfMedia(2)} title="Remove">
+                                                    <i className="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button type="button" className="ae-media-remove" onClick={() => clearPdfMedia(2)}>
-                                            <i className="fas fa-trash-alt"></i>
-                                        </button>
                                     </div>
                                 ) : (
                                     <div className="ae-upload-zone">
