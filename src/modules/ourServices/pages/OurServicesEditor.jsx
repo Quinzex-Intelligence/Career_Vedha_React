@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import RichTextEditor from '../../../components/ui/RichTextEditor';
 import { ourServicesService } from '../../../services';
 import { useSnackbar } from '../../../context/SnackbarContext';
 import CMSLayout from '../../../components/layout/CMSLayout';
@@ -12,14 +11,7 @@ import { MODULES, checkAccess as checkAccessGlobal } from '../../../config/acces
 import '../../../styles/Dashboard.css';
 import '../../../styles/ArticleManagement.css'; // Restores .am- input and button styles
 
-import { Quill } from 'react-quill';
-const ImageFormat = Quill.import('formats/image');
-const LinkFormat = Quill.import('formats/link');
-ImageFormat.sanitize = function(url) {
-    if (url.startsWith('blob:')) return url;
-    return LinkFormat.sanitize(url);
-};
-Quill.register(ImageFormat, true);
+
 
 const OurServicesEditor = () => {
     const { id } = useParams();
@@ -205,49 +197,7 @@ const OurServicesEditor = () => {
         }
     };
 
-    const modules = useMemo(() => ({
-        toolbar: {
-            container: [
-                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'color': [] }, { 'background': [] }],
-                ['link', 'image'],
-                ['clean']
-            ],
-            handlers: {
-                image: imageHandler
-            }
-        },
-        keyboard: {
-            bindings: {
-                handleBackspace: {
-                    key: 'Backspace', // 8
-                    handler: function(range, context) {
-                        // Prevent backspacing an image!
-                        const [leaf] = this.quill.getLeaf(range.index - 1);
-                        if (leaf && leaf.domNode && leaf.domNode.tagName === 'IMG') {
-                            showSnackbar('Images cannot be deleted with backspace. Please use the Manage Uploaded Images gallery below.', 'info');
-                            return false; // Silently stop backspace
-                        }
-                        return true;
-                    }
-                },
-                handleDelete: {
-                    key: 'Delete', // 46
-                    handler: function(range, context) {
-                        // Prevent forward-delete of an image
-                        const [leaf] = this.quill.getLeaf(range.index);
-                        if (leaf && leaf.domNode && leaf.domNode.tagName === 'IMG') {
-                            showSnackbar('Images cannot be deleted with the delete key. Please use the Manage Uploaded Images gallery below.', 'info');
-                            return false;
-                        }
-                        return true;
-                    }
-                }
-            }
-        }
-    }), []);
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -382,12 +332,11 @@ const OurServicesEditor = () => {
                         </div>
                     )}
                     <div className="quill-wrapper" style={{ minHeight: '400px', background: 'white' }}>
-                        <ReactQuill
+                        <RichTextEditor
                             ref={quillRef}
-                            theme="snow"
                             value={formData.content}
                             onChange={handleEditorChange}
-                            modules={modules}
+                            customImageHandler={imageHandler}
                             placeholder="Describe your service in detail. You can add images, links, and formatting..."
                             style={{ height: '350px', marginBottom: '50px' }}
                         />

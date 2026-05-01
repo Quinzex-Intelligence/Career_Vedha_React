@@ -1,0 +1,155 @@
+.tiptap-container {
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tiptap-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--slate-200);
+    background: var(--slate-50);
+    gap: 4px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--slate-300);
+    margin: 0 4px;
+}
+
+.tiptap-toolbar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    color: var(--slate-600);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tiptap-toolbar button:hover {
+    background: var(--slate-200);
+    color: var(--slate-900);
+}
+
+.tiptap-toolbar button.is-active {
+    background: var(--cv-primary-light);
+    color: var(--cv-primary);
+}
+
+.color-picker-wrapper {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.color-picker-wrapper:hover {
+    background: var(--slate-200);
+}
+
+.color-picker-wrapper input[type="color"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.tiptap-editor-content {
+    flex-grow: 1;
+}
+
+/* TipTap Editor Inner Styles */
+.tiptap-editor-content .ProseMirror {
+    min-height: 250px;
+}
+
+.tiptap-editor-content table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+.tiptap-editor-content table td,
+.tiptap-editor-content table th {
+    min-width: 1em;
+    border: 2px solid #ced4da;
+    padding: 3px 5px;
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.tiptap-editor-content table th {
+    font-weight: bold;
+    text-align: left;
+    background-color: #f1f3f5;
+}
+
+.tiptap-editor-content .selectedCell:after {
+    z-index: 2;
+    position: absolute;
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(200, 200, 255, 0.4);
+    pointer-events: none;
+}
+
+.tiptap-editor-content .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: -2px;
+    width: 4px;
+    background-color: #adf;
+    pointer-events: none;
+}
+
+.tiptap-editor-content table p {
+    margin: 0;
+}
+
+.tiptap-editor-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.tiptap-editor-content img.ProseMirror-selectednode {
+    outline: 3px solid #68CEF8;
+}
+
+.tiptap-editor-content p.is-editor-empty:first-child::before {
+    color: #adb5bd;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+}
