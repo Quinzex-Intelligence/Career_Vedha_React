@@ -34,14 +34,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
+    width: auto;
+    min-width: 28px;
     height: 28px;
+    padding: 0 4px;
     border: none;
     background: transparent;
     border-radius: 4px;
     color: var(--slate-600);
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .tiptap-toolbar button:hover {
