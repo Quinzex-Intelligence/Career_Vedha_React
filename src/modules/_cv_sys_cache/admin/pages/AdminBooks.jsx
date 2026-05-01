@@ -31,15 +31,36 @@ const AdminBooks = () => {
     const fetchAllBooks = async () => {
         setLoading(true);
         try {
-            const [activeRes, inactiveRes] = await Promise.all([
+            // Use allSettled so one failing endpoint doesn't kill the other
+            const results = await Promise.allSettled([
                 inventoryApi.get('admin/ebooks/active'),
                 inventoryApi.get('admin/ebooks/inactive')
             ]);
-            
-            const allBooks = [
-                ...(activeRes.data || []).map(b => ({ ...b, status: 'ACTIVE' })),
-                ...(inactiveRes.data || []).map(b => ({ ...b, status: 'INACTIVE' }))
-            ].sort((a, b) => b.bookId - a.bookId);
+
+            const activeBooks = results[0].status === 'fulfilled'
+                ? (results[0].value.data || []).map(b => ({ ...b, status: 'ACTIVE' }))
+                : [];
+
+            // Inactive endpoint returns raw Ebooks entity (different field names)
+            // Normalize: coverPhoto → coverPhotoUrl, ebookPdfKey → pdfUrl, active → status
+            const inactiveBooks = results[1].status === 'fulfilled'
+                ? (results[1].value.data || []).map(b => ({
+                    ...b,
+                    status: 'INACTIVE',
+                    coverPhotoUrl: b.coverPhotoUrl || b.coverPhoto || null,
+                    pdfUrl: b.pdfUrl || b.ebookPdfKey || null,
+                }))
+                : [];
+
+            if (results[0].status === 'rejected') {
+                console.error('Failed to fetch active books:', results[0].reason);
+            }
+            if (results[1].status === 'rejected') {
+                console.error('Failed to fetch inactive books:', results[1].reason);
+            }
+
+            const allBooks = [...activeBooks, ...inactiveBooks]
+                .sort((a, b) => b.bookId - a.bookId);
 
             setBooks(allBooks);
         } catch (err) {
