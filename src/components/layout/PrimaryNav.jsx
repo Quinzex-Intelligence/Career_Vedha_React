@@ -239,8 +239,7 @@ const PrimaryNav = ({ isOpen }) => {
         },
         { name: t.navEStore, icon: 'fas fa-shopping-cart', path: '/e-store', hasDropdown: false },
         {
-            name: t.navMore,
-            icon: 'fas fa-ellipsis-h',
+            name: t.navMore + '...',
             path: '#',
             hasDropdown: true,
             dropdownItems: [

@@ -186,8 +186,7 @@ const MobileDrawer = ({ isOpen, onClose }) => {
       },
       { name: t.navEStore || "E-Store", icon: 'fas fa-shopping-cart', path: '/e-store', hasDropdown: false },
       {
-          name: t.navMore || "More",
-          icon: 'fas fa-ellipsis-h',
+          name: (t.navMore || "More") + "...",
           path: '#',
           hasDropdown: true,
           dropdownItems: [
