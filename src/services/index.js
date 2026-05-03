@@ -53,7 +53,7 @@ export const newsService = {
             // Use specialized taxonomy filters if hierarchical params are present
             // Handle both 'level' (legacy) and 'category' (standard)
             const hasHierarchy = cleanParams.section || cleanParams.category || cleanParams.level || cleanParams.sub_category || cleanParams.sub || cleanParams.segment;
-            
+
             const endpoint = hasHierarchy
                 ? API_CONFIG.DJANGO_ENDPOINTS.ARTICLE_FILTERS
                 : API_CONFIG.DJANGO_ENDPOINTS.PUBLISHED_ARTICLES;
@@ -68,7 +68,7 @@ export const newsService = {
 
             // Handle different response formats (Article Filters endpoint returns { articles, total_published })
             const results = data.articles || data.results || (Array.isArray(data) ? data : []);
-            
+
             return {
                 ...data, // Include total_published, top_categories etc from backend
                 results: results,
@@ -88,7 +88,7 @@ export const newsService = {
         try {
             // Mapping for backend language codes
             const langCode = params.lang === 'telugu' ? 'te' : (params.lang === 'english' ? 'en' : params.lang);
-            
+
             const queryParams = {
                 lang: langCode || 'te',
                 cursor: params.cursor || '',
@@ -97,7 +97,7 @@ export const newsService = {
 
             const response = await djangoApi.get(API_CONFIG.DJANGO_ENDPOINTS.CURRENT_AFFAIRS_CURSOR, { params: queryParams });
             const data = response.data;
-            
+
             return {
                 results: data.results || (Array.isArray(data) ? data : []),
                 next_cursor: data.next_cursor || data.next || null,
@@ -1016,7 +1016,7 @@ export const youtubeService = {
         try {
             const params = { category };
             if (cursorId) params.cursorId = cursorId;
-            
+
             // Map frontend standard names to backend expected if different
             if (filters.category) params.category_slug = filters.category;
             if (filters.sub_category) params.sub_category_slug = filters.sub_category;
@@ -1120,8 +1120,8 @@ export { academicsService, ourServicesService };
 export const taxonomyService = {
     getSections: async (isAdmin = false, lang = null) => {
         try {
-            const endpoint = isAdmin 
-                ? API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CMS 
+            const endpoint = isAdmin
+                ? API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_CMS
                 : API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTIONS_PUBLIC;
             const params = lang ? { lang: lang === 'telugu' ? 'te' : (lang === 'english' ? 'en' : lang) } : {};
             const response = await djangoApi.get(endpoint, { params });
@@ -1313,7 +1313,7 @@ export const globalSearchService = {
                             section: 'academics'
                         })));
                     })
-                    .catch(() => {})
+                    .catch(() => { })
             );
 
             promises.push(
@@ -1344,7 +1344,7 @@ export const globalSearchService = {
                         });
                         resultMap.academics.push(...matched);
                     })
-                    .catch(() => {})
+                    .catch(() => { })
             );
         }
 
@@ -1437,7 +1437,7 @@ export const globalSearchService = {
 
                                         (Array.isArray(tree) ? tree : [tree]).forEach(node => walkNode(node, section.name || section.title));
                                     })
-                                    .catch(() => {})
+                                    .catch(() => { })
                             )
                         );
 
@@ -1465,7 +1465,7 @@ export const globalSearchService = {
                                 image: p.image,
                                 url: `/e-store/product/${p.id}`
                             }));
-                    } catch (_) {}
+                    } catch (_) { }
                 })()
             );
         }
