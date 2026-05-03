@@ -1,54 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { newsService } from '../services';
+import { questionPaperService } from '../services';
 import Header from '../components/layout/Header';
 import PrimaryNav from '../components/layout/PrimaryNav';
 import Footer from '../components/layout/Footer';
-import TaxonomyTabs from '../components/ui/TaxonomyTabs';
-import { useInfiniteArticles } from '../hooks/useArticles';
 import SEO from '../components/seo/SEO';
 import '../styles/contact-papers.css';
 import './Articles.css';
 
 const QuestionPapersPage = () => {
-    const [searchParams] = useSearchParams();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { activeLanguage } = useLanguage();
-    
-    const categoryParam = searchParams.get('category') || searchParams.get('level');
-    const subParam = searchParams.get('sub_category') || searchParams.get('sub');
-    const segmentParam = searchParams.get('segment');
 
-    const filters = React.useMemo(() => ({
-        lang: activeLanguage === 'telugu' ? 'te' : 'en',
-        section: 'papers',
-        category: categoryParam || undefined,
-        sub_category: subParam || undefined,
-        segment: segmentParam || undefined,
-        limit: 12
-    }), [activeLanguage, categoryParam, subParam, segmentParam]);
+    const [papers, setPapers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(false);
+    const [cursor, setCursor] = useState(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-    const {
-        data,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-        isLoading,
-        isError,
-        refetch
-    } = useInfiniteArticles(filters);
+    const LIMIT = 12;
 
-    const papers = data?.pages.flatMap(page => page.results) || [];
+    const fetchPapers = useCallback(async (cursorVal = null) => {
+        try {
+            if (cursorVal) {
+                setIsFetchingMore(true);
+            } else {
+                setIsLoading(true);
+            }
 
-    const handleLanguageChange = (lang) => {
-        // No longer needed, handled by Context
+            const data = await questionPaperService.getPapersByCategory('QUESTIONPAPER', cursorVal, LIMIT);
+            const results = Array.isArray(data) ? data : [];
+
+            if (cursorVal) {
+                setPapers(prev => [...prev, ...results]);
+            } else {
+                setPapers(results);
+            }
+
+            // If we got a full page, there might be more
+            setHasMore(results.length >= LIMIT);
+
+            // Use the last item's creationDate as the cursor for next page
+            if (results.length > 0) {
+                const lastItem = results[results.length - 1];
+                setCursor(lastItem.creationDate || lastItem.created_at || null);
+            }
+        } catch (error) {
+            console.error('Error fetching question papers:', error);
+        } finally {
+            setIsLoading(false);
+            setIsFetchingMore(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPapers();
+    }, [fetchPapers]);
+
+    const handleLoadMore = () => {
+        if (cursor && !isFetchingMore) {
+            fetchPapers(cursor);
+        }
     };
-
-    const filteredPapers = papers.filter(paper =>
-        paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (paper.description && paper.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
 
     return (
         <>
@@ -63,10 +77,7 @@ const QuestionPapersPage = () => {
             />
             <PrimaryNav />
             
-            <TaxonomyTabs sectionSlug="papers" />
-            
             <div className="papers-page">
-
 
                 <div className="container">
                     <div className="papers-controls">
@@ -87,7 +98,7 @@ const QuestionPapersPage = () => {
                         <>
                             <div className="papers-grid-large">
                                 {papers.map((paper) => {
-                                    const fileUrl = paper.file_url || paper.presignedUrl;
+                                    const fileUrl = paper.presignedUrl || paper.file_url;
                                     return (
                                         <Link
                                             to={`/paper-viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(paper.title)}`}
@@ -99,8 +110,8 @@ const QuestionPapersPage = () => {
                                             </div>
                                             <div className="paper-card-content">
                                                 <span className="paper-title">{paper.title}</span>
-                                                {paper.summary && (
-                                                    <span className="paper-description">{paper.summary}</span>
+                                                {paper.description && (
+                                                    <span className="paper-description">{paper.description}</span>
                                                 )}
                                             </div>
                                         </Link>
@@ -108,14 +119,14 @@ const QuestionPapersPage = () => {
                                 })}
                             </div>
 
-                            {hasNextPage && (
+                            {hasMore && (
                                 <div className="load-more-container">
                                     <button
-                                        onClick={() => fetchNextPage()}
+                                        onClick={handleLoadMore}
                                         className="load-more-btn"
-                                        disabled={isFetchingNextPage}
+                                        disabled={isFetchingMore}
                                     >
-                                        {isFetchingNextPage ? (
+                                        {isFetchingMore ? (
                                             <>
                                                 <i className="fas fa-spinner fa-spin"></i> Loading...
                                             </>
