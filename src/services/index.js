@@ -358,7 +358,7 @@ export const newsService = {
     // 4. Move to Review
     moveToReview: async (articleId) => {
         try {
-            const response = await djangoApi.patch(`cms/articles/${articleId}/review/`);
+            const response = await djangoApi.put(`cms/articles/${articleId}/review/`);
             return response.data;
         } catch (error) {
             console.error('Error moving to review:', error);
@@ -369,7 +369,7 @@ export const newsService = {
     // 5. Publish Article
     publishArticle: async (articleId) => {
         try {
-            const response = await djangoApi.patch(`cms/articles/${articleId}/publish/`);
+            const response = await djangoApi.put(`cms/articles/${articleId}/publish/`);
             return response.data;
         } catch (error) {
             console.error('Error publishing article:', error);
@@ -380,7 +380,7 @@ export const newsService = {
     // 5b. Deactivate Article
     deactivateArticle: async (articleId) => {
         try {
-            const response = await djangoApi.patch(`cms/articles/${articleId}/deactivate/`);
+            const response = await djangoApi.put(`cms/articles/${articleId}/deactivate/`);
             return response.data;
         } catch (error) {
             console.error('Error deactivating article:', error);
@@ -391,7 +391,7 @@ export const newsService = {
     // 5d. Activate Article
     activateArticle: async (articleId) => {
         try {
-            const response = await djangoApi.patch(`cms/articles/${articleId}/activate/`);
+            const response = await djangoApi.put(`cms/articles/${articleId}/activate/`);
             return response.data;
         } catch (error) {
             console.error('Error activating article:', error);
@@ -413,7 +413,7 @@ export const newsService = {
     // 5e. Admin Direct Publish (Schedule)
     directPublish: async (articleId, data = {}) => {
         try {
-            const response = await djangoApi.patch(`cms/articles/${articleId}/direct-publish/`, data);
+            const response = await djangoApi.put(`cms/articles/${articleId}/direct-publish/`, data);
             return response.data;
         } catch (error) {
             console.error('Error directly publishing article:', error);
@@ -471,7 +471,7 @@ export const newsService = {
     updateTopStory: async (id, data) => {
         try {
             // Send as JSON - media is now handled via media_ids array
-            const response = await djangoApi.patch(`${API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS}${id}/`, data);
+            const response = await djangoApi.put(`${API_CONFIG.DJANGO_ENDPOINTS.TOP_STORIES_CMS}${id}/`, data);
             return response.data;
         } catch (error) {
             console.error('Error updating top story:', error);
@@ -549,7 +549,7 @@ export const newsService = {
 
     updateCategory: async (id, categoryData) => {
         try {
-            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DETAIL(id), categoryData);
+            const response = await djangoApi.put(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DETAIL(id), categoryData);
             return response.data;
         } catch (error) {
             console.error('Error updating category:', error);
@@ -569,7 +569,7 @@ export const newsService = {
 
     disableCategory: async (id) => {
         try {
-            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DISABLE(id));
+            const response = await djangoApi.put(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_DISABLE(id));
             return response.data;
         } catch (error) {
             console.error('Error disabling category:', error);
@@ -579,7 +579,7 @@ export const newsService = {
 
     enableCategory: async (id) => {
         try {
-            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_ENABLE(id));
+            const response = await djangoApi.put(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_CATEGORY_ENABLE(id));
             return response.data;
         } catch (error) {
             console.error('Error enabling category:', error);
@@ -610,7 +610,7 @@ export const newsService = {
 
     updateSection: async (id, sectionData) => {
         try {
-            const response = await djangoApi.patch(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTION_DETAIL(id), sectionData);
+            const response = await djangoApi.put(API_CONFIG.DJANGO_ENDPOINTS.TAXONOMY_SECTION_DETAIL(id), sectionData);
             return response.data;
         } catch (error) {
             console.error('Error updating taxonomy section:', error);
