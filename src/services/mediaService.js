@@ -14,7 +14,7 @@ const mediaService = {
      */
     upload: async (formData, onUploadProgress) => {
         const response = await djangoApi.post(API_CONFIG.MEDIA.UPLOAD, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            // Content-Type is handled automatically by Axios/Browser for FormData
             timeout: 300000, // 5 minutes for S3 uploads
             onUploadProgress,
         });
@@ -50,7 +50,7 @@ const mediaService = {
      */
     replace: async (id, formData) => {
         const response = await djangoApi.patch(`${API_CONFIG.MEDIA.REPLACE}${id}/replace/`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            // Content-Type is handled automatically by Axios/Browser for FormData
             timeout: 300000,
         });
         return response.data;

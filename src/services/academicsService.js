@@ -265,9 +265,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.post('academics/cms/subjects/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.post('academics/cms/subjects/', formData);
             return response.data;
         } catch (error) {
             console.error('Error creating subject:', error);
@@ -283,9 +281,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.patch(`academics/cms/subjects/${id}/`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.patch(`academics/cms/subjects/${id}/`, formData);
             return response.data;
         } catch (error) {
             console.error('Error updating subject:', error);
@@ -361,9 +357,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.post('academics/cms/chapters/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.post('academics/cms/chapters/', formData);
             return response.data;
         } catch (error) {
             console.error('Error creating chapter:', error);
@@ -383,9 +377,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.patch(`academics/cms/chapters/${id}/`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.patch(`academics/cms/chapters/${id}/`, formData);
             return response.data;
         } catch (error) {
             console.error('Error updating chapter:', error);
@@ -420,9 +412,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.post('academics/cms/materials/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.post('academics/cms/materials/', formData);
             return response.data;
         } catch (error) {
             console.error('Error creating material:', error);
@@ -442,9 +432,7 @@ export const academicsService = {
                     formData.append(key, data[key]);
                 }
             });
-            const response = await djangoApi.patch(`academics/cms/materials/${id}/`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await djangoApi.patch(`academics/cms/materials/${id}/`, formData);
             return response.data;
         } catch (error) {
             console.error('Error updating material:', error);

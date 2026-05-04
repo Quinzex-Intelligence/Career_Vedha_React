@@ -28,9 +28,8 @@ export const ourServicesService = {
         formData.append('folder', folder);
 
         const response = await api.post(`${BASE}/upload`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            },
+            // DO NOT manually set Content-Type for FormData; Axios/Browser will set it with the correct boundary
+            timeout: 300000, // 5 minutes for large file uploads to S3
             onUploadProgress: (progressEvent) => {
                 if (onProgress) {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
