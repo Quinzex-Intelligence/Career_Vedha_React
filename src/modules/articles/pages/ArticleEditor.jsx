@@ -210,6 +210,14 @@ const ArticleEditor = () => {
     const [pdfFile2, setPdfFile2] = useState(null);
     const [pdfPreview2, setPdfPreview2] = useState(null);
 
+    // Track deletions for existing media
+    const [mediaDeleted, setMediaDeleted] = useState({
+        banner: false,
+        main: false,
+        pdf1: false,
+        pdf2: false
+    });
+
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [activeMediaTarget, setActiveMediaTarget] = useState('banner');
 
@@ -587,12 +595,14 @@ const ArticleEditor = () => {
             if (target === 'banner') {
                 setBannerFile(file);
                 setBannerMediaId(null);
+                setMediaDeleted(prev => ({ ...prev, banner: false }));
                 const reader = new FileReader();
                 reader.onloadend = () => setBannerPreview(reader.result);
                 reader.readAsDataURL(file);
             } else {
                 setMainFile(file);
                 setMainMediaId(null);
+                setMediaDeleted(prev => ({ ...prev, main: false }));
                 const reader = new FileReader();
                 reader.onloadend = () => setMainPreview(reader.result);
                 reader.readAsDataURL(file);
@@ -606,10 +616,12 @@ const ArticleEditor = () => {
             setBannerMediaId(mediaId);
             setBannerFile(null);
             setBannerPreview(mediaUrl);
+            setMediaDeleted(prev => ({ ...prev, banner: false }));
         } else {
             setMainMediaId(mediaId);
             setMainFile(null);
             setMainPreview(mediaUrl);
+            setMediaDeleted(prev => ({ ...prev, main: false }));
         }
         setShowMediaLibrary(false);
     };
@@ -618,12 +630,14 @@ const ArticleEditor = () => {
         setBannerFile(null);
         setBannerMediaId(null);
         setBannerPreview(null);
+        setMediaDeleted(prev => ({ ...prev, banner: true }));
     };
 
     const clearMainMedia = () => {
         setMainFile(null);
         setMainMediaId(null);
         setMainPreview(null);
+        setMediaDeleted(prev => ({ ...prev, main: true }));
     };
 
     const handlePdfFileChange = (e, index = 1) => {
@@ -640,9 +654,11 @@ const ArticleEditor = () => {
             if (index === 2) {
                 setPdfFile2(file);
                 setPdfPreview2(file.name);
+                setMediaDeleted(prev => ({ ...prev, pdf2: false }));
             } else {
                 setPdfFile(file);
                 setPdfPreview(file.name);
+                setMediaDeleted(prev => ({ ...prev, pdf1: false }));
             }
         }
     };
@@ -651,9 +667,11 @@ const ArticleEditor = () => {
         if (index === 2) {
             setPdfFile2(null);
             setPdfPreview2(null);
+            setMediaDeleted(prev => ({ ...prev, pdf2: true }));
         } else {
             setPdfFile(null);
             setPdfPreview(null);
+            setMediaDeleted(prev => ({ ...prev, pdf1: true }));
         }
     };
 
@@ -780,6 +798,15 @@ const ArticleEditor = () => {
 
             // Media — PUBLISHER+ uses pre-uploaded media IDs; lower roles embed raw files
             if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
+
+            // Deletion flags
+            if (isEditMode) {
+                if (mediaDeleted.banner) formDataToSubmit.append('clear_banner', 'true');
+                if (mediaDeleted.main) formDataToSubmit.append('clear_main', 'true');
+                if (mediaDeleted.pdf1) formDataToSubmit.append('clear_pdf_1', 'true');
+                if (mediaDeleted.pdf2) formDataToSubmit.append('clear_pdf_2', 'true');
+            }
+
             if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
             if (resolvedBannerMediaId) formDataToSubmit.append('banner_media_id', resolvedBannerMediaId);
             if (resolvedMainMediaId) formDataToSubmit.append('main_media_id', resolvedMainMediaId);
@@ -914,6 +941,15 @@ const ArticleEditor = () => {
 
             // Media — PUBLISHER+ uses pre-uploaded media IDs; lower roles embed raw files
             if (pdfFile) formDataToSubmit.append('pdf_file', pdfFile);
+
+            // Deletion flags
+            if (isEditMode) {
+                if (mediaDeleted.banner) formDataToSubmit.append('clear_banner', 'true');
+                if (mediaDeleted.main) formDataToSubmit.append('clear_main', 'true');
+                if (mediaDeleted.pdf1) formDataToSubmit.append('clear_pdf_1', 'true');
+                if (mediaDeleted.pdf2) formDataToSubmit.append('clear_pdf_2', 'true');
+            }
+
             if (pdfFile2) formDataToSubmit.append('pdf_file_2', pdfFile2);
             if (resolvedBannerMediaId) formDataToSubmit.append('banner_media_id', resolvedBannerMediaId);
             if (resolvedMainMediaId) formDataToSubmit.append('main_media_id', resolvedMainMediaId);
